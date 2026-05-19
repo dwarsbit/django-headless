@@ -60,6 +60,7 @@ REST_FRAMEWORK = {
 from django.db import models
 from headless import expose
 
+
 @expose()
 class BlogPost(models.Model):
     title = models.CharField(max_length=200)
@@ -95,6 +96,7 @@ That's it! 🎉 Your model is now available via REST API at `/api/blog.blogpost/
 from django.db import models
 from headless import expose
 
+
 @expose()
 class Article(models.Model):
     title = models.CharField(max_length=200)
@@ -118,6 +120,7 @@ Perfect for site settings, configurations, or any model that should have only on
 # apps/config/models.py
 from django.db import models
 from headless import expose
+
 
 @expose(singleton=True)
 class SiteConfiguration(models.Model):
@@ -223,7 +226,7 @@ We welcome contributions! Here's how to get started:
 
 ```bash
 # Clone the repository
-git clone https://github.com/BitsOfAbstraction/django-headless.git
+git clone https://github.com/dwarsbit/django-headless.git
 cd django-headless
 
 # Create virtual environment
@@ -248,9 +251,9 @@ For detailed documentation, visit [djangoheadless.org](https://djangoheadless.or
 
 ## 🐛 Issues & Support
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/BitsOfAbstraction/django-headless/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/BitsOfAbstraction/django-headless/discussions)
-- 📧 **Email**: leon@devtastic.io
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/dwarsbit/django-headless/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/dwarsbit/django-headless/discussions)
+- 📧 **Email**: leon@dwarsbit.nl
 
 ## 📄 License
 
@@ -266,7 +269,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [PyPI Package](https://pypi.org/project/django-headless/)
 - [Documentation](https:/djangoheadless.org)
-- [GitHub Repository](https://github.com/BitsOfAbstraction/django-headless)
+- [GitHub Repository](https://github.com/dwarsbit/django-headless)
 - [Changelog](CHANGELOG.md)
 
 ---
