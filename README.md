@@ -9,7 +9,7 @@ With Django Headless you quickly create a REST API for your models, making it ea
 
 ## ✨ Features
 
-- **🎯 Easy configuration**: Add `@expose` decorator to any model and get instant REST endpoints
+- **🎯 Easy configuration**: Add `@headless` decorator to any model and get instant REST endpoints
 - **🤝 Plays nice**: Seamlessly integrates with existing Django applications
 - **💈 Supports singletons**: Special handling for singleton models (settings, configurations, etc.)
 - **🔍 Flexible filtering**: Optional filtering backend based on Django ORM lookups
@@ -58,9 +58,10 @@ REST_FRAMEWORK = {
 ```python
 # apps/blog/models.py
 from django.db import models
-from headless import expose
+from headless import headless
 
-@expose()
+
+@headless()
 class BlogPost(models.Model):
     title = models.CharField(max_length=200)
     content = models.TextField()
@@ -93,9 +94,10 @@ That's it! 🎉 Your model is now available via REST API at `/api/blog.blogpost/
 ```python
 # apps/blog/models.py
 from django.db import models
-from headless import expose
+from headless import headless
 
-@expose()
+
+@headless()
 class Article(models.Model):
     title = models.CharField(max_length=200)
     content = models.TextField()
@@ -117,9 +119,10 @@ Perfect for site settings, configurations, or any model that should have only on
 ```python
 # apps/config/models.py
 from django.db import models
-from headless import expose
+from headless import headless
 
-@expose(singleton=True)
+
+@headless(singleton=True)
 class SiteConfiguration(models.Model):
     site_name = models.CharField(max_length=100)
     maintenance_mode = models.BooleanField(default=False)
@@ -167,7 +170,7 @@ as `true`, `1` or `on` (and `false`, `0` or `off`). Multi-value lookups can be c
 
 ## 🎛️ Configuration Options
 
-The `@expose` decorator accepts the following configuration options:
+The `@headless` decorator accepts the following configuration options:
 
 | Option          | Type        | Default                    | Description                                                        |
 |-----------------|-------------|----------------------------|--------------------------------------------------------------------|
