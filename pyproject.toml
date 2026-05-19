@@ -1,6 +1,6 @@
 [project]
 name = "django-headless"
-version = "1.0.0-rc.1-1"
+version = "1.0.0-rc.2"
 description = "Automagically create a REST API for your Django models"
 authors = [
     { name = "Leon van der Grient", email = "leon@dwarsbit.nl" }
@@ -16,8 +16,11 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Framework :: Django",
     "Framework :: Django :: 5.0",
+    "Framework :: Django :: 6.0",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
