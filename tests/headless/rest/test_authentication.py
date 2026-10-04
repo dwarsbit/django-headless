@@ -19,9 +19,7 @@ class TestSecretKeyAuthentication:
         # Temporarily set AUTH_SECRET_KEY to None
         monkeypatch.setattr(headless_settings, "AUTH_SECRET_KEY", None)
 
-        with pytest.raises(
-            ValueError, match="HEADLESS.AUTH_SECRET_KEY must be configured"
-        ):
+        with pytest.raises(ValueError, match="HEADLESS.AUTH_SECRET_KEY must be configured"):
             SecretKeyAuthentication()
 
     def test_initialization_with_secret_key(self, monkeypatch):

@@ -292,7 +292,7 @@ python manage.py runserver
 
 ## 📚 Documentation
 
-For detailed documentation, visit [djangoheadless.org](https://djangoheadless.org)
+For detailed documentation, visit the [GitHub repository](https://github.com/dwarsbit/django-headless)
 
 ## 🐛 Issues & Support
 
@@ -313,7 +313,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - [PyPI Package](https://pypi.org/project/django-headless/)
-- [Documentation](https:/djangoheadless.org)
+- [Documentation](https://github.com/dwarsbit/django-headless#readme)
 - [GitHub Repository](https://github.com/dwarsbit/django-headless)
 - [Changelog](CHANGELOG.md)
 

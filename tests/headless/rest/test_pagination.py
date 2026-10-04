@@ -44,9 +44,7 @@ class PageNumberPaginationTests(SimpleTestCase):
         pagination.page_size = 10
 
         # Mock the link methods
-        pagination.get_next_link = Mock(
-            return_value="http://testserver/test/?page=2&limit=10"
-        )
+        pagination.get_next_link = Mock(return_value="http://testserver/test/?page=2&limit=10")
         pagination.get_previous_link = Mock(return_value=None)
 
         # Test data
@@ -100,12 +98,8 @@ class PageNumberPaginationTests(SimpleTestCase):
         pagination.page_size = 10
 
         # Mock the link methods
-        pagination.get_next_link = Mock(
-            return_value="http://testserver/test/?page=3&limit=10"
-        )
-        pagination.get_previous_link = Mock(
-            return_value="http://testserver/test/?page=1&limit=10"
-        )
+        pagination.get_next_link = Mock(return_value="http://testserver/test/?page=3&limit=10")
+        pagination.get_previous_link = Mock(return_value="http://testserver/test/?page=1&limit=10")
 
         # Test data
         test_data = [{"id": 3, "name": "Item 3"}, {"id": 4, "name": "Item 4"}]
@@ -224,9 +218,7 @@ class PageNumberPaginationTests(SimpleTestCase):
 
         # page_size_query_param should be different from base class
         # Base class uses None by default, our class uses 'limit'
-        self.assertNotEqual(
-            pagination.page_size_query_param, base_pagination.page_size_query_param
-        )
+        self.assertNotEqual(pagination.page_size_query_param, base_pagination.page_size_query_param)
         self.assertIsNone(base_pagination.page_size_query_param)
         self.assertEqual(pagination.page_size_query_param, "limit")
 
@@ -329,9 +321,7 @@ class PageNumberPaginationIntegrationTests(SimpleTestCase):
         self.assertEqual(set(response.data.keys()), set(expected_structure.keys()))
 
         pagination_data = response.data["pagination"]
-        self.assertEqual(
-            set(pagination_data.keys()), set(expected_structure["pagination"].keys())
-        )
+        self.assertEqual(set(pagination_data.keys()), set(expected_structure["pagination"].keys()))
         self.assertEqual(
             set(pagination_data["links"].keys()),
             set(expected_structure["pagination"]["links"].keys()),
@@ -343,9 +333,7 @@ class PageNumberPaginationIntegrationTests(SimpleTestCase):
         self.assertEqual(pagination_data["current"], 2)
         self.assertEqual(pagination_data["limit"], 5)
         self.assertEqual(pagination_data["links"]["next"], "/api/items/?page=3&limit=5")
-        self.assertEqual(
-            pagination_data["links"]["previous"], "/api/items/?page=1&limit=5"
-        )
+        self.assertEqual(pagination_data["links"]["previous"], "/api/items/?page=1&limit=5")
         self.assertEqual(response.data["data"], test_data)
 
         # Verify self link is an absolute URI

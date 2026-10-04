@@ -11,6 +11,14 @@ from headless.registry import headless_registry
 from headless.rest.serializers import FlexibleSerializer
 
 
+@pytest.fixture(autouse=True)
+def _clean_registry():
+    """Keep the global headless registry isolated between tests."""
+    saved = dict(headless_registry._models)
+    yield
+    headless_registry._models = saved
+
+
 class TestFlexibleSerializer:
     """Test suite for FlexibleSerializer"""
 
@@ -26,9 +34,7 @@ class TestFlexibleSerializer:
 
     def test_missing_model_attribute(self):
         """Test that serializer raises ImproperlyConfigured when model attribute is missing"""
-        with pytest.raises(
-            ImproperlyConfigured, match="Meta is missing model attribute"
-        ):
+        with pytest.raises(ImproperlyConfigured, match="Meta is missing model attribute"):
 
             class BadSerializer(FlexibleSerializer):
                 class Meta:
@@ -81,9 +87,7 @@ class TestFlexibleSerializer:
         expandable_fields = serializer._expandable_fields
 
         assert isinstance(expandable_fields, dict)
-        assert (
-            len(expandable_fields) == 0
-        ), "Simple model should have no expandable fields"
+        assert len(expandable_fields) == 0, "Simple model should have no expandable fields"
 
     def test_model_with_foreign_key(self):
         """Test serializer with a model that has ForeignKey relations"""
@@ -113,9 +117,7 @@ class TestFlexibleSerializer:
         expandable_fields = serializer._expandable_fields
 
         assert isinstance(expandable_fields, dict)
-        assert (
-            "author" in expandable_fields
-        ), "Should include ForeignKey field as expandable"
+        assert "author" in expandable_fields, "Should include ForeignKey field as expandable"
         assert len(expandable_fields) == 1, "Should have exactly one expandable field"
 
     def test_model_with_many_to_many(self):
@@ -146,43 +148,37 @@ class TestFlexibleSerializer:
         expandable_fields = serializer._expandable_fields
 
         assert isinstance(expandable_fields, dict)
-        assert (
-            "categories" in expandable_fields
-        ), "Should include ManyToMany field as expandable"
+        assert "categories" in expandable_fields, "Should include ManyToMany field as expandable"
         assert len(expandable_fields) == 1, "Should have exactly one expandable field"
 
     def test_model_with_self_reference(self):
         """Test serializer with a model that has self-referential ForeignKey"""
 
-        class Category(models.Model):
+        class SelfReferencingCategory(models.Model):
             name = models.CharField(max_length=100)
-            parent = models.ForeignKey(
-                "self", on_delete=models.CASCADE, null=True, blank=True
-            )
+            parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True)
 
             class Meta:
                 app_label = "test"
 
         # Register the model so it can be expanded
-        headless_registry.register(Category)
+        headless_registry.register(SelfReferencingCategory)
 
         class CategorySerializer(FlexibleSerializer):
             class Meta:
-                model = Category
+                model = SelfReferencingCategory
                 fields = "__all__"
 
         serializer = CategorySerializer()
         expandable_fields = serializer._expandable_fields
 
         assert isinstance(expandable_fields, dict)
-        assert (
-            "parent" in expandable_fields
-        ), "Should include self-referential field as expandable"
+        assert "parent" in expandable_fields, "Should include self-referential field as expandable"
 
     def test_caching_functionality(self):
         """Test that expandable fields are properly cached"""
 
-        class TestModel(models.Model):
+        class CachingTestModel(models.Model):
             name = models.CharField(max_length=100)
 
             class Meta:
@@ -190,7 +186,7 @@ class TestFlexibleSerializer:
 
         class TestSerializer(FlexibleSerializer):
             class Meta:
-                model = TestModel
+                model = CachingTestModel
                 fields = "__all__"
 
         serializer = TestSerializer()
@@ -231,18 +227,14 @@ class TestFlexibleSerializer:
         # Should include public property
         assert "computed_field" in fields, "Should include public property field"
         # Should not include private property (starts with _)
-        assert (
-            "_private_property" not in fields
-        ), "Should not include private property field"
+        assert "_private_property" not in fields, "Should not include private property field"
         # Property field should be read-only
-        assert isinstance(
-            fields["computed_field"], serializers.ReadOnlyField
-        ), "Property field should be read-only"
+        assert isinstance(fields["computed_field"], serializers.ReadOnlyField), "Property field should be read-only"
 
     def test_multiple_serializer_instances(self):
         """Test that different serializer instances have independent caches"""
 
-        class TestModel(models.Model):
+        class CacheIsolationModel(models.Model):
             name = models.CharField(max_length=100)
 
             class Meta:
@@ -250,7 +242,7 @@ class TestFlexibleSerializer:
 
         class TestSerializer(FlexibleSerializer):
             class Meta:
-                model = TestModel
+                model = CacheIsolationModel
                 fields = "__all__"
 
         serializer1 = TestSerializer()
@@ -260,13 +252,9 @@ class TestFlexibleSerializer:
         fields2 = serializer2._expandable_fields
 
         # Should be different objects (instance-specific caching)
-        assert (
-            fields1 is not fields2
-        ), "Different serializer instances should have different cache objects"
+        assert fields1 is not fields2, "Different serializer instances should have different cache objects"
         # But should have the same content
-        assert (
-            fields1.keys() == fields2.keys()
-        ), "Different serializer instances should have same field keys"
+        assert fields1.keys() == fields2.keys(), "Different serializer instances should have same field keys"
 
     def test_unregistered_related_model(self):
         """Test that unregistered related models are not included as expandable"""
@@ -277,11 +265,9 @@ class TestFlexibleSerializer:
             class Meta:
                 app_label = "test"
 
-        class TestModel(models.Model):
+        class RelatedToUnregisteredModel(models.Model):
             name = models.CharField(max_length=100)
-            unregistered = models.ForeignKey(
-                UnregisteredModel, on_delete=models.CASCADE
-            )
+            unregistered = models.ForeignKey(UnregisteredModel, on_delete=models.CASCADE)
 
             class Meta:
                 app_label = "test"
@@ -290,19 +276,15 @@ class TestFlexibleSerializer:
 
         class TestSerializer(FlexibleSerializer):
             class Meta:
-                model = TestModel
+                model = RelatedToUnregisteredModel
                 fields = "__all__"
 
         serializer = TestSerializer()
         expandable_fields = serializer._expandable_fields
 
         # Should not include unregistered model
-        assert (
-            "unregistered" not in expandable_fields
-        ), "Should not include unregistered related model"
-        assert (
-            len(expandable_fields) == 0
-        ), "Should have no expandable fields for unregistered models"
+        assert "unregistered" not in expandable_fields, "Should not include unregistered related model"
+        assert len(expandable_fields) == 0, "Should have no expandable fields for unregistered models"
 
     def test_inheritance(self):
         """Test that FlexibleSerializer works with inheritance"""
@@ -346,22 +328,26 @@ class TestFlexibleSerializer:
     )
     def test_various_relation_types(self, field_type, field_definition):
         """Test that various types of relational fields are handled correctly"""
-        # Create a model with the specific relation type
-        relation_field = field_definition
-
-        class TestModel(models.Model):
-            name = models.CharField(max_length=100)
-            relation = relation_field
-
-            class Meta:
-                app_label = "test"
+        # Create a model with the specific relation type, with a unique
+        # name per relation so the model registry is not reloaded
+        # between parametrized runs
+        RelationTestModel = type(
+            f"RelationTest_{field_type.__name__}",
+            (models.Model,),
+            {
+                "name": models.CharField(max_length=100),
+                "relation": field_definition,
+                "Meta": type("Meta", (), {"app_label": "test"}),
+                "__module__": __name__,
+            },
+        )
 
         # Register the model so it can be expanded
-        headless_registry.register(TestModel)
+        headless_registry.register(RelationTestModel)
 
         class TestSerializer(FlexibleSerializer):
             class Meta:
-                model = TestModel
+                model = RelationTestModel
                 fields = "__all__"
 
         serializer = TestSerializer()
@@ -369,6 +355,4 @@ class TestFlexibleSerializer:
 
         assert isinstance(expandable_fields, dict)
         # Should include the relation field
-        assert (
-            "relation" in expandable_fields
-        ), f"Should include {field_type.__name__} as expandable"
+        assert "relation" in expandable_fields, f"Should include {field_type.__name__} as expandable"

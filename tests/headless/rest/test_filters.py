@@ -8,7 +8,7 @@ from rest_framework.request import QueryDict
 from headless.rest.filters import LookupFilter
 
 
-class TestModel(models.Model):
+class FilterTestModel(models.Model):
     """Test model for LookupFilter testing"""
 
     name = models.CharField(max_length=100)
@@ -28,7 +28,7 @@ class LookupFilterTests(TestCase):
         self.filter_backend = LookupFilter()
         self.mock_view = Mock()
         self.mock_view.action = "list"
-        self.mock_view.queryset = TestModel.objects.none()
+        self.mock_view.queryset = FilterTestModel.objects.none()
 
     def test_basic_filtering(self):
         """Test basic field filtering"""
@@ -38,7 +38,7 @@ class LookupFilterTests(TestCase):
 
         # Should not raise an exception
         try:
-            result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            result = self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
         except Exception as e:
             self.fail(f"Basic filtering raised an exception: {e}")
 
@@ -60,7 +60,9 @@ class LookupFilterTests(TestCase):
                 request.query_params = query_params
 
                 try:
-                    result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+                    result = self.filter_backend.filter_queryset(
+                        request, FilterTestModel.objects.none(), self.mock_view
+                    )
                 except Exception as e:
                     self.fail(f"Boolean filtering with '{value}' raised an exception: {e}")
 
@@ -81,7 +83,9 @@ class LookupFilterTests(TestCase):
                 request.query_params = query_params
 
                 try:
-                    result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+                    result = self.filter_backend.filter_queryset(
+                        request, FilterTestModel.objects.none(), self.mock_view
+                    )
                 except Exception as e:
                     self.fail(f"Nullable boolean filtering with '{value}' raised an exception: {e}")
 
@@ -92,7 +96,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         try:
-            result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            result = self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
         except Exception as e:
             self.fail(f"Integer filtering raised an exception: {e}")
 
@@ -103,7 +107,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         try:
-            result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            result = self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
         except Exception as e:
             self.fail(f"Decimal filtering raised an exception: {e}")
 
@@ -114,7 +118,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         try:
-            result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            result = self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
         except Exception as e:
             self.fail(f"Float filtering raised an exception: {e}")
 
@@ -134,7 +138,9 @@ class LookupFilterTests(TestCase):
                 request.query_params = query_params
 
                 try:
-                    result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+                    result = self.filter_backend.filter_queryset(
+                        request, FilterTestModel.objects.none(), self.mock_view
+                    )
                 except Exception as e:
                     self.fail(f"Lookup filtering with '{lookup}' raised an exception: {e}")
 
@@ -145,7 +151,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         try:
-            result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            result = self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
         except Exception as e:
             self.fail(f"Multi-value filtering raised an exception: {e}")
 
@@ -156,7 +162,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         try:
-            result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            result = self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
         except Exception as e:
             self.fail(f"Exclusion filtering raised an exception: {e}")
 
@@ -167,7 +173,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         with self.assertRaises(ParseError):
-            self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
 
     def test_invalid_boolean_value(self):
         """Test that invalid boolean values raise ParseError"""
@@ -176,7 +182,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         with self.assertRaises(ParseError):
-            self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
 
     def test_invalid_integer_value(self):
         """Test that invalid integer values raise ParseError"""
@@ -185,7 +191,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         with self.assertRaises(ParseError):
-            self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
 
     def test_non_filter_fields(self):
         """Test that non-filter fields are ignored"""
@@ -195,7 +201,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         try:
-            result = self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            result = self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
         except Exception as e:
             self.fail(f"Non-filter fields handling raised an exception: {e}")
 
@@ -205,7 +211,7 @@ class LookupFilterTests(TestCase):
 
         try:
             filter_kwargs, exclude_kwargs = self.filter_backend.get_filter_kwargs(
-                model_class=TestModel, query_params=query_params
+                model_class=FilterTestModel, query_params=query_params
             )
 
             # Should return filter kwargs and empty exclude kwargs
@@ -222,7 +228,7 @@ class LookupFilterTests(TestCase):
 
         try:
             filter_kwargs, exclude_kwargs = self.filter_backend.get_filter_kwargs(
-                model_class=TestModel, query_params=query_params
+                model_class=FilterTestModel, query_params=query_params
             )
 
             # Should return both filter and exclude kwargs
@@ -241,7 +247,7 @@ class LookupFilterTests(TestCase):
         request = Mock()
         request.query_params = query_params
 
-        original_queryset = TestModel.objects.none()
+        original_queryset = FilterTestModel.objects.none()
         result = self.filter_backend.filter_queryset(request, original_queryset, self.mock_view)
 
         # Should return the original queryset unchanged
@@ -250,17 +256,17 @@ class LookupFilterTests(TestCase):
     def test_cast_field_value_method(self):
         """Test the cast_field_value method directly"""
         # Test boolean casting
-        bool_field = TestModel._meta.get_field("is_active")
+        bool_field = FilterTestModel._meta.get_field("is_active")
 
         self.assertEqual(self.filter_backend.cast_field_value("true", bool_field), True)
         self.assertEqual(self.filter_backend.cast_field_value("false", bool_field), False)
 
         # Test integer casting
-        int_field = TestModel._meta.get_field("age")
+        int_field = FilterTestModel._meta.get_field("age")
         self.assertEqual(self.filter_backend.cast_field_value("25", int_field), 25)
 
         # Test decimal casting
-        decimal_field = TestModel._meta.get_field("price")
+        decimal_field = FilterTestModel._meta.get_field("price")
         from decimal import Decimal
 
         self.assertEqual(
@@ -269,49 +275,49 @@ class LookupFilterTests(TestCase):
         )
 
         # Test float casting
-        float_field = TestModel._meta.get_field("rating")
+        float_field = FilterTestModel._meta.get_field("rating")
         self.assertEqual(self.filter_backend.cast_field_value("4.5", float_field), 4.5)
 
     def test_cast_field_value_invalid(self):
         """Test cast_field_value with invalid values"""
         # Test invalid boolean
-        bool_field = TestModel._meta.get_field("is_active")
+        bool_field = FilterTestModel._meta.get_field("is_active")
         with self.assertRaises(ParseError):
             self.filter_backend.cast_field_value("invalid", bool_field)
 
         # Test invalid integer
-        int_field = TestModel._meta.get_field("age")
+        int_field = FilterTestModel._meta.get_field("age")
         with self.assertRaises(ParseError):
             self.filter_backend.cast_field_value("not_a_number", int_field)
 
         # Test invalid decimal
-        decimal_field = TestModel._meta.get_field("price")
+        decimal_field = FilterTestModel._meta.get_field("price")
         with self.assertRaises(ParseError):
             self.filter_backend.cast_field_value("invalid_decimal", decimal_field)
 
         # Test invalid float
-        float_field = TestModel._meta.get_field("rating")
+        float_field = FilterTestModel._meta.get_field("rating")
         with self.assertRaises(ParseError):
             self.filter_backend.cast_field_value("not_a_float", float_field)
 
     def test_cast_field_value_preserves_case_for_text(self):
         """Test that text values keep their original casing"""
-        field = TestModel._meta.get_field("name")
+        field = FilterTestModel._meta.get_field("name")
 
         self.assertEqual(self.filter_backend.cast_field_value("John", field), "John")
         self.assertEqual(self.filter_backend.cast_field_value("hello World", field), "hello World")
 
     def test_cast_field_value_strips_whitespace(self):
         """Test that values are stripped before casting"""
-        name_field = TestModel._meta.get_field("name")
-        int_field = TestModel._meta.get_field("age")
+        name_field = FilterTestModel._meta.get_field("name")
+        int_field = FilterTestModel._meta.get_field("age")
 
         self.assertEqual(self.filter_backend.cast_field_value("  John  ", name_field), "John")
         self.assertEqual(self.filter_backend.cast_field_value(" 25 ", int_field), 25)
 
     def test_cast_field_value_boolean_is_case_insensitive(self):
         """Test that boolean values match case-insensitively"""
-        field = TestModel._meta.get_field("is_active")
+        field = FilterTestModel._meta.get_field("is_active")
 
         self.assertEqual(self.filter_backend.cast_field_value("TRUE", field), True)
         self.assertEqual(self.filter_backend.cast_field_value("On", field), True)
@@ -323,7 +329,7 @@ class LookupFilterTests(TestCase):
         query_params = QueryDict("name=John")
 
         filter_kwargs, exclude_kwargs = self.filter_backend.get_filter_kwargs(
-            model_class=TestModel, query_params=query_params
+            model_class=FilterTestModel, query_params=query_params
         )
 
         self.assertEqual(filter_kwargs, {"name": "John"})
@@ -334,7 +340,7 @@ class LookupFilterTests(TestCase):
         query_params = QueryDict("nullable_bool__isnull=TRUE")
 
         filter_kwargs, exclude_kwargs = self.filter_backend.get_filter_kwargs(
-            model_class=TestModel, query_params=query_params
+            model_class=FilterTestModel, query_params=query_params
         )
 
         self.assertEqual(filter_kwargs, {"nullable_bool__isnull": True})
@@ -346,7 +352,7 @@ class LookupFilterTests(TestCase):
         request.query_params = query_params
 
         with self.assertRaises(ParseError) as context:
-            self.filter_backend.filter_queryset(request, TestModel.objects.none(), self.mock_view)
+            self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
 
         self.assertIn("Invalid filter parameters", str(context.exception.detail))
         self.assertIn("bogus", str(context.exception.detail))

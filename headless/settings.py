@@ -126,7 +126,7 @@ class HeadlessSettings:
         return val
 
     def __check_user_settings(self, user_settings):
-        SETTINGS_DOC = "https://www.djangoheadless.org/"
+        SETTINGS_DOC = "https://github.com/dwarsbit/django-headless"
         for setting in REMOVED_SETTINGS:
             if setting in user_settings:
                 raise RuntimeError(

@@ -49,19 +49,19 @@ def get_view_set(
     elif read_only:
 
         class ViewSet(ReadOnlyModelViewSet):
-            queryset = model_class.objects.all()
+            # Deterministic ordering, so paginated lists are stable
+            queryset = model_class.objects.all().order_by("pk")
             serializer_class = serializer
             search_fields = model_config["search_fields"]
-            # Deterministic ordering, so paginated lists are stable
             ordering = ["pk"]
 
     else:
 
         class ViewSet(ModelViewSet):
-            queryset = model_class.objects.all()
+            # Deterministic ordering, so paginated lists are stable
+            queryset = model_class.objects.all().order_by("pk")
             serializer_class = serializer
             search_fields = model_config["search_fields"]
-            # Deterministic ordering, so paginated lists are stable
             ordering = ["pk"]
 
     # When configured, override DRF's default permissions for the
