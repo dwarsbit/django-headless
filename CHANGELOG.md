@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.0-rc.5
+
+- ⚙️ New `HEADLESS.DEFAULT_PERMISSION_CLASSES` setting to override DRF's permissions for the generated routes only
+- 🎁 New `@expose()` options: `fields` / `exclude` to control exposed fields, and `read_only` for GET-only endpoints
+- 🛡️ `@expose()` now fails fast with clear errors on non-models, unknown field names and conflicting options
+
 ## v1.0.0-rc.4
 
 - 🧹 Routes are now built in every context, not just runserver — they exist under management commands, tests and WSGI/ASGI entrypoints
