@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0-rc.4
+
+- 🧹 Routes are now built in every context, not just runserver — they exist under management commands, tests and WSGI/ASGI entrypoints
+- ⚙️ New `HEADLESS.BOOT_LOG` setting to always show or never show the boot log (default auto-detects server mode)
+- 🎁 Generated list endpoints are ordered by `pk`, so paginated pages are stable for frontend consumers
+- 🧹 Cleans up the REST builder internals (removed duplicate/dead code)
+- 🧪 Adds end-to-end tests covering the generated routes
+
 ## v1.0.0-rc.3
 
 - 👾 Fixes case-sensitive text filtering: lookup values are no longer lowercased (boolean and null matching is still case-insensitive)
