@@ -24,6 +24,7 @@ DEFAULTS = {
     "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
+    "DEFAULT_PERMISSION_CLASSES": None,
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "FILTER_EXCLUSION_SYMBOL": "~",
     "FILTER_TRUE_VALUES": ["true", "1", "on"],
@@ -42,7 +43,7 @@ DEFAULTS = {
 
 
 # List of settings that may be in string import notation.
-IMPORT_STRINGS = ["DEFAULT_SERIALIZER_CLASS"]
+IMPORT_STRINGS = ["DEFAULT_SERIALIZER_CLASS", "DEFAULT_PERMISSION_CLASSES"]
 
 
 # List of settings that have been removed

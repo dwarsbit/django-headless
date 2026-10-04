@@ -55,16 +55,14 @@ class RestBuilder:
             base_path = model_class._meta.label_lower
 
             if singleton:
+                action_map = {"get": "retrieve"}
+                if not model_config.get("read_only", False):
+                    action_map.update({"put": "update", "patch": "partial_update"})
+
                 singleton_urls.append(
                     path(
                         base_path,
-                        view_set.as_view(
-                            {
-                                "get": "retrieve",
-                                "put": "update",
-                                "patch": "partial_update",
-                            }
-                        ),
+                        view_set.as_view(action_map),
                     )
                 )
                 singleton_routes += 1

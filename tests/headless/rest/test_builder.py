@@ -5,7 +5,9 @@ Tests for the RestBuilder class
 from unittest.mock import patch, MagicMock
 
 from django.db import models
-from django.test import SimpleTestCase
+from django.test import RequestFactory, SimpleTestCase, override_settings
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from headless.registry import headless_registry
 from headless.rest.builder import RestBuilder
@@ -289,3 +291,137 @@ class RestBuilderTests(SimpleTestCase):
 
                 self.assertTrue(route_log_found, "Route count log not found")
                 self.assertTrue(singleton_log_found, "Singleton routes log not found")
+
+
+class BuilderOptionsModel(models.Model):
+    """Test model for builder option tests"""
+
+    title = models.CharField(max_length=100)
+    views = models.IntegerField(default=0)
+
+    class Meta:
+        app_label = "builder_options"
+
+
+class BuilderOptionsSingleton(models.Model):
+    """Test singleton model for builder option tests"""
+
+    site_name = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "builder_options"
+
+
+class RestBuilderOptionsTests(SimpleTestCase):
+    """Tests for the fields, exclude, read_only and permission options"""
+
+    def setUp(self):
+        headless_registry._models = {}
+        rest_router.registry = []
+        singleton_urls.clear()
+
+    def tearDown(self):
+        headless_registry._models = {}
+        rest_router.registry = []
+        singleton_urls.clear()
+
+    def test_read_only_viewset(self):
+        """Test that read_only models get a viewset without write actions"""
+        config = {
+            "model": BuilderOptionsModel,
+            "singleton": False,
+            "search_fields": ["title"],
+            "read_only": True,
+        }
+
+        viewset = RestBuilder().get_view_set(config)
+
+        self.assertTrue(issubclass(viewset, ReadOnlyModelViewSet))
+        self.assertFalse(hasattr(viewset, "create"))
+        self.assertFalse(hasattr(viewset, "update"))
+        self.assertFalse(hasattr(viewset, "destroy"))
+
+    def test_regular_viewset_allows_writes(self):
+        """Test that regular models keep their write actions"""
+        config = {
+            "model": BuilderOptionsModel,
+            "singleton": False,
+            "search_fields": ["title"],
+        }
+
+        viewset = RestBuilder().get_view_set(config)
+
+        self.assertTrue(hasattr(viewset, "create"))
+        self.assertTrue(hasattr(viewset, "update"))
+        self.assertTrue(hasattr(viewset, "destroy"))
+
+    def test_viewset_permissions_from_headless_settings(self):
+        """Test that DEFAULT_PERMISSION_CLASSES overrides DRF for generated routes"""
+        config = {
+            "model": BuilderOptionsModel,
+            "singleton": False,
+            "search_fields": ["title"],
+        }
+
+        with override_settings(HEADLESS={"DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"]}):
+            viewset = RestBuilder().get_view_set(config)
+            self.assertEqual(viewset.permission_classes, [IsAuthenticated])
+
+    def test_viewset_permissions_default_to_drf(self):
+        """Test that generated routes inherit DRF's permissions by default"""
+        config = {
+            "model": BuilderOptionsModel,
+            "singleton": False,
+            "search_fields": ["title"],
+        }
+
+        viewset = RestBuilder().get_view_set(config)
+
+        self.assertEqual(viewset.permission_classes, [AllowAny])
+
+    def test_serializer_fields_restriction(self):
+        """Test that the fields option restricts the serializer"""
+        config = {
+            "model": BuilderOptionsModel,
+            "singleton": False,
+            "search_fields": ["title"],
+            "fields": ["title"],
+        }
+
+        viewset = RestBuilder().get_view_set(config)
+
+        self.assertEqual(viewset.serializer_class.Meta.fields, ["title"])
+
+    def test_serializer_exclude(self):
+        """Test that the exclude option is passed to the serializer"""
+        config = {
+            "model": BuilderOptionsModel,
+            "singleton": False,
+            "search_fields": ["title"],
+            "exclude": ["views"],
+        }
+
+        viewset = RestBuilder().get_view_set(config)
+
+        self.assertIsNone(getattr(viewset.serializer_class.Meta, "fields", None))
+        self.assertEqual(viewset.serializer_class.Meta.exclude, ["views"])
+
+    def test_read_only_singleton_route_is_get_only(self):
+        """Test that a read-only singleton only maps the GET method"""
+        config = {
+            "model": BuilderOptionsSingleton,
+            "singleton": True,
+            "search_fields": [],
+            "read_only": True,
+        }
+        headless_registry._models["builder_options.builderoptionssingleton"] = config
+
+        RestBuilder(silent=True).build()
+
+        self.assertEqual(len(singleton_urls), 1)
+
+        # The view rejects write methods without touching the database
+        view = singleton_urls[0].callback
+        request = RequestFactory().put("/singleton/")
+        response = view(request)
+        self.assertEqual(response.status_code, 405)

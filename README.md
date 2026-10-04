@@ -199,6 +199,9 @@ The `@expose` decorator accepts the following configuration options:
 |-----------------|-------------|----------------------------|--------------------------------------------------------------------|
 | `singleton`     | `bool`      | `False`                    | Creates singleton endpoints (no create, list and delete endpoints) |
 | `search_fields` | `List[str]` | All the model's CharFields | Allows you to overwrite the allowed search fields.                 |
+| `fields`        | `List[str]` | All fields                 | Restricts the exposed fields to the given field names.              |
+| `exclude`       | `List[str]` | None                       | Excludes the given field names from the exposed fields.            |
+| `read_only`     | `bool`      | `False`                    | Exposes the model read-only: only list and retrieve (GET) routes.  |
 
 
 
@@ -212,6 +215,10 @@ HEADLESS =  {
     "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
+    # When set, overrides DRF's DEFAULT_PERMISSION_CLASSES for the
+    # generated routes only. Unset inherits from REST_FRAMEWORK.
+    "DEFAULT_PERMISSION_CLASSES": None,
+    "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "FILTER_EXCLUSION_SYMBOL": "~",
     "FILTER_TRUE_VALUES": ["true", "1", "on"],
@@ -227,6 +234,17 @@ HEADLESS =  {
         "ordering"
     ],
 
+}
+```
+
+### Route Permissions
+
+Generated routes use the permission classes from your `REST_FRAMEWORK` setting by default. To apply different permissions to the generated routes only, set `DEFAULT_PERMISSION_CLASSES`:
+
+```python
+HEADLESS = {
+    # Admin-only generated routes, leaving the rest of your API untouched
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAdminUser"],
 }
 ```
 

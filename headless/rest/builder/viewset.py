@@ -1,10 +1,11 @@
 from typing import Type, Dict, Any
 
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from .serializer import get_serializer
 from ..viewsets import SingletonViewSet
 from ...registry import ModelConfig
+from ...settings import headless_settings
+from .serializer import get_serializer
 
 
 def get_view_set(
@@ -31,13 +32,28 @@ def get_view_set(
         return viewset_cache[model_name]
 
     singleton = model_config["singleton"]
-    serializer = get_serializer(model_class, serializer_cache)
+    read_only = model_config.get("read_only", False)
+    serializer = get_serializer(
+        model_class,
+        serializer_cache,
+        fields=model_config.get("fields"),
+        exclude=model_config.get("exclude"),
+    )
 
     if singleton:
 
         class ViewSet(SingletonViewSet):
             queryset = model_class.objects.all()
             serializer_class = serializer
+
+    elif read_only:
+
+        class ViewSet(ReadOnlyModelViewSet):
+            queryset = model_class.objects.all()
+            serializer_class = serializer
+            search_fields = model_config["search_fields"]
+            # Deterministic ordering, so paginated lists are stable
+            ordering = ["pk"]
 
     else:
 
@@ -47,6 +63,12 @@ def get_view_set(
             search_fields = model_config["search_fields"]
             # Deterministic ordering, so paginated lists are stable
             ordering = ["pk"]
+
+    # When configured, override DRF's default permissions for the
+    # generated routes only.
+    permissions = headless_settings.DEFAULT_PERMISSION_CLASSES
+    if permissions is not None:
+        ViewSet.permission_classes = list(permissions)
 
     viewset_cache[model_name] = ViewSet
     return ViewSet

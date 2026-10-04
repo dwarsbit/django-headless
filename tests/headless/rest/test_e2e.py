@@ -54,12 +54,36 @@ class SiteConfig(models.Model):
         app_label = "e2e_config"
 
 
+@expose(read_only=True)
+class DraftNote(models.Model):
+    title = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "e2e_blog"
+
+
+@expose(exclude=["secret"])
+class ApiKey(models.Model):
+    name = models.CharField(max_length=100)
+    secret = models.CharField(max_length=100, default="")
+
+    class Meta:
+        app_label = "e2e_blog"
+
+
 class E2EPagination(PageNumberPagination):
     page_size = 2
 
 
 E2E_ROUTES = ("e2e_blog.article", "e2e_blog.category")
-MODEL_LABELS = ("e2e_blog.article", "e2e_blog.category", "e2e_config.siteconfig")
+MODEL_LABELS = (
+    "e2e_blog.article",
+    "e2e_blog.category",
+    "e2e_blog.draftnote",
+    "e2e_blog.apikey",
+    "e2e_config.siteconfig",
+)
+E2E_REGISTRY_PREFIXES = E2E_ROUTES + ("e2e_blog.draftnote", "e2e_blog.apikey")
 
 
 def rebuild_urlpatterns():
@@ -88,9 +112,7 @@ def setUpModule():
 
 def tearDownModule():
     # Unregister the e2e routes so other test modules run against a clean slate.
-    rest_router.registry = [
-        entry for entry in rest_router.registry if entry[0] not in ("e2e_blog.article", "e2e_blog.category")
-    ]
+    rest_router.registry = [entry for entry in rest_router.registry if entry[0] not in E2E_REGISTRY_PREFIXES]
     singleton_urls.clear()
     for label in MODEL_LABELS:
         headless_registry._models.pop(label, None)
@@ -107,10 +129,14 @@ class EndToEndApiTests(TransactionTestCase):
             editor.create_model(Category)
             editor.create_model(Article)
             editor.create_model(SiteConfig)
+            editor.create_model(DraftNote)
+            editor.create_model(ApiKey)
 
     @classmethod
     def tearDownClass(cls):
         with connection.schema_editor() as editor:
+            editor.delete_model(ApiKey)
+            editor.delete_model(DraftNote)
             editor.delete_model(SiteConfig)
             editor.delete_model(Article)
             editor.delete_model(Category)
@@ -124,6 +150,8 @@ class EndToEndApiTests(TransactionTestCase):
         Article.objects.all().delete()
         Category.objects.all().delete()
         SiteConfig.objects.all().delete()
+        DraftNote.objects.all().delete()
+        ApiKey.objects.all().delete()
 
     def test_crud_flow(self):
         """Test create, list, detail, update and delete on a generated route"""
@@ -241,6 +269,40 @@ class EndToEndApiTests(TransactionTestCase):
         response = self.client.put("/e2e_config.siteconfig", {"site_name": "New Site"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(SiteConfig.objects.count(), 1)
+
+    def test_read_only_routes_reject_writes(self):
+        """Test that read-only models only serve GET requests"""
+        note = DraftNote.objects.create(title="Note")
+
+        response = self.client.get("/e2e_blog.draftnote")
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(f"/e2e_blog.draftnote/{note.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["title"], "Note")
+
+        response = self.client.post("/e2e_blog.draftnote", {"title": "Nope"})
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.patch(f"/e2e_blog.draftnote/{note.id}", {"title": "Nope"})
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.delete(f"/e2e_blog.draftnote/{note.id}")
+        self.assertEqual(response.status_code, 405)
+
+    def test_excluded_fields_are_not_exposed(self):
+        """Test that the exclude option keeps fields out of the API"""
+        response = self.client.post("/e2e_blog.apikey", {"name": "frontend", "secret": "hunter2"})
+        self.assertEqual(response.status_code, 201)
+        self.assertNotIn("secret", response.data)
+        key_id = response.data["id"]
+
+        # The excluded field is ignored on create
+        self.assertEqual(ApiKey.objects.get().secret, "")
+
+        response = self.client.get(f"/e2e_blog.apikey/{key_id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("secret", response.data)
 
     def test_api_root_lists_generated_routes(self):
         """Test that the API root lists the generated routes"""

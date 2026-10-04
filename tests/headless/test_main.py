@@ -4,6 +4,8 @@ from unittest.mock import patch, mock_open
 from urllib.error import URLError
 
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
+from django.db import models
 from django.test import SimpleTestCase, override_settings
 
 from headless.registry import HeadlessRegistry
@@ -173,20 +175,92 @@ class SettingsTests(SimpleTestCase):
         self.assertTrue(issubclass(headless_settings.DEFAULT_SERIALIZER_CLASS, ModelSerializer))
 
 
+class RegistryRelatedModel(models.Model):
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "registry_tests"
+
+
+class RegistryTestModel(models.Model):
+    title = models.CharField(max_length=100)
+    author = models.CharField(max_length=100)
+    views = models.IntegerField(default=0)
+    category = models.ForeignKey(RegistryRelatedModel, null=True, on_delete=models.CASCADE)
+
+    class Meta:
+        app_label = "registry_tests"
+
+
 class RegistryTests(SimpleTestCase):
+    def setUp(self):
+        self.registry = HeadlessRegistry()
+
     def test_registry_register_and_get(self):
-        # Create a fake model class with minimal _meta interface
-        class _Meta:
-            label_lower = "app.model"
-            fields = []
-
-        class FakeModel:
-            _meta = _Meta()
-
-        reg = HeadlessRegistry()
-        reg.register(FakeModel, singleton=True)
-        self.assertEqual(len(reg), 1)
-        cfg = reg.get_model("APP.Model")
+        self.registry.register(RegistryTestModel, singleton=True)
+        self.assertEqual(len(self.registry), 1)
+        cfg = self.registry.get_model("registry_tests.RegistryTestModel")
         self.assertIsNotNone(cfg)
-        self.assertIs(cfg["model"], FakeModel)
+        self.assertIs(cfg["model"], RegistryTestModel)
         self.assertTrue(cfg["singleton"])
+
+    def test_default_config(self):
+        self.registry.register(RegistryTestModel)
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+
+        self.assertFalse(cfg["singleton"])
+        self.assertFalse(cfg["read_only"])
+        # Default search fields are the CharFields without choices
+        self.assertEqual(cfg["search_fields"], ["title", "author"])
+        self.assertIsNone(cfg["fields"])
+        self.assertIsNone(cfg["exclude"])
+
+    def test_singleton_has_no_search_fields(self):
+        self.registry.register(RegistryTestModel, singleton=True)
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["search_fields"], [])
+
+    def test_read_only_config(self):
+        self.registry.register(RegistryTestModel, read_only=True)
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertTrue(cfg["read_only"])
+
+    def test_fields_and_exclude_config(self):
+        self.registry.register(RegistryTestModel, fields=["title", "views"])
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["fields"], ["title", "views"])
+
+        self.registry.register(RegistryRelatedModel, exclude=["name"])
+        cfg = self.registry.get_model("registry_tests.registryrelatedmodel")
+        self.assertEqual(cfg["exclude"], ["name"])
+
+    def test_non_model_rejected(self):
+        with self.assertRaises(ImproperlyConfigured):
+            self.registry.register(object)
+
+        class NotAModel:
+            pass
+
+        with self.assertRaises(ImproperlyConfigured):
+            self.registry.register(NotAModel)
+
+    def test_fields_and_exclude_conflict(self):
+        with self.assertRaises(ImproperlyConfigured):
+            self.registry.register(RegistryTestModel, fields=["title"], exclude=["views"])
+
+    def test_invalid_search_fields_rejected(self):
+        with self.assertRaises(ImproperlyConfigured):
+            self.registry.register(RegistryTestModel, search_fields=["bogus"])
+
+    def test_search_field_lookups_allowed(self):
+        # DRF SearchFilter prefixes and relation traversal are valid
+        self.registry.register(RegistryTestModel, search_fields=["^title", "=author", "category__name"])
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["search_fields"], ["^title", "=author", "category__name"])
+
+    def test_invalid_fields_rejected(self):
+        with self.assertRaises(ImproperlyConfigured):
+            self.registry.register(RegistryTestModel, fields=["title", "bogus"])
+
+        with self.assertRaises(ImproperlyConfigured):
+            self.registry.register(RegistryTestModel, exclude=["bogus"])
