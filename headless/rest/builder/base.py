@@ -32,6 +32,9 @@ class RestBuilder:
         """
         log("\n:building_construction:  Setting up [bold]REST[/bold] routes")
 
+        routes = 0
+        singleton_routes = 0
+
         for model_config in self._models:
             # Validate model config has required fields
             if not all(key in model_config for key in ["model", "singleton", "search_fields"]):
@@ -58,11 +61,14 @@ class RestBuilder:
                         ),
                     )
                 )
+                singleton_routes += 1
             else:
                 rest_router.register(base_path, view_set)
 
-        log(f"   [cyan]•[/cyan] {len(rest_router.urls + singleton_urls)} routes registered")
-        log(f"     [dim]{len(singleton_urls)} singleton routes[/dim]")
+            routes += 1
+
+        log(f"   [cyan]•[/cyan] {routes} routes registered")
+        log(f"     [dim]{singleton_routes} singleton routes[/dim]")
 
     def get_serializer(self, model_class: Type[Model]) -> Type[Any]:
         """

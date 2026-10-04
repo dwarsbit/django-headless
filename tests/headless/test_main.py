@@ -3,6 +3,7 @@ import sys
 from unittest.mock import patch, mock_open
 from urllib.error import URLError
 
+from django.core.cache import cache
 from django.test import SimpleTestCase
 
 from headless.registry import HeadlessRegistry
@@ -11,6 +12,10 @@ from headless.utils import is_jsonable, flatten, is_runserver, get_latest_versio
 
 
 class UtilsTests(SimpleTestCase):
+    def setUp(self):
+        # The version lookup caches its result; start each test clean.
+        cache.clear()
+
     def test_is_jsonable(self):
         self.assertTrue(is_jsonable({"a": 1}))
         self.assertTrue(is_jsonable([1, 2, 3]))
@@ -47,40 +52,46 @@ class UtilsTests(SimpleTestCase):
         # Mock successful response from PyPI
         class MockResponse:
             def read(self):
-                return json.dumps({
-                    "info": {
-                        "version": "1.2.3"
-                    }
-                }).encode("utf-8")
-            
+                return json.dumps({"info": {"version": "1.2.3"}}).encode("utf-8")
+
             def __enter__(self):
                 return self
-            
+
             def __exit__(self, *args):
                 pass
-        
-        with patch("headless.utils.urlopen", return_value=MockResponse()):
+
+        with patch("headless.utils.urlopen", return_value=MockResponse()) as mock_urlopen:
             version = get_latest_version()
             self.assertEqual(version, "1.2.3")
 
+            # A second lookup is served from cache: PyPI is only hit once.
+            version = get_latest_version()
+            self.assertEqual(version, "1.2.3")
+            self.assertEqual(mock_urlopen.call_count, 1)
+
     def test_get_latest_version_network_error(self):
         # Mock network error
-        with patch("headless.utils.urlopen", side_effect=URLError("Network error")):
+        with patch("headless.utils.urlopen", side_effect=URLError("Network error")) as mock_urlopen:
             version = get_latest_version()
             self.assertIsNone(version)
+
+            # The failure is cached briefly: PyPI is not hit again.
+            version = get_latest_version()
+            self.assertIsNone(version)
+            self.assertEqual(mock_urlopen.call_count, 1)
 
     def test_get_latest_version_invalid_json(self):
         # Mock invalid JSON response
         class MockResponse:
             def read(self):
                 return b"invalid json"
-            
+
             def __enter__(self):
                 return self
-            
+
             def __exit__(self, *args):
                 pass
-        
+
         with patch("headless.utils.urlopen", return_value=MockResponse()):
             version = get_latest_version()
             self.assertIsNone(version)
@@ -90,13 +101,13 @@ class UtilsTests(SimpleTestCase):
         class MockResponse:
             def read(self):
                 return json.dumps({}).encode("utf-8")
-            
+
             def __enter__(self):
                 return self
-            
+
             def __exit__(self, *args):
                 pass
-        
+
         with patch("headless.utils.urlopen", return_value=MockResponse()):
             version = get_latest_version()
             self.assertIsNone(version)
@@ -112,7 +123,7 @@ class UtilsTests(SimpleTestCase):
         self.assertEqual(normalize_version("1.0.0"), "1.0.0")
         self.assertEqual(normalize_version(""), "")
         self.assertEqual(normalize_version(None), None)
-        
+
         # Test that equivalent versions normalize to the same string
         self.assertEqual(normalize_version("1.0.0b6"), normalize_version("1.0.0-beta.6"))
         self.assertEqual(normalize_version("1.0.0a1"), normalize_version("1.0.0-alpha.1"))
@@ -129,9 +140,7 @@ class SettingsTests(SimpleTestCase):
         # DEFAULT_SERIALIZER_CLASS resolves to a class
         from rest_framework.serializers import ModelSerializer
 
-        self.assertTrue(
-            issubclass(headless_settings.DEFAULT_SERIALIZER_CLASS, ModelSerializer)
-        )
+        self.assertTrue(issubclass(headless_settings.DEFAULT_SERIALIZER_CLASS, ModelSerializer))
 
 
 class RegistryTests(SimpleTestCase):

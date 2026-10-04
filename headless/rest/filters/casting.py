@@ -10,6 +10,10 @@ def cast_field_value(value: str, field):
     """
     Cast a string value to the appropriate type based on the field type.
 
+    Strip the value and lowercase it only for comparison purposes. The
+    original (stripped) value is returned for text fields, so
+    case-sensitive lookups like `exact` keep working.
+
     Args:
         value: String value to cast
         field: Django model field
@@ -20,14 +24,15 @@ def cast_field_value(value: str, field):
     Raises:
         ParseError: If value cannot be cast to the expected type
     """
-    value = value.strip().lower()
+    value = value.strip()
+    lowered = value.lower()
 
     if isinstance(field, models.BooleanField):
-        if value in headless_settings.FILTER_TRUE_VALUES:
+        if lowered in headless_settings.FILTER_TRUE_VALUES:
             return True
-        if value in headless_settings.FILTER_FALSE_VALUES:
+        if lowered in headless_settings.FILTER_FALSE_VALUES:
             return False
-        if getattr(field, "null", False) and value in headless_settings.FILTER_NULL_VALUES:
+        if getattr(field, "null", False) and lowered in headless_settings.FILTER_NULL_VALUES:
             return None
         else:
             if getattr(field, "null", False):

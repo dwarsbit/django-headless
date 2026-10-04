@@ -43,9 +43,11 @@ class LookupFilter(BaseFilterBackend):
                 query_params=request.query_params,
             )
             return queryset.filter(**filter_kwargs).exclude(**exclude_kwargs).distinct()
+        except ParseError:
+            # ParseErrors already carry a descriptive detail; pass them through.
+            raise
         except Exception as e:
-            print(e)
-            raise ParseError(detail="Invalid filter parameters")
+            raise ParseError(detail=f"Invalid filter parameters: {e}")
 
     def get_filter_kwargs(self, model_class, query_params):
         filter_kwargs = {}
@@ -89,7 +91,7 @@ class LookupFilter(BaseFilterBackend):
             if is_multi:
                 casted_value = [cast_field_value(v, field) for v in value]
             elif lookup == "isnull":
-                fvalue = value[0]
+                fvalue = value[0].strip().lower()
                 if not fvalue or fvalue not in self.BOOLEANS:
                     raise ParseError(
                         detail=f"The isnull lookup can only be used with a boolean value ({', '.join(self.BOOLEANS)})."

@@ -168,6 +168,29 @@ Values are automatically cast based on the field type. Booleans can be represent
 as `true`, `1` or `on` (and `false`, `0` or `off`). Multi-value lookups can be comma-separated (e.g. `id__in=1,2,3`).
 
 
+### Field Expansion & Model Properties (optional)
+
+By default, endpoints use a plain `ModelSerializer`. To enable `?expand=` for
+related models and automatic exposure of model properties as read-only fields,
+point `DEFAULT_SERIALIZER_CLASS` at the `FlexibleSerializer`:
+
+```python
+HEADLESS = {
+    "DEFAULT_SERIALIZER_CLASS": "headless.rest.serializers.FlexibleSerializer",
+}
+```
+
+```bash
+# Return the related author inline
+GET /api/blog.article/?expand=author
+
+# Return the articles of a category inline
+GET /api/blog.category/1/?expand=articles
+```
+
+Only relations to other exposed models are expandable.
+
+
 ## 🎛️ Configuration Options
 
 The `@expose` decorator accepts the following configuration options:
@@ -186,6 +209,7 @@ The `@expose` decorator accepts the following configuration options:
 HEADLESS =  {
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
+    "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "FILTER_EXCLUSION_SYMBOL": "~",
     "FILTER_TRUE_VALUES": ["true", "1", "on"],
     "FILTER_FALSE_VALUES": ["false", "0", "off"],

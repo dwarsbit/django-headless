@@ -36,11 +36,8 @@ def get_view_set(
     if singleton:
 
         class ViewSet(SingletonViewSet):
-            queryset = model_class.objects.none()
+            queryset = model_class.objects.all()
             serializer_class = serializer
-
-            def get_queryset(self):
-                return model_class.objects.first()
 
     else:
 

@@ -8,6 +8,10 @@ from rich.console import Console
 
 console = Console()
 
+# Cache key and TTL for the PyPI version lookup in get_latest_version().
+LATEST_VERSION_CACHE_KEY = "headless:latest_version"
+LATEST_VERSION_TTL = 60 * 60 * 24
+
 
 def log(*args, **kwargs):
     console.print(*args, **kwargs)
@@ -132,12 +136,30 @@ def normalize_version(version: str) -> str:
 
 
 def get_latest_version() -> Optional[str]:
-    """Fetch the latest version of django-headless from PyPI"""
+    """
+    Fetch the latest version of django-headless from PyPI.
+    The result is cached: successful lookups for a day, failures for a few
+    minutes, so a slow or unreachable PyPI can stall at most one boot.
+    """
+    from django.core.cache import cache
+
+    cached = cache.get(LATEST_VERSION_CACHE_KEY)
+    if cached is not None:
+        return cached or None
+
+    version = None
+
     try:
         # Fetch the PyPI JSON API for django-headless
         with urlopen("https://pypi.org/pypi/django-headless/json", timeout=5) as response:
             data = json.loads(response.read().decode("utf-8"))
-            return data.get("info", {}).get("version")
+            version = data.get("info", {}).get("version")
     except (URLError, json.JSONDecodeError, KeyError):
-        # If there's any error (network, JSON parsing, etc.), return None
-        return None
+        # If there's any error (network, JSON parsing, etc.), version stays None
+        pass
+
+    # Cache the version, or an empty sentinel on failure, so a single slow
+    # or failing request doesn't repeat on every boot.
+    cache.set(LATEST_VERSION_CACHE_KEY, version or "", LATEST_VERSION_TTL if version else 60 * 5)
+
+    return version
