@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0-rc.3
+
+- 👾 Fixes case-sensitive text filtering: lookup values are no longer lowercased (boolean and null matching is still case-insensitive)
+- 👾 Fixes singleton view sets: proper queryset contract and race-safe singleton creation, so concurrent `PUT`s can no longer create duplicate singletons
+- 👾 Filter errors now include the actual reason instead of a generic message
+- 🎁 The boot version check is now cached, so a slow or unreachable PyPI can stall at most one boot
+- 📚 Documents `?expand=` and model properties as opt-in via `HEADLESS.DEFAULT_SERIALIZER_CLASS`
+
 ## v1.0.0-beta.1
 Initial pre-release! 🎉
 
