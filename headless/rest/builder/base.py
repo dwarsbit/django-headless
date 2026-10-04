@@ -16,7 +16,12 @@ class RestBuilder:
     registry.
     """
 
-    def __init__(self):
+    def __init__(self, silent=False):
+        """
+        Args:
+            silent: When True, suppress the build log output.
+        """
+        self._silent = silent
         self._models = headless_registry.get_models()
         self._serializer_classes = {}
         self._viewset_classes = {}
@@ -30,7 +35,8 @@ class RestBuilder:
         and registers them with the router based on whether they are singleton models
         or regular collection models.
         """
-        log("\n:building_construction:  Setting up [bold]REST[/bold] routes")
+        if not self._silent:
+            log("\n:building_construction:  Setting up [bold]REST[/bold] routes")
 
         routes = 0
         singleton_routes = 0
@@ -67,8 +73,9 @@ class RestBuilder:
 
             routes += 1
 
-        log(f"   [cyan]•[/cyan] {routes} routes registered")
-        log(f"     [dim]{singleton_routes} singleton routes[/dim]")
+        if not self._silent:
+            log(f"   [cyan]•[/cyan] {routes} routes registered")
+            log(f"     [dim]{singleton_routes} singleton routes[/dim]")
 
     def get_serializer(self, model_class: Type[Model]) -> Type[Any]:
         """

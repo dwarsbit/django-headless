@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from typing import List, Optional
 from urllib.error import URLError
@@ -38,7 +39,7 @@ def is_runserver():
     """
     try:
         # Check if we're using manage.py
-        if sys.argv[0].endswith("/manage.py"):
+        if os.path.basename(sys.argv[0]) == "manage.py":
             # If using manage.py, we need at least 2 arguments to have a command
             if len(sys.argv) > 1:
                 # Common server commands
@@ -54,6 +55,24 @@ def is_runserver():
     except IndexError:
         # If sys.argv is malformed, default to False to be safe
         return False
+
+
+def is_boot_log_enabled() -> bool:
+    """
+    Check if the boot log should be displayed.
+
+    The HEADLESS.BOOT_LOG setting takes precedence: True always shows the
+    boot log, False never does. When unset (None), it falls back to
+    automatic server-mode detection via is_runserver().
+    """
+    from headless.settings import headless_settings
+
+    boot_log = headless_settings.BOOT_LOG
+
+    if boot_log is None:
+        return is_runserver()
+
+    return bool(boot_log)
 
 
 def flatten(xss):

@@ -19,6 +19,9 @@ from django.utils.module_loading import import_string
 SETTINGS_NAMESPACE = "HEADLESS"
 
 DEFAULTS = {
+    # Whether to show the boot log. None (default) auto-detects server mode;
+    # True always shows it, False never does.
+    "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",

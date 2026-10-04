@@ -207,6 +207,9 @@ The `@expose` decorator accepts the following configuration options:
 ```python
 # settings.py
 HEADLESS =  {
+    # True always shows the boot log, False never does.
+    # The default (None) shows it automatically in server mode.
+    "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",

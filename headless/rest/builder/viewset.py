@@ -1,8 +1,8 @@
 from typing import Type, Dict, Any
 
-from django.db.models import Model
 from rest_framework.viewsets import ModelViewSet
 
+from .serializer import get_serializer
 from ..viewsets import SingletonViewSet
 from ...registry import ModelConfig
 
@@ -45,16 +45,8 @@ def get_view_set(
             queryset = model_class.objects.all()
             serializer_class = serializer
             search_fields = model_config["search_fields"]
+            # Deterministic ordering, so paginated lists are stable
+            ordering = ["pk"]
 
     viewset_cache[model_name] = ViewSet
     return ViewSet
-
-
-def get_serializer(model_class: Type[Model], serializer_cache: Dict[str, Type[Any]]) -> Type[Any]:
-    """
-    Get or create a serializer class for the given model.
-    This is a local import to avoid circular dependencies.
-    """
-    from .serializer import get_serializer as get_serializer_func
-
-    return get_serializer_func(model_class, serializer_cache)

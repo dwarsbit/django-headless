@@ -34,11 +34,6 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
                 fields[name] = serializers.ReadOnlyField()
         return fields
 
-    def build_standard_field(self, field_name, model_field):
-        field_class, field_kwargs = super().build_standard_field(field_name, model_field)
-
-        return field_class, field_kwargs
-
     @property
     def _expandable_fields(self) -> dict:
         """

@@ -4,11 +4,18 @@ from unittest.mock import patch, mock_open
 from urllib.error import URLError
 
 from django.core.cache import cache
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from headless.registry import HeadlessRegistry
 from headless.settings import headless_settings
-from headless.utils import is_jsonable, flatten, is_runserver, get_latest_version, normalize_version
+from headless.utils import (
+    is_jsonable,
+    flatten,
+    is_runserver,
+    is_boot_log_enabled,
+    get_latest_version,
+    normalize_version,
+)
 
 
 class UtilsTests(SimpleTestCase):
@@ -47,6 +54,29 @@ class UtilsTests(SimpleTestCase):
     def test_is_runserver_with_insufficient_args(self):
         with patch.object(sys, "argv", ["/path/manage.py"]):
             self.assertFalse(is_runserver())
+
+    def test_is_runserver_with_relative_manage_py(self):
+        with patch.object(sys, "argv", ["manage.py", "runserver"]):
+            self.assertTrue(is_runserver())
+
+    def test_is_runserver_with_windows_path(self):
+        with patch.object(sys, "argv", ["C:\\path\\manage.py", "runserver"]):
+            self.assertTrue(is_runserver())
+
+    def test_boot_log_setting_true(self):
+        with override_settings(HEADLESS={"BOOT_LOG": True}):
+            self.assertTrue(is_boot_log_enabled())
+
+    def test_boot_log_setting_false(self):
+        with override_settings(HEADLESS={"BOOT_LOG": False}):
+            self.assertFalse(is_boot_log_enabled())
+
+    def test_boot_log_defaults_to_server_detection(self):
+        with override_settings(HEADLESS={}):
+            with patch.object(sys, "argv", ["/path/manage.py", "runserver"]):
+                self.assertTrue(is_boot_log_enabled())
+            with patch.object(sys, "argv", ["/path/manage.py", "migrate"]):
+                self.assertFalse(is_boot_log_enabled())
 
     def test_get_latest_version_success(self):
         # Mock successful response from PyPI
