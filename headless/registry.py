@@ -106,6 +106,21 @@ class HeadlessRegistry:
 
         return searchable_fields
 
+    def _get_field_names(self, model: Type[models.Model]) -> set[str]:
+        """
+        Return the names of the model's forward fields, including inherited
+        fields and many-to-many fields.
+
+        Args:
+            model: A Django model class
+        """
+        # Deliberately avoid model._meta.get_fields() here: it also collects
+        # reverse relations, which requires every app's models to be loaded.
+        # @expose runs at model definition time, during apps.populate(), when
+        # that would raise AppRegistryNotReady. The fields and many_to_many
+        # properties only enumerate forward fields and are safe at that point.
+        return {field.name for field in (*model._meta.fields, *model._meta.many_to_many)}
+
     def _validate_search_fields(self, model: Type[models.Model], search_fields: List[str]):
         """
         Validate that the search fields exist on the model. Allows the lookup
@@ -119,7 +134,7 @@ class HeadlessRegistry:
         Raises:
             ImproperlyConfigured: If a search field does not exist on the model
         """
-        field_names = {field.name for field in model._meta.get_fields()}
+        field_names = self._get_field_names(model)
 
         invalid = []
         for name in search_fields:
@@ -151,7 +166,7 @@ class HeadlessRegistry:
         if not names:
             return
 
-        field_names = {field.name for field in model._meta.get_fields()}
+        field_names = self._get_field_names(model)
 
         invalid = [name for name in names if not isinstance(name, str) or name not in field_names]
 

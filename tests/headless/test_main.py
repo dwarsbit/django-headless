@@ -4,7 +4,7 @@ from unittest.mock import patch, mock_open
 from urllib.error import URLError
 
 from django.core.cache import cache
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import AppRegistryNotReady, ImproperlyConfigured
 from django.db import models
 from django.test import SimpleTestCase, override_settings
 
@@ -182,11 +182,19 @@ class RegistryRelatedModel(models.Model):
         app_label = "registry_tests"
 
 
+class RegistryTag(models.Model):
+    label = models.CharField(max_length=50)
+
+    class Meta:
+        app_label = "registry_tests"
+
+
 class RegistryTestModel(models.Model):
     title = models.CharField(max_length=100)
     author = models.CharField(max_length=100)
     views = models.IntegerField(default=0)
     category = models.ForeignKey(RegistryRelatedModel, null=True, on_delete=models.CASCADE)
+    tags = models.ManyToManyField(RegistryTag, blank=True)
 
     class Meta:
         app_label = "registry_tests"
@@ -264,3 +272,19 @@ class RegistryTests(SimpleTestCase):
 
         with self.assertRaises(ImproperlyConfigured):
             self.registry.register(RegistryTestModel, exclude=["bogus"])
+
+    def test_register_while_models_not_ready(self):
+        # @expose runs at model definition time, while apps.populate() is
+        # still importing models. Collecting reverse relations then raises
+        # AppRegistryNotReady, so registration must only rely on forward fields.
+        with patch.object(RegistryTestModel._meta, "get_fields", side_effect=AppRegistryNotReady):
+            self.registry.register(RegistryTestModel, search_fields=["^title", "category__name"])
+            self.registry.register(RegistryRelatedModel, exclude=["name"])
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["search_fields"], ["^title", "category__name"])
+        self.assertEqual(self.registry.get_model("registry_tests.registryrelatedmodel")["exclude"], ["name"])
+
+    def test_many_to_many_fields_allowed(self):
+        self.registry.register(RegistryTestModel, fields=["title", "tags"])
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["fields"], ["title", "tags"])
