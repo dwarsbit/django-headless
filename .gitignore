@@ -166,3 +166,8 @@ cython_debug/
 .vibe/
 skills-lock.json
 /ROADMAP.md
+
+# Docusaurus website
+node_modules/
+website/build/
+.docusaurus/
