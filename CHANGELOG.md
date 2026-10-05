@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.0-rc.7
+
+- 🛡️ Safe defaults for generated routes: `HEADLESS.DEFAULT_PERMISSION_CLASSES` now defaults to `IsAuthenticated`, so freshly exposed models are never accidentally public, and `HEADLESS.DEFAULT_FILTER_BACKENDS` defaults to the `LookupFilter`
+- ⚠️ Generated routes no longer inherit the permission classes and filter backends from `REST_FRAMEWORK`; set them explicitly under `HEADLESS` to customize
+- 💬 The boot log recognizes `HEADLESS`-scoped authentication classes and no longer claims public endpoints by default
+
 ## v1.0.0-rc.6
 
 - ⚙️ DRF-level settings can now be scoped to the generated routes via `HEADLESS`: `DEFAULT_RENDERER_CLASSES`, `DEFAULT_PARSER_CLASSES`, `DEFAULT_AUTHENTICATION_CLASSES`, `DEFAULT_FILTER_BACKENDS`, `DEFAULT_PAGINATION_CLASS`, `PAGE_SIZE`, `SEARCH_PARAM` and `ORDERING_PARAM` override the `REST_FRAMEWORK` value for headless routes only
