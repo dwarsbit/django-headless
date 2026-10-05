@@ -28,6 +28,10 @@ This single decorator generates:
 | `PATCH`  | `/api/blog.blogpost/1`   | Partial update             |
 | `DELETE` | `/api/blog.blogpost/1`   | Delete                     |
 
+:::note Protected by default
+Generated routes answer `403` for unauthenticated requests — exposed models are never accidentally public. See [permissions](./permissions.md) for opening routes up.
+:::
+
 ## ✨ Why Django Headless?
 
 The primary use case is running Django as the backend of a JAMstack setup: Django serves content through this generated REST API, while the frontend lives elsewhere (Next.js, Astro, etc.). The API is designed to be predictable and read-friendly for such frontend consumers:
@@ -36,7 +40,7 @@ The primary use case is running Django as the backend of a JAMstack setup: Djang
 - **🤝 Plays nice** — integrates with existing Django applications
 - **💈 Singletons** — settings and configuration objects as a single resource
 - **🔍 Flexible filtering** — every supported ORM lookup, straight from the query string
-- **🛡️ Secure** — inherits Django's security features and DRF's permission system
+- **🛡️ Secure by default** — generated routes require authentication until you open them up
 - **⚡ Predictable** — stable ordering, pagination envelope, and validation with clear errors
 
 ## 🧭 What's next?

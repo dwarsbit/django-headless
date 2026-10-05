@@ -4,16 +4,16 @@ sidebar_position: 6
 
 # 📃 Pagination
 
-Django Headless ships a page-based pagination class with a read-friendly envelope:
+Django Headless ships a page-based pagination class with a read-friendly envelope. Enable it for the generated routes via `HEADLESS` (or via `REST_FRAMEWORK`, from which the generated routes inherit when the `HEADLESS` versions are unset):
 
 ```python
-REST_FRAMEWORK = {
+HEADLESS = {
     "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
 }
 ```
 
-Parameters: `page` for the page number, `limit` for the page size (capped by DRF's `PAGE_SIZE`).
+Parameters: `page` for the page number, `limit` for the page size. The configured `PAGE_SIZE` is the default; the client's `limit` parameter overrides it per request.
 
 ## The envelope
 

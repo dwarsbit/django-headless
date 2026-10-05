@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # 🔑 Authentication
 
-Django Headless works with any DRF authentication class through `REST_FRAMEWORK`. For machine-to-machine setups (a static site rebuild hook, a frontend build runner), it also ships a simple secret key class.
+Django Headless works with any DRF authentication class — configured through `REST_FRAMEWORK`, or scoped to the generated routes only via `HEADLESS.DEFAULT_AUTHENTICATION_CLASSES`. Since generated routes require authentication by default (see [permissions](./permissions.md)), configuring one is what grants access. For machine-to-machine setups (a static site rebuild hook, a frontend build runner), the package also ships a simple secret key class.
 
 ## SecretKeyAuthentication
 
@@ -16,8 +16,12 @@ REST_FRAMEWORK = {
     ],
 }
 
+# ...or scoped to the generated routes only:
 HEADLESS = {
     "AUTH_SECRET_KEY": "your-secret-key",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "headless.rest.authentication.SecretKeyAuthentication",
+    ],
 }
 ```
 

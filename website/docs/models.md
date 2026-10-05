@@ -57,7 +57,18 @@ Read-only models only get `GET` routes; `POST`, `PUT`, `PATCH` and `DELETE` answ
 
 ## 🔎 Search fields
 
-`search_fields` is passed to the viewset, so it works with DRF's `SearchFilter` if you add it to your filter backends. Without `search_fields`, all non-choice `CharField` fields are searchable. DRF lookup prefixes (`^`, `=`, `@`, `$`) and relation traversal (`author__name`) are supported.
+`search_fields` is passed to the viewset, so it works with DRF's `SearchFilter` when that backend is enabled — e.g. alongside the default `LookupFilter`:
+
+```python
+HEADLESS = {
+    "DEFAULT_FILTER_BACKENDS": [
+        "rest_framework.filters.SearchFilter",
+        "headless.rest.filters.LookupFilter",
+    ],
+}
+```
+
+Without `search_fields`, all non-choice `CharField` fields are searchable. DRF lookup prefixes (`^`, `=`, `@`, `$`) and relation traversal (`author__name`) are supported.
 
 ## ⚠️ Validation
 

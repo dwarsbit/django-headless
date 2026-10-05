@@ -97,11 +97,16 @@ Configure the [`LookupFilter`](./filtering.md) backend: the exclusion symbol, th
 
 ## REST_FRAMEWORK
 
-DRF-level configuration (filter backends, pagination, authentication, permissions) lives in the standard `REST_FRAMEWORK` setting:
+DRF-level configuration lives in the standard `REST_FRAMEWORK` setting. For the generated routes:
+
+- Authentication, renderers, parsers and pagination are inherited from `REST_FRAMEWORK` when their `HEADLESS` equivalents are unset.
+- Permission classes and filter backends are **not** inherited — they have safe `HEADLESS` defaults (see [DRF overrides](#drf-overrides)). Configure them under `HEADLESS` to change what the generated routes use; `REST_FRAMEWORK` still governs the rest of your API.
 
 ```python
 REST_FRAMEWORK = {
-    "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
 }

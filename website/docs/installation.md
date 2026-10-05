@@ -30,7 +30,7 @@ INSTALLED_APPS = [
 ]
 ```
 
-Django Headless requires authentication on its routes and filters with the ORM lookup backend out of the box. Configure DRF if you want session authentication and pagination too:
+Generated routes require authentication by default and support ORM lookup filtering out of the box. Configure authentication classes (via `REST_FRAMEWORK` or `HEADLESS.DEFAULT_AUTHENTICATION_CLASSES`) so requests can authenticate, and pagination if you want paginated lists:
 
 ```python
 REST_FRAMEWORK = {
