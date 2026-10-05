@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # 🔍 Filtering
 
-Django Headless ships `LookupFilter`, a permissive filter backend that maps query string parameters directly to Django ORM lookups. Enable it globally:
+Django Headless ships `LookupFilter`, a permissive filter backend that maps query string parameters directly to Django ORM lookups. It is enabled on the generated routes by default (`HEADLESS.DEFAULT_FILTER_BACKENDS`). To use it on the rest of your API as well, configure DRF:
 
 ```python
 REST_FRAMEWORK = {

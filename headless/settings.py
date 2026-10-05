@@ -24,14 +24,16 @@ DEFAULTS = {
     "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
-    # DRF-level settings. When set, they override the value from
-    # REST_FRAMEWORK for the generated routes only. Unset (None), the
-    # generated routes inherit from REST_FRAMEWORK.
+    # DRF-level settings for the generated routes. When set, they override
+    # the value from REST_FRAMEWORK for the generated routes only. The
+    # permission and filter backends have safe defaults: generated routes
+    # require authentication and support ORM filtering out of the box.
+    # Set them explicitly to change or inherit from REST_FRAMEWORK.
     "DEFAULT_AUTHENTICATION_CLASSES": None,
-    "DEFAULT_FILTER_BACKENDS": None,
+    "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
     "DEFAULT_PAGINATION_CLASS": None,
     "DEFAULT_PARSER_CLASSES": None,
-    "DEFAULT_PERMISSION_CLASSES": None,
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": None,
     "ORDERING_PARAM": None,
     "PAGE_SIZE": None,

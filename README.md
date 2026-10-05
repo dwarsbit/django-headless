@@ -42,10 +42,6 @@ INSTALLED_APPS = [
 ]
 
 REST_FRAMEWORK = {
-    # Optional: add the lookup filter backend
-    "DEFAULT_FILTER_BACKENDS": [
-        "headless.rest.filters.LookupFilter",
-    #...
     # Optional: add the secret key authentication class
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "headless.rest.authentication.SecretKeyAuthentication",
@@ -140,7 +136,8 @@ class SiteConfiguration(models.Model):
 ### Advanced Filtering
 
 Django Headless supports Django ORM lookups for powerful filtering.
-Add the LookupFilter backend to your default filter backends:
+The `LookupFilter` backend is enabled on generated routes by default
+(it defaults to `HEADLESS.DEFAULT_FILTER_BACKENDS`). To use it on the rest of your API, add it to your default filter backends:
 
 ```python
 REST_FRAMEWORK = {
@@ -215,13 +212,14 @@ HEADLESS =  {
     "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
-    # DRF-level overrides for the generated routes (unset = inherit
-    # from REST_FRAMEWORK)
+    # DRF-level settings for the generated routes. The permission and
+    # filter backends have safe defaults; the rest inherits from
+    # REST_FRAMEWORK.
     "DEFAULT_RENDERER_CLASSES": None,
     "DEFAULT_PARSER_CLASSES": None,
     "DEFAULT_AUTHENTICATION_CLASSES": None,
-    "DEFAULT_PERMISSION_CLASSES": None,
-    "DEFAULT_FILTER_BACKENDS": None,
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
     "DEFAULT_PAGINATION_CLASS": None,
     "PAGE_SIZE": None,
     "SEARCH_PARAM": None,
@@ -247,12 +245,12 @@ HEADLESS =  {
 
 ### Route Permissions
 
-Generated routes use the permission classes from your `REST_FRAMEWORK` setting by default. To apply different permissions to the generated routes only, set `DEFAULT_PERMISSION_CLASSES`:
+Generated routes require authentication by default: `DEFAULT_PERMISSION_CLASSES` defaults to `rest_framework.permissions.IsAuthenticated`, so freshly exposed models are never accidentally public. To open routes up (or lock them down further) for the generated routes only, set `DEFAULT_PERMISSION_CLASSES`:
 
 ```python
 HEADLESS = {
-    # Admin-only generated routes, leaving the rest of your API untouched
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAdminUser"],
+    # Public generated routes, leaving the rest of your API untouched
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
 }
 ```
 

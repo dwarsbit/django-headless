@@ -4,12 +4,14 @@ Tests for the RestBuilder class
 
 from unittest.mock import patch, MagicMock
 
+from django.contrib.auth.models import User
 from django.db import models
-from django.test import RequestFactory, SimpleTestCase, override_settings
+from django.test import SimpleTestCase, override_settings
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.filters import SearchFilter
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.test import APIRequestFactory, force_authenticate
 from rest_framework.renderers import JSONRenderer
 from rest_framework.settings import api_settings
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -374,8 +376,8 @@ class RestBuilderOptionsTests(SimpleTestCase):
             viewset = RestBuilder().get_view_set(config)
             self.assertEqual(viewset.permission_classes, [IsAuthenticated])
 
-    def test_viewset_permissions_default_to_drf(self):
-        """Test that generated routes inherit DRF's permissions by default"""
+    def test_viewset_permissions_default_to_is_authenticated(self):
+        """Test that generated routes require authentication by default"""
         config = {
             "model": BuilderOptionsModel,
             "singleton": False,
@@ -384,7 +386,19 @@ class RestBuilderOptionsTests(SimpleTestCase):
 
         viewset = RestBuilder().get_view_set(config)
 
-        self.assertEqual(viewset.permission_classes, [AllowAny])
+        self.assertEqual(viewset.permission_classes, [IsAuthenticated])
+
+    def test_viewset_filter_backends_default_to_lookup_filter(self):
+        """Test that generated routes use the LookupFilter by default"""
+        config = {
+            "model": BuilderOptionsModel,
+            "singleton": False,
+            "search_fields": ["title"],
+        }
+
+        viewset = RestBuilder().get_view_set(config)
+
+        self.assertEqual(viewset.filter_backends, [LookupFilter])
 
     def test_serializer_fields_restriction(self):
         """Test that the fields option restricts the serializer"""
@@ -427,9 +441,12 @@ class RestBuilderOptionsTests(SimpleTestCase):
 
         self.assertEqual(len(singleton_urls), 1)
 
-        # The view rejects write methods without touching the database
+        # The view rejects write methods without touching the database.
+        # The request must be authenticated, since generated routes are
+        # protected by default.
         view = singleton_urls[0].callback
-        request = RequestFactory().put("/singleton/")
+        request = APIRequestFactory().put("/singleton/")
+        force_authenticate(request, user=User())
         response = view(request)
         self.assertEqual(response.status_code, 405)
 
@@ -539,8 +556,21 @@ class BuilderDrfOverrideTests(SimpleTestCase):
             viewset = self.get_view_set()
             self.assertIs(viewset.filter_backends[0], CustomSearchFilter)
 
-    def test_without_overrides_viewset_inherits_drf(self):
+    def test_without_overrides_viewset_uses_headless_defaults(self):
         viewset = self.get_view_set()
         self.assertEqual(viewset.renderer_classes, api_settings.DEFAULT_RENDERER_CLASSES)
         self.assertEqual(viewset.authentication_classes, api_settings.DEFAULT_AUTHENTICATION_CLASSES)
         self.assertIsNone(viewset.pagination_class)
+        # The permission and filter backends have safe defaults
+        self.assertEqual(viewset.permission_classes, [IsAuthenticated])
+        self.assertEqual(viewset.filter_backends, [LookupFilter])
+
+    def test_generated_routes_are_protected_by_default(self):
+        """Test that unauthenticated requests are rejected on generated routes"""
+        viewset = self.get_view_set()
+        view = viewset.as_view({"get": "list"})
+
+        request = APIRequestFactory().get("/api/")
+        response = view(request)
+
+        self.assertEqual(response.status_code, 403)

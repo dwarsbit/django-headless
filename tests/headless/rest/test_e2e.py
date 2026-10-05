@@ -93,6 +93,9 @@ def setUpModule():
     # overrides end to end.
     with override_settings(
         HEADLESS={
+            # The suite tests the public surface; generated routes require
+            # authentication by default
+            "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
             "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
             "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
             "PAGE_SIZE": 2,

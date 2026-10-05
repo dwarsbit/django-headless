@@ -15,13 +15,14 @@ HEADLESS = {
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
 
-    # DRF-level overrides for the generated routes (unset = inherit
-    # from REST_FRAMEWORK)
+    # DRF-level settings for the generated routes. The permission and
+    # filter backends have safe defaults; the rest inherits from
+    # REST_FRAMEWORK.
     "DEFAULT_RENDERER_CLASSES": None,
     "DEFAULT_PARSER_CLASSES": None,
     "DEFAULT_AUTHENTICATION_CLASSES": None,
-    "DEFAULT_PERMISSION_CLASSES": None,
-    "DEFAULT_FILTER_BACKENDS": None,
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
     "DEFAULT_PAGINATION_CLASS": None,
     "PAGE_SIZE": None,
     "SEARCH_PARAM": None,
@@ -52,22 +53,23 @@ Controls the boot log shown when the project starts. `None` (default) auto-detec
 
 ## DRF overrides
 
-The following settings mirror DRF's `REST_FRAMEWORK` options. When set, they **override** the `REST_FRAMEWORK` value for the generated routes only — the rest of your project's API is untouched. Unset (the default), generated routes inherit from `REST_FRAMEWORK` as usual:
+The following settings mirror DRF's `REST_FRAMEWORK` options. When set, they **override** the `REST_FRAMEWORK` value for the generated routes only — the rest of your project's API is untouched. The permission classes and filter backends have safe defaults: generated routes require authentication and support ORM filtering out of the box:
 
-| Setting                           | Applies to the generated routes as |
-| --------------------------------- | ---------------------------------- |
-| `DEFAULT_RENDERER_CLASSES`        | Renderer classes                    |
-| `DEFAULT_PARSER_CLASSES`          | Parser classes                      |
-| `DEFAULT_AUTHENTICATION_CLASSES`  | Authentication classes              |
-| `DEFAULT_PERMISSION_CLASSES`      | Permission classes                  |
-| `DEFAULT_FILTER_BACKENDS`         | Filter backends                     |
-| `DEFAULT_PAGINATION_CLASS`        | Pagination class                    |
-| `PAGE_SIZE`                       | Page size on the effective pagination class |
-| `SEARCH_PARAM`                    | Search parameter of DRF's `SearchFilter` |
-| `ORDERING_PARAM`                  | Ordering parameter of DRF's `OrderingFilter` |
+| Setting                           | Default                                          |
+| --------------------------------- | ------------------------------------------------ |
+| `DEFAULT_RENDERER_CLASSES`        | None — inherit from `REST_FRAMEWORK`             |
+| `DEFAULT_PARSER_CLASSES`          | None — inherit from `REST_FRAMEWORK`             |
+| `DEFAULT_AUTHENTICATION_CLASSES`  | None — inherit from `REST_FRAMEWORK`            |
+| `DEFAULT_PERMISSION_CLASSES`      | `["rest_framework.permissions.IsAuthenticated"]` |
+| `DEFAULT_FILTER_BACKENDS`         | `["headless.rest.filters.LookupFilter"]`         |
+| `DEFAULT_PAGINATION_CLASS`        | None — inherit from `REST_FRAMEWORK`             |
+| `PAGE_SIZE`                       | None — no page size override                     |
+| `SEARCH_PARAM`                    | None — DRF's default (`search`)                  |
+| `ORDERING_PARAM`                  | None — DRF's default (`ordering`)                |
 
 ```python
 HEADLESS = {
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
     "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,

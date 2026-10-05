@@ -30,17 +30,21 @@ INSTALLED_APPS = [
 ]
 ```
 
-Optionally configure DRF with the filter backend and pagination that ship with Django Headless:
+Django Headless requires authentication on its routes and filters with the ORM lookup backend out of the box. Configure DRF if you want session authentication and pagination too:
 
 ```python
 REST_FRAMEWORK = {
-    "DEFAULT_FILTER_BACKENDS": [
-        "headless.rest.filters.LookupFilter",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
 }
 ```
+
+:::note Safe defaults
+Generated routes answer `403` for unauthenticated requests because `HEADLESS.DEFAULT_PERMISSION_CLASSES` defaults to `IsAuthenticated`. For a public headless CMS, set it to `AllowAny` — see [permissions](./permissions.md).
+:::
 
 ## Wire the URLs
 

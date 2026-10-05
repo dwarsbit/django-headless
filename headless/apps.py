@@ -3,7 +3,6 @@ from django.apps import AppConfig
 from . import VERSION
 from .utils import (
     log,
-    is_auth_configured,
     is_secret_key_auth_used,
     is_secret_key_auth_configured,
     is_boot_log_enabled,
@@ -50,9 +49,18 @@ class DjangoHeadlessConfig(AppConfig):
         # Authentication status logging
         log("")
 
-        if is_auth_configured():
+        auth_classes = configured_auth_classes() or list(headless_settings.DEFAULT_AUTHENTICATION_CLASSES or [])
+
+        if auth_classes:
             log(":lock:  [green]An authentication class is configured.[/green]")
-            if is_secret_key_auth_used():
+
+            from headless.rest.authentication import SecretKeyAuthentication
+
+            uses_secret_key_auth = is_secret_key_auth_used() or any(
+                issubclass(auth_class, SecretKeyAuthentication) for auth_class in auth_classes
+            )
+
+            if uses_secret_key_auth:
                 log(
                     f"  [cyan]•[/cyan] Using secret key authentication. ([dim]Header: {headless_settings.AUTH_SECRET_KEY_HEADER}[/dim])"
                 )
@@ -60,9 +68,15 @@ class DjangoHeadlessConfig(AppConfig):
                 if not is_secret_key_auth_configured():
                     log("  [yellow]• HEADLESS.AUTH_SECRET_KEY is not configured![/yellow]")
             else:
-                log(f"  [cyan]•[/cyan] Using {', '.join(configured_auth_classes())}")
+                log(
+                    "  [cyan]•[/cyan] Using "
+                    + ", ".join(
+                        auth_class if isinstance(auth_class, str) else f"{auth_class.__module__}.{auth_class.__name__}"
+                        for auth_class in auth_classes
+                    )
+                )
 
         else:
             log(
-                ":lock:  [red]No authentication class configured! Using Django Headless to create public endpoints can expose unwanted data.[/red]"
+                ":lock:  [yellow]No authentication class configured. Generated routes require authenticated requests by default; configure one via REST_FRAMEWORK or HEADLESS.DEFAULT_AUTHENTICATION_CLASSES to grant access.[/yellow]"
             )
