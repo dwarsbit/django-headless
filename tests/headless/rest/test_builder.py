@@ -6,11 +6,18 @@ from unittest.mock import patch, MagicMock
 
 from django.db import models
 from django.test import RequestFactory, SimpleTestCase, override_settings
+from rest_framework.authentication import BasicAuthentication
+from rest_framework.filters import SearchFilter
+from rest_framework.parsers import JSONParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.renderers import JSONRenderer
+from rest_framework.settings import api_settings
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from headless.registry import headless_registry
 from headless.rest.builder import RestBuilder
+from headless.rest.filters import LookupFilter
+from headless.rest.pagination import PageNumberPagination
 from headless.rest.routers import rest_router, singleton_urls
 
 
@@ -425,3 +432,115 @@ class RestBuilderOptionsTests(SimpleTestCase):
         request = RequestFactory().put("/singleton/")
         response = view(request)
         self.assertEqual(response.status_code, 405)
+
+
+class CustomSearchFilter(SearchFilter):
+    """Custom filter backend to verify subclasses are left untouched"""
+
+
+class BuilderDrfOverrideTests(SimpleTestCase):
+    """Tests for the DRF-level HEADLESS setting overrides"""
+
+    def setUp(self):
+        headless_registry._models = {}
+        rest_router.registry = []
+        singleton_urls.clear()
+
+    def tearDown(self):
+        headless_registry._models = {}
+        rest_router.registry = []
+        singleton_urls.clear()
+
+    def get_view_set(self):
+        config = {
+            "model": BuilderOptionsModel,
+            "singleton": False,
+            "search_fields": ["title"],
+        }
+        return RestBuilder().get_view_set(config)
+
+    def test_renderer_classes_override(self):
+        with override_settings(HEADLESS={"DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"]}):
+            viewset = self.get_view_set()
+            self.assertEqual(viewset.renderer_classes, [JSONRenderer])
+
+    def test_parser_classes_override(self):
+        with override_settings(HEADLESS={"DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"]}):
+            viewset = self.get_view_set()
+            self.assertEqual(viewset.parser_classes, [JSONParser])
+
+    def test_authentication_classes_override(self):
+        with override_settings(
+            HEADLESS={"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.BasicAuthentication"]}
+        ):
+            viewset = self.get_view_set()
+            self.assertEqual(viewset.authentication_classes, [BasicAuthentication])
+
+    def test_filter_backends_override(self):
+        with override_settings(HEADLESS={"DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"]}):
+            viewset = self.get_view_set()
+            self.assertEqual(viewset.filter_backends, [LookupFilter])
+
+    def test_pagination_class_override(self):
+        with override_settings(HEADLESS={"DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination"}):
+            viewset = self.get_view_set()
+            self.assertTrue(issubclass(viewset.pagination_class, PageNumberPagination))
+
+    def test_page_size_creates_pagination_subclass(self):
+        with override_settings(
+            HEADLESS={
+                "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
+                "PAGE_SIZE": 5,
+            }
+        ):
+            viewset = self.get_view_set()
+            self.assertTrue(issubclass(viewset.pagination_class, PageNumberPagination))
+            self.assertEqual(viewset.pagination_class.page_size, 5)
+
+    def test_page_size_without_pagination_class_is_ignored(self):
+        # The test settings define no REST_FRAMEWORK pagination class
+        with override_settings(HEADLESS={"PAGE_SIZE": 5}):
+            viewset = self.get_view_set()
+            self.assertIsNone(viewset.pagination_class)
+
+    def test_search_param_substitutes_exact_search_filter(self):
+        with override_settings(
+            HEADLESS={
+                "DEFAULT_FILTER_BACKENDS": [
+                    "rest_framework.filters.SearchFilter",
+                    "headless.rest.filters.LookupFilter",
+                ],
+                "SEARCH_PARAM": "q",
+            }
+        ):
+            viewset = self.get_view_set()
+            search_backend = viewset.filter_backends[0]
+            self.assertEqual(search_backend.search_param, "q")
+            # The other backend is untouched
+            self.assertIs(viewset.filter_backends[1], LookupFilter)
+
+    def test_ordering_param_substitutes_exact_ordering_filter(self):
+        with override_settings(
+            HEADLESS={
+                "DEFAULT_FILTER_BACKENDS": ["rest_framework.filters.OrderingFilter"],
+                "ORDERING_PARAM": "sort",
+            }
+        ):
+            viewset = self.get_view_set()
+            self.assertEqual(viewset.filter_backends[0].ordering_param, "sort")
+
+    def test_search_param_leaves_subclasses_untouched(self):
+        with override_settings(
+            HEADLESS={
+                "DEFAULT_FILTER_BACKENDS": [CustomSearchFilter],
+                "SEARCH_PARAM": "q",
+            }
+        ):
+            viewset = self.get_view_set()
+            self.assertIs(viewset.filter_backends[0], CustomSearchFilter)
+
+    def test_without_overrides_viewset_inherits_drf(self):
+        viewset = self.get_view_set()
+        self.assertEqual(viewset.renderer_classes, api_settings.DEFAULT_RENDERER_CLASSES)
+        self.assertEqual(viewset.authentication_classes, api_settings.DEFAULT_AUTHENTICATION_CLASSES)
+        self.assertIsNone(viewset.pagination_class)

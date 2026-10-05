@@ -7,7 +7,7 @@ client: CRUD, relations, filtering, pagination and singletons.
 """
 
 from django.db import connection, models
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, override_settings
 from django.urls import clear_url_caches
 from rest_framework.test import APIClient
 
@@ -15,8 +15,6 @@ import headless.rest.urls as headless_urls
 from headless import expose
 from headless.registry import headless_registry
 from headless.rest.builder import RestBuilder
-from headless.rest.filters import LookupFilter
-from headless.rest.pagination import PageNumberPagination
 from headless.rest.routers import rest_router, singleton_urls
 
 
@@ -71,19 +69,13 @@ class ApiKey(models.Model):
         app_label = "e2e_blog"
 
 
-class E2EPagination(PageNumberPagination):
-    page_size = 2
-
-
-E2E_ROUTES = ("e2e_blog.article", "e2e_blog.category")
-MODEL_LABELS = (
+E2E_REGISTRY_PREFIXES = (
     "e2e_blog.article",
     "e2e_blog.category",
     "e2e_blog.draftnote",
     "e2e_blog.apikey",
-    "e2e_config.siteconfig",
 )
-E2E_REGISTRY_PREFIXES = E2E_ROUTES + ("e2e_blog.draftnote", "e2e_blog.apikey")
+MODEL_LABELS = E2E_REGISTRY_PREFIXES + ("e2e_config.siteconfig",)
 
 
 def rebuild_urlpatterns():
@@ -96,16 +88,17 @@ def rebuild_urlpatterns():
 
 def setUpModule():
     # Build the routes for the exposed models, mirroring what happens at
-    # app ready in a real project.
-    RestBuilder(silent=True).build()
-
-    # Bind pagination and filtering to the generated view sets explicitly:
-    # DRF binds these from api_settings at import time, so runtime settings
-    # overrides do not reach the generated classes.
-    for prefix, viewset, basename in rest_router.registry:
-        if prefix in E2E_ROUTES:
-            viewset.pagination_class = E2EPagination
-            viewset.filter_backends = [LookupFilter]
+    # app ready in a real project. Configure pagination and filtering
+    # through the HEADLESS-scoped DRF settings, exercising the scoped
+    # overrides end to end.
+    with override_settings(
+        HEADLESS={
+            "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
+            "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
+            "PAGE_SIZE": 2,
+        }
+    ):
+        RestBuilder(silent=True).build()
 
     rebuild_urlpatterns()
 

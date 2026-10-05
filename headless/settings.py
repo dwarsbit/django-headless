@@ -24,7 +24,18 @@ DEFAULTS = {
     "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
+    # DRF-level settings. When set, they override the value from
+    # REST_FRAMEWORK for the generated routes only. Unset (None), the
+    # generated routes inherit from REST_FRAMEWORK.
+    "DEFAULT_AUTHENTICATION_CLASSES": None,
+    "DEFAULT_FILTER_BACKENDS": None,
+    "DEFAULT_PAGINATION_CLASS": None,
+    "DEFAULT_PARSER_CLASSES": None,
     "DEFAULT_PERMISSION_CLASSES": None,
+    "DEFAULT_RENDERER_CLASSES": None,
+    "ORDERING_PARAM": None,
+    "PAGE_SIZE": None,
+    "SEARCH_PARAM": None,
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "FILTER_EXCLUSION_SYMBOL": "~",
     "FILTER_TRUE_VALUES": ["true", "1", "on"],
@@ -43,7 +54,15 @@ DEFAULTS = {
 
 
 # List of settings that may be in string import notation.
-IMPORT_STRINGS = ["DEFAULT_SERIALIZER_CLASS", "DEFAULT_PERMISSION_CLASSES"]
+IMPORT_STRINGS = [
+    "DEFAULT_AUTHENTICATION_CLASSES",
+    "DEFAULT_FILTER_BACKENDS",
+    "DEFAULT_PAGINATION_CLASS",
+    "DEFAULT_PARSER_CLASSES",
+    "DEFAULT_PERMISSION_CLASSES",
+    "DEFAULT_RENDERER_CLASSES",
+    "DEFAULT_SERIALIZER_CLASS",
+]
 
 
 # List of settings that have been removed
@@ -54,13 +73,14 @@ def perform_import(val, setting_name):
     """
     If the given setting is a string import notation,
     then perform the necessary import or imports.
+    Class instances (e.g. already imported classes) pass through.
     """
     if val is None:
         return None
     elif isinstance(val, str):
         return import_from_string(val, setting_name)
     elif isinstance(val, (list, tuple)):
-        return [import_from_string(item, setting_name) for item in val]
+        return [perform_import(item, setting_name) for item in val]
     return val
 
 

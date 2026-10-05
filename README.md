@@ -215,9 +215,17 @@ HEADLESS =  {
     "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
-    # When set, overrides DRF's DEFAULT_PERMISSION_CLASSES for the
-    # generated routes only. Unset inherits from REST_FRAMEWORK.
+    # DRF-level overrides for the generated routes (unset = inherit
+    # from REST_FRAMEWORK)
+    "DEFAULT_RENDERER_CLASSES": None,
+    "DEFAULT_PARSER_CLASSES": None,
+    "DEFAULT_AUTHENTICATION_CLASSES": None,
     "DEFAULT_PERMISSION_CLASSES": None,
+    "DEFAULT_FILTER_BACKENDS": None,
+    "DEFAULT_PAGINATION_CLASS": None,
+    "PAGE_SIZE": None,
+    "SEARCH_PARAM": None,
+    "ORDERING_PARAM": None,
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "FILTER_EXCLUSION_SYMBOL": "~",

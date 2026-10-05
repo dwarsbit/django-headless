@@ -31,6 +31,10 @@ HEADLESS = {
 
 Both dotted paths and classes are accepted.
 
+:::tip Not just permissions
+All DRF-level settings — renderers, parsers, authentication, filter backends, pagination and more — can be scoped to the generated routes this way. See the [settings reference](./settings.md#drf-overrides).
+:::
+
 :::warning No authentication by default
 Without any configured authentication and permission classes, generated endpoints are public for reading **and** writing. The boot log warns about this — use the options above to lock routes down.
 :::
