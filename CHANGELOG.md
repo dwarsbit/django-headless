@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.0-rc.6
+
+- ⚙️ DRF-level settings can now be scoped to the generated routes via `HEADLESS`: `DEFAULT_RENDERER_CLASSES`, `DEFAULT_PARSER_CLASSES`, `DEFAULT_AUTHENTICATION_CLASSES`, `DEFAULT_FILTER_BACKENDS`, `DEFAULT_PAGINATION_CLASS`, `PAGE_SIZE`, `SEARCH_PARAM` and `ORDERING_PARAM` override the `REST_FRAMEWORK` value for headless routes only
+- 👾 Accept already-imported classes in list-valued settings (e.g. filter backends), matching DRF's behavior
+
 ## v1.0.0-rc.5
 
 - ⚙️ New `HEADLESS.DEFAULT_PERMISSION_CLASSES` setting to override DRF's permissions for the generated routes only
