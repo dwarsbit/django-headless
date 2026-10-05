@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.0-rc.8
+
+- 🐛 Fixes `AppRegistryNotReady` during `django.setup()` / `makemigrations`: `@expose()` now validates `search_fields`, `fields` and `exclude` against the model's forward fields only, since collecting reverse relations requires all models to be loaded, which is never the case while the models module is still being imported
+
 ## v1.0.0-rc.7
 
 - 🛡️ Safe defaults for generated routes: `HEADLESS.DEFAULT_PERMISSION_CLASSES` now defaults to `IsAuthenticated`, so freshly exposed models are never accidentally public, and `HEADLESS.DEFAULT_FILTER_BACKENDS` defaults to the `LookupFilter`
