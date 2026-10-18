@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.0-rc.9
+
+- 🐛 Fixes `runserver` crashing at boot when authentication classes are configured: as import paths in `REST_FRAMEWORK`, or only in `HEADLESS.DEFAULT_AUTHENTICATION_CLASSES`
+- 💬 The boot log now reports the authentication classes the generated routes actually use (`HEADLESS` first, then `REST_FRAMEWORK`)
+
 ## v1.0.0-rc.8
 
 - 🐛 Fixes `AppRegistryNotReady` during `django.setup()` / `makemigrations`: `@expose()` now validates `search_fields`, `fields` and `exclude` against the model's forward fields only, since collecting reverse relations requires all models to be loaded, which is never the case while the models module is still being imported
