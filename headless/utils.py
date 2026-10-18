@@ -103,7 +103,7 @@ def configured_auth_classes() -> List[str] | None:
         except:
             pass
 
-    return auth_classes
+    return auth_class_paths
 
 
 def is_auth_configured() -> bool:
@@ -128,7 +128,7 @@ def is_secret_key_auth_used():
     auth_classes = configured_auth_classes()
     secret_key_class_path = SecretKeyAuthentication.__module__ + "." + SecretKeyAuthentication.__name__
 
-    for auth_class in auth_classes:
+    for auth_class in auth_classes or []:
         if auth_class == secret_key_class_path:
             return True
 

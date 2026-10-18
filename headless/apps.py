@@ -3,7 +3,6 @@ from django.apps import AppConfig
 from . import VERSION
 from .utils import (
     log,
-    is_secret_key_auth_used,
     is_secret_key_auth_configured,
     is_boot_log_enabled,
     configured_auth_classes,
@@ -17,7 +16,7 @@ class DjangoHeadlessConfig(AppConfig):
     label = "headless"
 
     def ready(self):
-        from headless.settings import headless_settings
+        from headless.settings import headless_settings, perform_import
         from .registry import headless_registry
 
         if not is_boot_log_enabled():
@@ -49,15 +48,22 @@ class DjangoHeadlessConfig(AppConfig):
         # Authentication status logging
         log("")
 
-        auth_classes = configured_auth_classes() or list(headless_settings.DEFAULT_AUTHENTICATION_CLASSES or [])
+        # HEADLESS overrides REST_FRAMEWORK for the generated routes. Both are
+        # resolved to classes, since either may hold dotted import paths.
+        auth_classes = list(
+            headless_settings.DEFAULT_AUTHENTICATION_CLASSES
+            or perform_import(configured_auth_classes(), "DEFAULT_AUTHENTICATION_CLASSES")
+            or []
+        )
 
         if auth_classes:
             log(":lock:  [green]An authentication class is configured.[/green]")
 
             from headless.rest.authentication import SecretKeyAuthentication
 
-            uses_secret_key_auth = is_secret_key_auth_used() or any(
-                issubclass(auth_class, SecretKeyAuthentication) for auth_class in auth_classes
+            uses_secret_key_auth = any(
+                isinstance(auth_class, type) and issubclass(auth_class, SecretKeyAuthentication)
+                for auth_class in auth_classes
             )
 
             if uses_secret_key_auth:

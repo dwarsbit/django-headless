@@ -288,3 +288,74 @@ class RegistryTests(SimpleTestCase):
         self.registry.register(RegistryTestModel, fields=["title", "tags"])
         cfg = self.registry.get_model("registry_tests.registrytestmodel")
         self.assertEqual(cfg["fields"], ["title", "tags"])
+
+
+@patch("headless.apps.get_latest_version", return_value=None)
+class BootLogAuthTests(SimpleTestCase):
+    """The boot log must not crash on any supported auth configuration."""
+
+    def boot(self):
+        from django.apps import apps
+
+        with patch("headless.apps.log") as mock_log:
+            apps.get_app_config("headless").ready()
+        return "\n".join(str(call.args[0]) for call in mock_log.call_args_list if call.args)
+
+    def test_rest_framework_auth_as_import_paths(self, _):
+        with override_settings(
+            HEADLESS={"BOOT_LOG": True},
+            REST_FRAMEWORK={"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.TokenAuthentication"]},
+        ):
+            output = self.boot()
+        self.assertIn("rest_framework.authentication.TokenAuthentication", output)
+
+    def test_rest_framework_secret_key_auth_as_import_path(self, _):
+        with override_settings(
+            HEADLESS={"BOOT_LOG": True},
+            REST_FRAMEWORK={"DEFAULT_AUTHENTICATION_CLASSES": ["headless.rest.authentication.SecretKeyAuthentication"]},
+        ):
+            output = self.boot()
+        self.assertIn("Using secret key authentication", output)
+
+    def test_headless_auth_without_rest_framework_auth(self, _):
+        with override_settings(
+            HEADLESS={
+                "BOOT_LOG": True,
+                "DEFAULT_AUTHENTICATION_CLASSES": ["headless.rest.authentication.SecretKeyAuthentication"],
+            },
+            REST_FRAMEWORK={},
+        ):
+            output = self.boot()
+        self.assertIn("Using secret key authentication", output)
+
+    def test_headless_auth_overrides_rest_framework_auth(self, _):
+        with override_settings(
+            HEADLESS={
+                "BOOT_LOG": True,
+                "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.TokenAuthentication"],
+            },
+            REST_FRAMEWORK={"DEFAULT_AUTHENTICATION_CLASSES": ["headless.rest.authentication.SecretKeyAuthentication"]},
+        ):
+            output = self.boot()
+        self.assertNotIn("Using secret key authentication", output)
+        self.assertIn("rest_framework.authentication.TokenAuthentication", output)
+
+    def test_no_auth_configured(self, _):
+        with override_settings(HEADLESS={"BOOT_LOG": True}, REST_FRAMEWORK={}):
+            output = self.boot()
+        self.assertIn("No authentication class configured", output)
+
+
+class AuthUtilsTests(SimpleTestCase):
+    def test_configured_auth_classes_returns_paths(self):
+        from rest_framework.authentication import TokenAuthentication
+        from headless.utils import configured_auth_classes
+
+        with override_settings(REST_FRAMEWORK={"DEFAULT_AUTHENTICATION_CLASSES": [TokenAuthentication]}):
+            self.assertEqual(configured_auth_classes(), ["rest_framework.authentication.TokenAuthentication"])
+
+    def test_is_secret_key_auth_used_without_rest_framework_auth(self):
+        from headless.utils import is_secret_key_auth_used
+
+        with override_settings(REST_FRAMEWORK={}):
+            self.assertFalse(is_secret_key_auth_used())
