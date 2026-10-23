@@ -83,6 +83,7 @@ Generated routes answer `403 Forbidden` to everyone but staff users, so an expos
 - [Serializers](https://djangoheadless.org/docs/serializers): expanding relations and model properties
 - [Permissions](https://djangoheadless.org/docs/permissions): defaults and overrides for generated routes
 - [Settings reference](https://djangoheadless.org/docs/settings): every `HEADLESS` setting
+- [System checks](https://djangoheadless.org/docs/checks): the checks for risky or broken settings
 
 ## Contributing
 

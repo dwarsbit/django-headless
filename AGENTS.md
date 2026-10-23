@@ -24,7 +24,8 @@ headless/                    # The package itself
   __init__.py               # Public API: expose(), expose_model(), __version__
   registry.py               # HeadlessRegistry: model -> ModelConfig; validates all @expose() options
   settings.py               # HEADLESS-namespaced settings object (headless_settings), DRF-style
-  apps.py                   # AppConfig.ready(): boot log (version check, exposed models, auth status)
+  apps.py                   # AppConfig.ready(): registers the system checks, boot log (version check, exposed models, auth status)
+  checks.py                 # Django system checks (headless.E00x/W00x), documented in website/docs/checks.md
   utils.py                  # log(), is_runserver(), is_boot_log_enabled(), auth-config helpers, version check
   rest/
     apps.py                 # AppConfig.ready(): runs RestBuilder (always; only its log is tied to the boot log)

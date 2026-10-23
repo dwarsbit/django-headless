@@ -23,6 +23,9 @@ class DjangoHeadlessConfig(AppConfig):
         from headless.settings import headless_settings
         from .registry import headless_registry
 
+        # Register the system checks
+        from . import checks  # noqa: F401
+
         if not is_boot_log_enabled():
             return
 

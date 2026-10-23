@@ -122,3 +122,4 @@ These settings configure [`LookupFilter`](./filtering.md):
 
 - [Permissions](./permissions.md)
 - [Authentication](./authentication.md)
+- [System checks](./checks.md)
