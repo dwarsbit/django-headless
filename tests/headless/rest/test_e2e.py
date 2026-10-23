@@ -6,6 +6,8 @@ exposed test models, and exercise the generated endpoints through the test
 client: CRUD, relations, filtering, pagination and singletons.
 """
 
+import uuid
+
 from django.db import connection, models
 from django.test import TransactionTestCase, override_settings
 from django.urls import clear_url_caches
@@ -69,11 +71,24 @@ class ApiKey(models.Model):
         app_label = "e2e_blog"
 
 
+@expose(lookup_fields=["slug", "uid"])
+class Page(models.Model):
+    slug = models.CharField(max_length=100, unique=True)
+    uid = models.UUIDField(unique=True, default=uuid.uuid4)
+    title = models.CharField(max_length=100)
+    published = models.BooleanField(default=True)
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        app_label = "e2e_blog"
+
+
 E2E_REGISTRY_PREFIXES = (
     "e2e_blog.article",
     "e2e_blog.category",
     "e2e_blog.draftnote",
     "e2e_blog.apikey",
+    "e2e_blog.page",
 )
 MODEL_LABELS = E2E_REGISTRY_PREFIXES + ("e2e_config.siteconfig",)
 
@@ -127,10 +142,12 @@ class EndToEndApiTests(TransactionTestCase):
             editor.create_model(SiteConfig)
             editor.create_model(DraftNote)
             editor.create_model(ApiKey)
+            editor.create_model(Page)
 
     @classmethod
     def tearDownClass(cls):
         with connection.schema_editor() as editor:
+            editor.delete_model(Page)
             editor.delete_model(ApiKey)
             editor.delete_model(DraftNote)
             editor.delete_model(SiteConfig)
@@ -143,6 +160,7 @@ class EndToEndApiTests(TransactionTestCase):
 
     def tearDown(self):
         # The tables are not known to the test flush; clean them up explicitly.
+        Page.objects.all().delete()
         Article.objects.all().delete()
         Category.objects.all().delete()
         SiteConfig.objects.all().delete()
@@ -306,3 +324,53 @@ class EndToEndApiTests(TransactionTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("e2e_blog.article", response.data)
         self.assertIn("e2e_blog.category", response.data)
+
+    def test_lookup_field_routes(self):
+        """Test retrieving an object by its opt-in unique lookup fields"""
+        category = Category.objects.create(name="News")
+        page = Page.objects.create(slug="about-us", title="About", category=category)
+
+        response = self.client.get("/e2e_blog.page/by_slug/about-us")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], page.id)
+
+        response = self.client.get(f"/e2e_blog.page/by_uid/{page.uid}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], page.id)
+
+        # Unknown values
+        response = self.client.get("/e2e_blog.page/by_slug/missing")
+        self.assertEqual(response.status_code, 404)
+
+        # Values that cannot be cast to the field type are not found, not errors
+        response = self.client.get("/e2e_blog.page/by_uid/not-a-uuid")
+        self.assertEqual(response.status_code, 404)
+
+        # Fields that were not opted in have no route
+        response = self.client.get("/e2e_blog.page/by_title/About")
+        self.assertEqual(response.status_code, 404)
+
+    def test_lookup_field_value_with_dots(self):
+        """Test that lookup values may contain dots"""
+        page = Page.objects.create(slug="report.pdf", title="Report")
+
+        response = self.client.get("/e2e_blog.page/by_slug/report.pdf")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], page.id)
+
+    def test_lookup_field_routes_are_get_only(self):
+        """Test that lookup routes reject writes; those go through the detail route"""
+        Page.objects.create(slug="about-us", title="About")
+
+        response = self.client.patch("/e2e_blog.page/by_slug/about-us", {"title": "Nope"})
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.delete("/e2e_blog.page/by_slug/about-us")
+        self.assertEqual(response.status_code, 405)
+
+    def test_lookup_field_routes_ignore_list_filters(self):
+        """Test that list filters do not apply to lookup routes, like they don't to retrieve"""
+        Page.objects.create(slug="about-us", title="About", published=False)
+
+        response = self.client.get("/e2e_blog.page/by_slug/about-us", {"published": "true"})
+        self.assertEqual(response.status_code, 200)

@@ -14,6 +14,7 @@ Read the documentation at [djangoheadless.org](https://djangoheadless.org).
 - **Routes per model**: one decorator generates the routes of a model.
 - **Singletons**: site settings and other one-off objects as a single route.
 - **Filtering**: every lookup a field supports, from the query string.
+- **Lookup routes**: fetch an object by a unique field such as a slug, at `/api/blog.article/by_slug/<value>`.
 - **Pagination**: a stable, paginated list envelope with ready-to-fetch links.
 - **Protected by default**: generated routes require authentication until you open them up.
 

@@ -1,6 +1,9 @@
 from typing import Type, Dict, Any
 
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.generics import get_object_or_404
+from rest_framework.response import Response
 from rest_framework.settings import api_settings
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
@@ -66,11 +69,41 @@ def get_view_set(
             search_fields = model_config["search_fields"]
             ordering = ["pk"]
 
+    for field_name in model_config.get("lookup_fields") or []:
+        setattr(ViewSet, f"by_{field_name}", _make_lookup_action(field_name))
+
     # Apply any DRF-level HEADLESS overrides to the generated route.
     apply_drf_overrides(ViewSet)
 
     viewset_cache[model_name] = ViewSet
     return ViewSet
+
+
+def _make_lookup_action(field_name: str):
+    """
+    Create a GET-only route that retrieves a single object by a unique
+    field, at <model>/by_<field>/<value>. It mirrors the retrieve action:
+    filter backends and object permissions apply the same way.
+    """
+
+    def retrieve_by(self, request, value=None):
+        queryset = self.filter_queryset(self.get_queryset())
+        # DRF's get_object_or_404 also returns 404 for values that cannot
+        # be cast to the field's type (e.g. a malformed UUID).
+        instance = get_object_or_404(queryset, **{field_name: value})
+        self.check_object_permissions(request, instance)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    retrieve_by.__name__ = f"by_{field_name}"
+
+    return action(
+        detail=False,
+        methods=["get"],
+        # Unlike DRF's default lookup pattern, dots are allowed in values
+        url_path=rf"by_{field_name}/(?P<value>[^/]+)",
+        url_name=f"by-{field_name}",
+    )(retrieve_by)
 
 
 def apply_drf_overrides(viewset: Type[Any]) -> None:

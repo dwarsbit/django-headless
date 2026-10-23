@@ -11,6 +11,7 @@ class ModelConfig(TypedDict):
     fields: Optional[list[str]]
     exclude: Optional[list[str]]
     read_only: bool
+    lookup_fields: list[str]
 
 
 # Lookup prefixes supported by DRF's SearchFilter on search_fields
@@ -33,6 +34,7 @@ class HeadlessRegistry:
         fields=None,
         exclude=None,
         read_only=False,
+        lookup_fields=None,
     ):
         """
         Register a model in the registry.
@@ -44,6 +46,7 @@ class HeadlessRegistry:
             fields: Restrict the exposed serializer to these field names.
             exclude: Exclude these field names from the exposed serializer.
             read_only: Whether the model should be exposed read-only (no create, update or delete).
+            lookup_fields: Names of unique fields to expose a retrieve route for, at by_<field>/<value>.
         """
         if not (isinstance(model_class, type) and issubclass(model_class, models.Model)):
             raise ImproperlyConfigured(
@@ -61,6 +64,11 @@ class HeadlessRegistry:
         self._validate_field_names(model_class, fields, "fields")
         self._validate_field_names(model_class, exclude, "exclude")
 
+        if lookup_fields and singleton:
+            raise ImproperlyConfigured("The lookup_fields option cannot be used on singletons.")
+
+        self._validate_lookup_fields(model_class, lookup_fields)
+
         self._models[model_class._meta.label_lower] = {
             "model": model_class,
             "singleton": singleton,
@@ -68,6 +76,7 @@ class HeadlessRegistry:
             "fields": fields,
             "exclude": exclude,
             "read_only": read_only,
+            "lookup_fields": list(lookup_fields or []),
         }
 
     def get_model(self, label: str) -> Optional[ModelConfig]:
@@ -174,6 +183,51 @@ class HeadlessRegistry:
             raise ImproperlyConfigured(
                 f"Invalid fields in {option} for model {model._meta.label}: {invalid}. "
                 f"The {option} option takes names of fields on the model."
+            )
+
+    def _validate_lookup_fields(self, model: Type[models.Model], lookup_fields: Optional[List[str]]):
+        """
+        Validate that the lookup fields are unique, concrete fields on the model
+        other than the primary key (which already has its own detail route).
+
+        Args:
+            model: A Django model class
+            lookup_fields: The lookup field names to validate, or None
+
+        Raises:
+            ImproperlyConfigured: If a lookup field is not a unique field on the model
+        """
+        if not lookup_fields:
+            return
+
+        if isinstance(lookup_fields, str):
+            raise ImproperlyConfigured(
+                f"Invalid lookup_fields for model {model._meta.label}: expected a list of field names, "
+                f"got {lookup_fields!r}."
+            )
+
+        fields = {field.name: field for field in model._meta.fields}
+
+        # Single-field unique constraints without a condition are as unique as unique=True
+        constrained = {
+            constraint.fields[0]
+            for constraint in model._meta.constraints
+            if isinstance(constraint, models.UniqueConstraint)
+            and len(constraint.fields) == 1
+            and constraint.condition is None
+            and not constraint.expressions
+        }
+
+        invalid = []
+        for name in lookup_fields:
+            field = fields.get(name) if isinstance(name, str) else None
+            if field is None or field.primary_key or not (field.unique or name in constrained):
+                invalid.append(name)
+
+        if invalid:
+            raise ImproperlyConfigured(
+                f"Invalid lookup_fields for model {model._meta.label}: {invalid}. "
+                "Lookup fields must be names of unique fields on the model, other than the primary key."
             )
 
 
