@@ -41,6 +41,7 @@ headless/                    # The package itself
 tests/                      # pytest suite (mirrors package layout)
   conftest.py               # Configures minimal Django settings + django.setup()
   headless/test_settings.py # Django settings module used by pytest-django
+website/                    # Docusaurus docs site (djangoheadless.org); pages in website/docs/
 scripts/
   test_wrapper.py           # Poetry entry points: test, test-verbose, test-cov, build, publish
 ```
@@ -74,7 +75,7 @@ Run tests before considering any change done. New behavior needs tests in `tests
 - Format with black (line length 120). Do not reformat unrelated code.
 - Commit messages follow conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, etc. (see `git log`).
 - Public API is what `headless/__init__.py` and `headless/rest/filters/__init__.py` export, plus the DRF integration points (`LookupFilter`, `SecretKeyAuthentication`, pagination class, `HEADLESS` settings). Keep these stable; treat them as the package's backward-compatibility surface.
-- The project's own docs (README, CHANGELOG, console output) use emoji; match that style in user-facing strings there, but keep code and commit messages plain.
+- User-facing text (README, docs website, CHANGELOG, console output) follows `STYLE.md`: voice, terminology, emoji use and code example conventions. Keep code and commit messages plain.
 
 ## Release flow
 
