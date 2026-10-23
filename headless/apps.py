@@ -10,6 +10,7 @@ from .utils import (
     get_authentication_classes,
     get_permission_classes,
     get_latest_version,
+    is_newer_version,
     normalize_version,
 )
 
@@ -29,18 +30,13 @@ class DjangoHeadlessConfig(AppConfig):
         log("[bold magenta]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/bold magenta]")
         log("[bold cyan]Django Headless[/bold cyan]")
 
-        # Check for a newer version
-        latest_version = get_latest_version()
-        if latest_version:
-            latest_version = normalize_version(latest_version)
-            current_version = normalize_version(VERSION)
-            if latest_version != current_version:
-                log(f"[yellow]⚠️  New version available[/yellow]")
-                log(f"Current: [bold]{current_version}[/bold] → Latest: {latest_version}")
-            else:
-                log(f"[bold]Version {current_version}[/bold]")
+        # Check for a newer version, unless the check is turned off
+        latest_version = get_latest_version() if headless_settings.VERSION_CHECK else None
+        if latest_version and is_newer_version(latest_version, VERSION):
+            log(f"[yellow]⚠️  New version available[/yellow]")
+            log(f"Current: [bold]{normalize_version(VERSION)}[/bold] → Latest: {normalize_version(latest_version)}")
         else:
-            log(f"[bold]Version {VERSION}[/bold]")
+            log(f"[bold]Version {normalize_version(VERSION)}[/bold]")
 
         log("[bold magenta]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/bold magenta]")
         log(f":gift:  Found [bold green]{len(headless_registry)}[/bold green] exposed models:")

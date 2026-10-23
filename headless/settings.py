@@ -22,6 +22,8 @@ DEFAULTS = {
     # Whether to show the boot log. None (default) auto-detects server mode;
     # True always shows it, False never does.
     "BOOT_LOG": None,
+    # Whether the boot log checks PyPI for a newer version.
+    "VERSION_CHECK": True,
     "AUTH_SECRET_KEY": None,
     # A second secret key that only grants safe (read) methods.
     "AUTH_READ_ONLY_SECRET_KEY": None,

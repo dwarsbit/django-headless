@@ -10,6 +10,7 @@ All Django Headless settings live in the `HEADLESS` dictionary in your Django se
 # mysite/settings.py
 HEADLESS = {
     "BOOT_LOG": None,
+    "VERSION_CHECK": True,
     "AUTH_SECRET_KEY": None,
     "AUTH_READ_ONLY_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
@@ -49,6 +50,12 @@ Whether the boot log is shown when the project starts. The boot log lists the ex
 - `None` (default): shown under `runserver` and the WSGI and ASGI servers Gunicorn, Uvicorn, Daphne, Hypercorn, uWSGI, Waitress, Granian and mod_wsgi. Not shown for other management commands, tests, task workers such as Celery, or scripts. With autoreload, `runserver` shows it once, in the process that serves requests.
 - `True`: always shown. Use it for a server that is not in the list above.
 - `False`: never shown.
+
+## `VERSION_CHECK`
+
+Whether the boot log checks PyPI for a newer version of Django Headless. The check runs only when the boot log is shown, waits at most five seconds for PyPI and caches the answer for a day (a failed check for five minutes) in your default cache. When PyPI or the cache cannot be reached, the boot log shows the installed version and the project starts as usual.
+
+Set it to `False` to never contact PyPI, for example on servers without outgoing internet access.
 
 ## DRF overrides
 
