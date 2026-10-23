@@ -29,6 +29,7 @@
 - 🐛 `LookupFilter` only splits values on commas for the `in` and `range` lookups. Other lookups take the value as sent, so `?title=Hello, world` matches `Hello, world` instead of `Hello`
 - 🐛 `LookupFilter` accepts `pk` for the primary key, also across relations (`?pk__in=1,2`, `?category__pk=2`), instead of answering `400 Field 'pk' does not exist`
 - 🐛 The dot in a route label only matches a dot: `/api/blogXarticle` no longer serves the `blog.article` routes
+- 🐛 The `limit` in the pagination envelope is the page size the request used (after `?limit=` and `MAX_PAGE_SIZE`), not the configured `PAGE_SIZE`
 
 ## v1.0.0-rc.9
 

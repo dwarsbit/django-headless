@@ -5,6 +5,8 @@ Tests for the PageNumberPagination class
 from unittest.mock import Mock
 
 from django.test import SimpleTestCase, RequestFactory
+from rest_framework.request import Request
+from rest_framework.test import APIRequestFactory
 
 from headless.rest.pagination import PageNumberPagination
 
@@ -41,7 +43,7 @@ class PageNumberPaginationTests(SimpleTestCase):
 
         mock_page.paginator = mock_paginator
         pagination.page = mock_page
-        pagination.page_size = 10
+        mock_paginator.per_page = 10
 
         # Mock the link methods
         pagination.get_next_link = Mock(return_value="http://testserver/test/?page=2&limit=10")
@@ -95,7 +97,7 @@ class PageNumberPaginationTests(SimpleTestCase):
 
         mock_page.paginator = mock_paginator
         pagination.page = mock_page
-        pagination.page_size = 10
+        mock_paginator.per_page = 10
 
         # Mock the link methods
         pagination.get_next_link = Mock(return_value="http://testserver/test/?page=3&limit=10")
@@ -132,7 +134,7 @@ class PageNumberPaginationTests(SimpleTestCase):
 
         mock_page.paginator = mock_paginator
         pagination.page = mock_page
-        pagination.page_size = 10
+        mock_paginator.per_page = 10
 
         # Mock the link methods
         pagination.get_next_link = Mock(return_value=None)
@@ -169,7 +171,7 @@ class PageNumberPaginationTests(SimpleTestCase):
 
         mock_page.paginator = mock_paginator
         pagination.page = mock_page
-        pagination.page_size = 10
+        mock_paginator.per_page = 10
 
         # Mock the link methods
         pagination.get_next_link = Mock(return_value=None)
@@ -242,7 +244,7 @@ class PageNumberPaginationTests(SimpleTestCase):
 
         mock_page.paginator = mock_paginator
         pagination.page = mock_page
-        pagination.page_size = 10
+        mock_paginator.per_page = 10
 
         # Mock the link methods
         pagination.get_next_link = Mock(return_value=None)
@@ -283,7 +285,7 @@ class PageNumberPaginationIntegrationTests(SimpleTestCase):
 
         mock_page.paginator = mock_paginator
         pagination.page = mock_page
-        pagination.page_size = 5
+        mock_paginator.per_page = 5
 
         # Mock the link methods to return realistic URLs
         pagination.get_next_link = Mock(return_value="/api/items/?page=3&limit=5")
@@ -338,3 +340,28 @@ class PageNumberPaginationIntegrationTests(SimpleTestCase):
 
         # Verify self link is an absolute URI
         self.assertTrue(pagination_data["links"]["self"].startswith("http://"))
+
+
+class PageNumberPaginationLimitTests(SimpleTestCase):
+    """The envelope reports the page size the request actually used"""
+
+    def paginate(self, query, page_size=2):
+        class Pagination(PageNumberPagination):
+            pass
+
+        Pagination.page_size = page_size
+        pagination = Pagination()
+        request = Request(APIRequestFactory().get(f"/api/blog.article?{query}"))
+        data = pagination.paginate_queryset(list(range(250)), request)
+        return pagination.get_paginated_response(data).data["pagination"]
+
+    def test_limit_without_query_param(self):
+        self.assertEqual(self.paginate("")["limit"], 2)
+
+    def test_requested_limit(self):
+        envelope = self.paginate("limit=5")
+        self.assertEqual(envelope["limit"], 5)
+        self.assertEqual(envelope["pages"], 50)
+
+    def test_limit_capped_by_max_page_size(self):
+        self.assertEqual(self.paginate("limit=1000")["limit"], 100)
