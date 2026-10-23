@@ -10,6 +10,31 @@ from headless.utils import flatten
 from .casting import cast_field_value
 
 
+class SettingAttribute:
+    """
+    A class attribute that reads a HEADLESS setting on every access, so it
+    follows changes to the settings (e.g. override_settings in tests).
+    Subclasses can still override it with a plain value.
+    """
+
+    def __init__(self, setting_name):
+        self.setting_name = setting_name
+
+    def __get__(self, instance, owner=None):
+        return getattr(headless_settings, self.setting_name)
+
+
+class BooleanValuesAttribute:
+    """
+    A class attribute with all recognized boolean values: TRUE_VALUES plus
+    FALSE_VALUES of the class, including any subclass overrides.
+    """
+
+    def __get__(self, instance, owner=None):
+        cls = owner if owner is not None else type(instance)
+        return list(cls.TRUE_VALUES) + list(cls.FALSE_VALUES)
+
+
 class LookupFilter(BaseFilterBackend):
     """
     A permissive filter backend that basically allows every supported lookup
@@ -23,17 +48,17 @@ class LookupFilter(BaseFilterBackend):
 
     MULTI_VALUE_LOOKUPS = ["in", "range"]
 
-    TRUE_VALUES = headless_settings.FILTER_TRUE_VALUES
+    TRUE_VALUES = SettingAttribute("FILTER_TRUE_VALUES")
 
-    FALSE_VALUES = headless_settings.FILTER_FALSE_VALUES
+    FALSE_VALUES = SettingAttribute("FILTER_FALSE_VALUES")
 
-    BOOLEANS = TRUE_VALUES + FALSE_VALUES
+    BOOLEANS = BooleanValuesAttribute()
 
-    NULL_VALUES = headless_settings.FILTER_NULL_VALUES
+    NULL_VALUES = SettingAttribute("FILTER_NULL_VALUES")
 
-    EXCLUDE_SYMBOL = headless_settings.FILTER_EXCLUSION_SYMBOL
+    EXCLUDE_SYMBOL = SettingAttribute("FILTER_EXCLUSION_SYMBOL")
 
-    NON_FILTER_FIELDS = headless_settings.NON_FILTER_FIELDS
+    NON_FILTER_FIELDS = SettingAttribute("NON_FILTER_FIELDS")
 
     # Attributes of filter backends and pagination classes that name the
     # query parameters they read.

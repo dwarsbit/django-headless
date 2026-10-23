@@ -602,3 +602,41 @@ class LookupFilterNonFilterFieldsTests(TestCase):
             viewset = get_view_set({"model": FilterTestModel, "singleton": False, "search_fields": ["name"]}, {}, {})
 
         self.assertTrue({"q", "limit", "offset"} <= self.filter_backend.get_non_filter_fields(viewset))
+
+
+class LookupFilterSettingsTests(TestCase):
+    """LookupFilter follows changes to the HEADLESS settings"""
+
+    def get_kwargs(self, filter_backend, query):
+        return filter_backend.get_filter_kwargs(model_class=FilterTestModel, query_params=QueryDict(query))
+
+    def test_follows_settings_changes(self):
+        filter_backend = LookupFilter()
+
+        with override_settings(
+            HEADLESS={
+                "FILTER_EXCLUSION_SYMBOL": "!",
+                "FILTER_TRUE_VALUES": ["yes"],
+                "FILTER_FALSE_VALUES": ["no"],
+                "NON_FILTER_FIELDS": ["preview"],
+            }
+        ):
+            self.assertEqual(LookupFilter.EXCLUDE_SYMBOL, "!")
+            self.assertEqual(LookupFilter.BOOLEANS, ["yes", "no"])
+            self.assertEqual(self.get_kwargs(filter_backend, "!age=1&preview=1"), ({}, {"age": 1}))
+            self.assertEqual(
+                self.get_kwargs(filter_backend, "nullable_bool__isnull=yes"), ({"nullable_bool__isnull": True}, {})
+            )
+
+        self.assertEqual(LookupFilter.EXCLUDE_SYMBOL, "~")
+        self.assertEqual(self.get_kwargs(filter_backend, "~age=1"), ({}, {"age": 1}))
+
+    def test_subclass_overrides_win(self):
+        class CustomLookupFilter(LookupFilter):
+            EXCLUDE_SYMBOL = "not_"
+            TRUE_VALUES = ["y"]
+
+        with override_settings(HEADLESS={"FILTER_EXCLUSION_SYMBOL": "!"}):
+            self.assertEqual(CustomLookupFilter.EXCLUDE_SYMBOL, "not_")
+            self.assertEqual(CustomLookupFilter.BOOLEANS, ["y", "false", "0", "off"])
+            self.assertEqual(self.get_kwargs(CustomLookupFilter(), "not_age=1"), ({}, {"age": 1}))
