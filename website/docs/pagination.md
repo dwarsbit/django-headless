@@ -14,7 +14,7 @@ HEADLESS = {
 }
 ```
 
-When these two settings are not in `HEADLESS`, the generated routes use the ones in `REST_FRAMEWORK`.
+When these two settings are not in `HEADLESS`, the generated routes use the ones in `REST_FRAMEWORK`. Without a pagination class and page size, a list route returns every object; `python manage.py check --deploy` warns about that (see [System checks](./checks.md#headlessw004)).
 
 Request a page with the `page` query parameter. The `limit` query parameter overrides `PAGE_SIZE` for one request:
 

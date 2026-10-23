@@ -19,7 +19,7 @@ HEADLESS = {
 }
 ```
 
-`AllowAny` also allows writes. To serve content publicly and accept changes only from authenticated clients, use `IsAuthenticatedOrReadOnly`, or mark models that should never change through the API with `read_only=True` (see [Exposing models](./models.md#read-only-models)).
+`AllowAny` also allows writes; the [system check](./checks.md#headlessw002) `headless.W002` warns about it. To serve content publicly and accept changes only from authenticated clients, use `IsAuthenticatedOrReadOnly`, or mark models that should never change through the API with `read_only=True` (see [Exposing models](./models.md#read-only-models)).
 
 ```python
 # mysite/settings.py

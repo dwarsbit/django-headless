@@ -35,7 +35,7 @@ A request with a wrong key, or a key with characters outside ASCII, answers `401
 To use `SecretKeyAuthentication` on your own views as well, add it to `REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]` instead.
 
 :::warning Set a key
-Without `AUTH_SECRET_KEY` or `AUTH_READ_ONLY_SECRET_KEY`, every request to a route that uses `SecretKeyAuthentication` fails with an error. The boot log warns about a missing key; set one before deploying.
+Without `AUTH_SECRET_KEY` or `AUTH_READ_ONLY_SECRET_KEY`, every request to a route that uses `SecretKeyAuthentication` fails with an error. The [system check](./checks.md#headlesse001) `headless.E001` reports a missing key and stops `runserver` until you set one.
 :::
 
 A request authenticated with the secret key is not tied to a user account. It counts as a staff user, so it passes the default `IsAdminUser` permission and can read and change content on the generated routes.
