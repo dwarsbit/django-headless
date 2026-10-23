@@ -5,7 +5,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.settings import api_settings
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from ..viewsets import ExpandPrefetchMixin, LookupFieldsMixin, SingletonViewSet
+from ..viewsets import ConstraintErrorMixin, ExpandPrefetchMixin, LookupFieldsMixin, SingletonViewSet
 from ...registry import ModelConfig
 from ...settings import headless_settings
 from ...utils import get_authentication_classes, get_permission_classes
@@ -61,7 +61,7 @@ def get_view_set(
 
     else:
 
-        class ViewSet(ExpandPrefetchMixin, ModelViewSet):
+        class ViewSet(ConstraintErrorMixin, ExpandPrefetchMixin, ModelViewSet):
             # Deterministic ordering, so paginated lists are stable
             queryset = model_class.objects.all().order_by("pk")
             serializer_class = serializer

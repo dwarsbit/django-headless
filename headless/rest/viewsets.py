@@ -1,6 +1,8 @@
+from contextlib import contextmanager
+
 from django.db import IntegrityError, models, transaction
 from rest_framework import status
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.mixins import (
     CreateModelMixin,
@@ -8,7 +10,41 @@ from rest_framework.mixins import (
     RetrieveModelMixin,
 )
 from rest_framework.response import Response
+from rest_framework.settings import api_settings
 from rest_framework.viewsets import GenericViewSet
+
+CONSTRAINT_ERROR_MESSAGE = "The data conflicts with a database constraint."
+
+
+@contextmanager
+def constraint_errors_as_validation_errors():
+    """
+    Turn a database constraint violation (IntegrityError) into a 400
+    validation error with a fixed message, so the database's error text
+    stays internal. The block runs in a savepoint, so the surrounding
+    transaction (e.g. with ATOMIC_REQUESTS) stays usable.
+    """
+    try:
+        with transaction.atomic():
+            yield
+    except IntegrityError:
+        raise ValidationError({api_settings.NON_FIELD_ERRORS_KEY: [CONSTRAINT_ERROR_MESSAGE]})
+
+
+class ConstraintErrorMixin:
+    """
+    Answer 400 instead of 500 when a create or update violates a database
+    constraint that the serializer does not validate, such as a
+    CheckConstraint.
+    """
+
+    def perform_create(self, serializer):
+        with constraint_errors_as_validation_errors():
+            super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        with constraint_errors_as_validation_errors():
+            super().perform_update(serializer)
 
 
 class ExpandPrefetchMixin:
@@ -78,6 +114,7 @@ class ExpandPrefetchMixin:
 
 
 class SingletonViewSet(
+    ConstraintErrorMixin,
     ExpandPrefetchMixin,
     GenericViewSet,
     CreateModelMixin,
@@ -132,7 +169,8 @@ class SingletonViewSet(
                 instance = self.get_locked_singleton()
                 if instance is not None:
                     return self._perform_update(instance, request, partial)
-            raise
+            # No singleton exists, so the data itself violates a constraint
+            raise ValidationError({api_settings.NON_FIELD_ERRORS_KEY: [CONSTRAINT_ERROR_MESSAGE]})
 
         if pk is not None:
             # Inserting an explicit pk does not advance the auto pk sequence.

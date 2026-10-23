@@ -161,6 +161,18 @@ Without `search_fields`, every serialized `CharField` without choices is searche
 GET /api/blog.article?search=django
 ```
 
+## Database constraints
+
+The serializer validates a create or update before it is saved, but not every database constraint, such as a [`CheckConstraint`](https://docs.djangoproject.com/en/stable/ref/models/constraints/#checkconstraint). When a write violates such a constraint, the route answers `400 Bad Request` and saves nothing:
+
+```json
+{
+    "non_field_errors": ["The data conflicts with a database constraint."]
+}
+```
+
+The message does not name the constraint, so the database's details stay internal. To tell the frontend which field is wrong, add a validator to the model field as well.
+
 ## Validation
 
 `@expose()` and `expose_model()` raise `ImproperlyConfigured` when the model is defined if:
