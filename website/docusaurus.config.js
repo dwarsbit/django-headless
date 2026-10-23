@@ -2,7 +2,7 @@
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
 const config = {
   title: 'Django Headless',
-  tagline: 'Automagically create a REST API for your Django models',
+  tagline: 'A REST API for your Django models',
   favicon: 'img/favicon.svg',
   url: 'https://djangoheadless.org',
   baseUrl: '/',
@@ -71,7 +71,7 @@ const config = {
         ],
       },
       prism: {
-        additionalLanguages: ['bash', 'json', 'python', 'yaml'],
+        additionalLanguages: ['bash', 'http', 'json', 'python', 'yaml'],
       },
     }),
   presets: [

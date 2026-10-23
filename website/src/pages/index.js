@@ -9,50 +9,45 @@ import '../css/custom.css';
 const heroCode = `from django.db import models
 from headless import expose
 
+
 @expose()
-class BlogPost(models.Model):
+class Article(models.Model):
     title = models.CharField(max_length=200)
-    content = models.TextField()
+    body = models.TextField()
     published = models.BooleanField(default=False)`;
 
 const routes = [
-  { method: 'GET', path: '/api/blog.blogpost', note: 'list + filters' },
-  { method: 'POST', path: '/api/blog.blogpost', note: 'create' },
-  { method: 'GET', path: '/api/blog.blogpost/1', note: 'detail' },
-  { method: 'PUT', path: '/api/blog.blogpost/1', note: 'update' },
-  { method: 'DELETE', path: '/api/blog.blogpost/1', note: 'delete' },
+  { method: 'GET', path: '/api/blog.article', note: 'list' },
+  { method: 'POST', path: '/api/blog.article', note: 'create' },
+  { method: 'GET', path: '/api/blog.article/1', note: 'retrieve' },
+  { method: 'PUT', path: '/api/blog.article/1', note: 'update' },
+  { method: 'DELETE', path: '/api/blog.article/1', note: 'delete' },
 ];
 
 const features = [
   {
-    emoji: '🎯',
-    title: 'One decorator, full API',
-    text: 'Add @expose() to any model and get list, detail and CRUD endpoints — no serializers, viewsets or URL wiring to write.',
+    title: 'Routes per model',
+    text: 'Decorate a model with @expose() and it gets list, detail, create, update and delete routes. You write no serializers, viewsets or URL patterns.',
   },
   {
-    emoji: '🤝',
-    title: 'Plays nice with Django',
-    text: 'Works alongside your existing apps, admin and DRF configuration. You decide what gets exposed.',
+    title: 'Fits your project',
+    text: 'Works next to your existing apps, the Django admin and your Django REST Framework settings. Only the models you expose are in the API.',
   },
   {
-    emoji: '💈',
     title: 'Singletons',
-    text: 'Site settings and configuration objects become a single GET/PUT resource, created on first write.',
+    text: 'Site settings and other one-off objects get a single GET and PUT route, created on the first write.',
   },
   {
-    emoji: '🔍',
-    title: 'ORM filtering',
-    text: 'Every Django lookup per field, straight from the query string: ?title__icontains=django, exclusions with ~.',
+    title: 'Filtering',
+    text: 'Every lookup a field supports, from the query string: ?title__icontains=django. Exclude matches with ~.',
   },
   {
-    emoji: '🔗',
     title: 'Expandable relations',
-    text: 'Optional flex-fields serialization expands related exposed models inline with ?expand=.',
+    text: 'Include related exposed models inline with ?expand=, and serialize model properties as read-only fields.',
   },
   {
-    emoji: '🛡️',
-    title: 'Secure by configuration',
-    text: 'Built-in secret key authentication, permission overrides for generated routes, and read-only models.',
+    title: 'Protected by default',
+    text: 'Generated routes require authentication until you open them up. Secret key authentication and read-only models are included.',
   },
 ];
 
@@ -70,9 +65,9 @@ export default function Home() {
               A REST API. No boilerplate.
             </h1>
             <p className="tagline">
-              Django Headless turns Django into a headless CMS backend. Decorate a model with{' '}
-              <code>@expose()</code> and a predictable, read-friendly REST API appears — ready for
-              your Next.js, Astro or any JAMstack frontend.
+              Django Headless generates a REST API for your Django models. Decorate a model with{' '}
+              <code>@expose()</code> and your Next.js, Astro or static site frontend can read it from
+              predictable routes.
             </p>
             <div className="buttons">
               <Link className="button button--lg button-dhh-primary" to="/docs/installation">
@@ -107,9 +102,6 @@ export default function Home() {
             <div className="features-grid">
               {features.map((feature) => (
                 <div className="feature-card" key={feature.title}>
-                  <span className="emoji" aria-hidden="true">
-                    {feature.emoji}
-                  </span>
                   <h3>{feature.title}</h3>
                   <p>{feature.text}</p>
                 </div>

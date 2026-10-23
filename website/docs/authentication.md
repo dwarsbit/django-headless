@@ -4,39 +4,59 @@ sidebar_position: 7
 
 # 🔑 Authentication
 
-Django Headless works with any DRF authentication class — configured through `REST_FRAMEWORK`, or scoped to the generated routes only via `HEADLESS.DEFAULT_AUTHENTICATION_CLASSES`. Since generated routes require authentication by default (see [permissions](./permissions.md)), configuring one is what grants access. For machine-to-machine setups (a static site rebuild hook, a frontend build runner), the package also ships a simple secret key class.
+Generated routes require authentication by default, so a client gets access by authenticating. Django Headless works with any Django REST Framework [authentication class](https://www.django-rest-framework.org/api-guide/authentication/), and ships `SecretKeyAuthentication` for clients that run without a user, such as a static site build.
 
-## SecretKeyAuthentication
+## Secret key authentication
 
-```python
-# settings.py
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "headless.rest.authentication.SecretKeyAuthentication",
-    ],
-}
+To let a client authenticate with a shared secret key:
 
-# ...or scoped to the generated routes only:
-HEADLESS = {
-    "AUTH_SECRET_KEY": "your-secret-key",
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "headless.rest.authentication.SecretKeyAuthentication",
-    ],
-}
-```
+1. Set the key and add `SecretKeyAuthentication` to the generated routes:
 
-Requests authenticate by sending the key in a header (default `X-Secret-Key`, configurable via `AUTH_SECRET_KEY_HEADER`):
+   ```python
+   # mysite/settings.py
+   HEADLESS = {
+       "AUTH_SECRET_KEY": "your-secret-key",
+       "DEFAULT_AUTHENTICATION_CLASSES": [
+           "headless.rest.authentication.SecretKeyAuthentication",
+       ],
+   }
+   ```
 
-```bash
-curl -H "X-Secret-Key: your-secret-key" https://example.org/api/blog.blogpost
-```
+2. Send the key in the `X-Secret-Key` header with each request:
 
-The key is compared in constant time to prevent timing attacks. Requests **without** the header are treated as anonymous, so you can combine this class with other DRF authentication classes.
+   ```bash
+   curl -H "X-Secret-Key: your-secret-key" https://example.org/api/blog.article
+   ```
+
+Read the key from an environment variable rather than writing it in `settings.py`. Change the header name with `HEADLESS["AUTH_SECRET_KEY_HEADER"]`.
+
+A request with a wrong key answers `401 Unauthorized`. A request without the header is passed on to the next authentication class, so you can combine `SecretKeyAuthentication` with session or token authentication.
+
+To use `SecretKeyAuthentication` on your own views as well, add it to `REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]` instead.
 
 :::warning Set a key
-The boot log warns when `SecretKeyAuthentication` is used without a configured `AUTH_SECRET_KEY`.
+Without `AUTH_SECRET_KEY`, every request to a route that uses `SecretKeyAuthentication` fails with an error. The boot log warns about a missing key; set it before deploying.
 :::
 
-## Permissions
+A request authenticated with the secret key is not tied to a user account. It passes `IsAuthenticated`, but not permission classes that check a user, such as `IsAdminUser`.
 
-Authentication identifies the request; permissions decide what it may do. See [permissions](./permissions.md).
+## Other authentication classes
+
+Configure DRF's own classes the same way, in `HEADLESS["DEFAULT_AUTHENTICATION_CLASSES"]` for the generated routes only, or in `REST_FRAMEWORK` for your whole project:
+
+```python
+# mysite/settings.py
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+}
+```
+
+When `HEADLESS["DEFAULT_AUTHENTICATION_CLASSES"]` is not set, the generated routes use the classes in `REST_FRAMEWORK`.
+
+## Related pages
+
+- [Permissions](./permissions.md)
+- [Settings reference](./settings.md#auth_secret_key-and-auth_secret_key_header)

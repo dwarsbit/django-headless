@@ -4,9 +4,25 @@ sidebar_position: 5
 
 # 🔍 Filtering
 
-Django Headless ships `LookupFilter`, a permissive filter backend that maps query string parameters directly to Django ORM lookups. It is enabled on the generated routes by default (`HEADLESS.DEFAULT_FILTER_BACKENDS`). To use it on the rest of your API as well, configure DRF:
+`LookupFilter` filters list routes with query parameters named after Django's [field lookups](https://docs.djangoproject.com/en/stable/ref/models/querysets/#field-lookups), such as `?title__icontains=django`. The generated routes use it by default, through `HEADLESS["DEFAULT_FILTER_BACKENDS"]`.
+
+```http
+GET /api/blog.article?published=true
+GET /api/blog.article?title__icontains=django
+GET /api/blog.article?created_at__gte=2026-01-01
+GET /api/blog.article?category=2
+```
+
+A parameter without a lookup matches exactly. Several parameters combine with AND:
+
+```http
+GET /api/blog.article?published=true&created_at__year=2026
+```
+
+To filter your own Django REST Framework views the same way, add `LookupFilter` to DRF's settings:
 
 ```python
+# mysite/settings.py
 REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": [
         "headless.rest.filters.LookupFilter",
@@ -14,50 +30,49 @@ REST_FRAMEWORK = {
 }
 ```
 
-## Syntax
-
-Any supported lookup for a field can be used as a query parameter, using the ORM's `field__lookup` naming:
-
-```bash
-# Basic filtering
-GET /api/blog.blogpost?published=true
-
-# Field lookups
-GET /api/blog.blogpost?title__icontains=django
-GET /api/blog.blogpost?created_at__gte=2023-01-01
-GET /api/blog.blogpost?views__range=10,100
-
-# Multiple filters combine with AND
-GET /api/blog.blogpost?published=true&created_at__year=2023
-```
-
 ## Exclusions
 
-Prefix a parameter with `~` (configurable, see [settings](./settings.md)) to exclude matches:
+Start a parameter with `~` to exclude the matches instead:
 
-```bash
-# Everything except unpublished posts
-GET /api/blog.blogpost?~published=false
+```http
+GET /api/blog.article?~category=3
 ```
 
-## Multi-value lookups
+Change the symbol with `HEADLESS["FILTER_EXCLUSION_SYMBOL"]`; see the [settings reference](./settings.md#filter-settings).
 
-Multi-value lookups (`in`, `range`) accept comma-separated values:
+## Multiple values
 
-```bash
-GET /api/blog.blogpost?id__in=1,2,3
+The `in` and `range` lookups take comma-separated values:
+
+```http
+GET /api/blog.article?id__in=1,2,3
+GET /api/blog.article?created_at__range=2026-01-01,2026-06-30
 ```
 
-Repeated parameters work as well: `?id__in=1&id__in=2`.
+Repeating the parameter works as well: `?id__in=1&id__in=2`.
 
 ## Type casting
 
-Values are cast to the field's type: booleans as `true`/`1`/`on` and `false`/`0`/`off`, integers, decimals and floats parsed accordingly, and `isnull` accepts a boolean. Boolean and null matching is case-insensitive; text values keep their original casing, so case-sensitive lookups like `exact` behave as expected.
+`LookupFilter` casts each value to the type of its field:
 
-Invalid parameters — unknown fields, unsupported lookups, bad values — answer `400 Bad Request` with the reason in the error detail:
+- **Booleans**: `true`, `1` and `on` are true; `false`, `0` and `off` are false.
+- **Null values**: on a nullable boolean field, `null`, `none` and `empty` match `None`. The `isnull` lookup takes a boolean.
+- **Numbers**: integers, decimals and floats are parsed for their fields.
+- **Text**: kept as sent, so case-sensitive lookups such as `exact` match the case.
+
+Boolean and null values are case-insensitive. Change the recognized values with the `FILTER_*` settings.
+
+## Errors
+
+An unknown field, an unsupported lookup or a value that cannot be cast answers `400 Bad Request` with the reason:
 
 ```json
 {
-    "detail": "Field 'nonexistent' does not exist"
+    "detail": "Field 'titel' does not exist"
 }
 ```
+
+## Related pages
+
+- [Pagination](./pagination.md)
+- [Settings reference](./settings.md)

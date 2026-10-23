@@ -154,12 +154,6 @@ html {
   border-color: var(--ifm-color-primary-lightest);
 }
 
-.feature-card .emoji {
-  font-size: 1.5rem;
-  display: block;
-  margin-bottom: 0.7rem;
-}
-
 .feature-card h3 {
   font-family: var(--ifm-heading-font-family);
   font-size: 1.05rem;

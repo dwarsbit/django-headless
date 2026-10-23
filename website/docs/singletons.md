@@ -4,40 +4,55 @@ sidebar_position: 4
 
 # 💈 Singletons
 
-Singleton models represent a single resource — site settings, configuration objects, anything that should have exactly one instance. Expose them with `singleton=True`:
+A singleton is an exposed model with exactly one instance, such as site settings. Its route has no primary key: the frontend reads it from one fixed URL. Expose a model as a singleton with `singleton=True`:
 
 ```python
+# blog/models.py
 from django.db import models
 from headless import expose
 
+
 @expose(singleton=True)
-class SiteConfiguration(models.Model):
+class SiteSettings(models.Model):
     site_name = models.CharField(max_length=100)
-    maintenance_mode = models.BooleanField(default=False)
     contact_email = models.EmailField()
+    maintenance_mode = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name = "Site Configuration"
+        verbose_name = "site settings"
 ```
 
-A singleton is exposed as **one resource** without a primary key:
+The singleton gets one route with three methods:
 
-| Method  | Route                          | Action                            |
-| ------- | ------------------------------ | --------------------------------- |
-| `GET`   | `/api/config.siteconfiguration` | Retrieve the singleton            |
-| `PUT`   | `/api/config.siteconfiguration` | Update, **creating it if missing** |
-| `PATCH` | `/api/config.siteconfiguration` | Partial update                     |
+| Method  | Route                     | Action                               |
+| ------- | ------------------------- | ------------------------------------ |
+| `GET`   | `/api/blog.sitesettings`  | Retrieve the singleton               |
+| `PUT`   | `/api/blog.sitesettings`  | Update, creating it if it is missing |
+| `PATCH` | `/api/blog.sitesettings`  | Partial update, creating it if it is missing |
+
+A singleton has no list or delete route. Create and edit it through the API, the Django admin or your own code.
 
 ## Creating on first write
 
-`GET` on a missing singleton returns `404`. A `PUT` or `PATCH` creates the singleton when it does not exist yet (answering `201 Created`), and updates it afterwards (answering `200 OK`).
+Until the singleton exists, `GET` answers `404 Not Found`. The first `PUT` or `PATCH` creates it and answers `201 Created`; later writes update it and answer `200 OK`.
 
-Creation is race-safe: concurrent first writes cannot create duplicate singletons — the losing request updates the winner's row instead.
+Concurrent first writes do not create duplicates: the request that loses the race updates the row the other request created.
 
 ## Read-only singletons
 
-`@expose(singleton=True, read_only=True)` generates only the `GET` route, for configuration that is edited in the Django admin but served through the API.
+Combine `singleton=True` with `read_only=True` to generate the `GET` method only. Use this for settings that editors change in the Django admin and the frontend only reads:
 
-:::tip Managing singletons
-Singletons have no list or delete routes. Populate or edit them through the API (`PUT`), the Django admin, or your own code.
-:::
+```python
+# blog/models.py
+from django.db import models
+from headless import expose
+
+
+@expose(singleton=True, read_only=True)
+class SiteSettings(models.Model):
+    site_name = models.CharField(max_length=100)
+```
+
+## Related pages
+
+- [Exposing models](./models.md)
