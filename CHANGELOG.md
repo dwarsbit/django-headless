@@ -2,6 +2,7 @@
 
 ## Unreleased (v1.0.0)
 
+- ⚠️ Requires Django 5.2 or later and Django REST Framework 3.18 or later. Django 5.0 and 5.1 no longer receive security updates; the supported versions are Django 5.2 LTS, 6.0 and 6.1. Django 6.1 needs Django REST Framework 3.18, the first release that supports it
 - 🎁 New `lookup_fields` decorator option: fetch an object by a unique field at `GET /api/blog.article/by_slug/<value>`, next to the detail route by primary key
 - 🛡️ Lookup routes are opt-in and `GET`-only; `@expose()` raises `ImproperlyConfigured` when a lookup field is unknown, not unique, the primary key, or set on a singleton
 - 🛡️ Lookup routes report `view.action == "retrieve"`, so action-based permissions, serializers and throttles apply as on the detail route; `view.lookup_by` holds the field of the lookup
