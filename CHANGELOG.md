@@ -2,9 +2,9 @@
 
 ## Unreleased (v1.1.0)
 
-- 🎁 New `@expose(lookup_fields=[...])` option: retrieve an object by a unique field at `GET /<app_label>.<model>/by_<field>/<value>` (e.g. `/blog.post/by_slug/hello-world`), next to the existing detail route by ID
-- 🔑 Lookup routes are opt-in and GET-only; `@expose()` fails fast when a lookup field is unknown, not unique, the primary key, or set on a singleton
-- 🛡️ Lookup routes report `view.action == "retrieve"`, so action-based permissions, serializers and throttles cover them like the detail route; `view.lookup_by` holds the looked-up field
+- 🎁 New `lookup_fields` decorator option: fetch an object by a unique field at `GET /api/blog.article/by_slug/<value>`, next to the detail route by primary key
+- 🛡️ Lookup routes are opt-in and `GET`-only; `@expose()` raises `ImproperlyConfigured` when a lookup field is unknown, not unique, the primary key, or set on a singleton
+- 🛡️ Lookup routes report `view.action == "retrieve"`, so action-based permissions, serializers and throttles apply as on the detail route; `view.lookup_by` holds the field of the lookup
 
 ## v1.0.0-rc.9
 
