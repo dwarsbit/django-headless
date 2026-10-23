@@ -41,6 +41,7 @@ Use Django Headless when Django holds your content and the frontend lives elsewh
 - **Routes per model**: one decorator per model, no URL patterns to maintain.
 - **Singletons**: site settings and other one-off objects as a single route.
 - **Filtering**: every lookup a field supports, from the query string.
+- **Lookup routes**: fetch an object by a unique field such as a slug.
 - **Stable lists**: ordered by primary key, with a pagination envelope that includes ready-to-fetch links.
 - **Clear errors**: invalid filters and options answer with the reason.
 

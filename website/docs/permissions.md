@@ -50,6 +50,10 @@ Both settings take dotted paths and classes.
 
 Other DRF settings, such as renderers, parsers and pagination, can be set for the generated routes in the same way; see [DRF overrides](./settings.md#drf-overrides).
 
+## Lookup routes
+
+On [lookup routes](./models.md#lookup-routes), DRF's `view.action` is `"retrieve"`. A permission class that checks the action treats `GET /api/blog.article/by_slug/getting-started-with-django` like `GET /api/blog.article/1`.
+
 ## Related pages
 
 - [Authentication](./authentication.md)
