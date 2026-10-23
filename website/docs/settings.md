@@ -38,7 +38,7 @@ HEADLESS = {
 }
 ```
 
-## BOOT_LOG
+## `BOOT_LOG`
 
 Whether the boot log is shown when the project starts. The boot log lists the exposed models, the number of generated routes and the authentication in use.
 
@@ -80,11 +80,11 @@ All these settings take dotted paths and classes.
 
 `SEARCH_PARAM` and `ORDERING_PARAM` apply to DRF's `SearchFilter` and `OrderingFilter` when they are in `DEFAULT_FILTER_BACKENDS`. Subclasses of those filters and other filter backends keep their own parameter names.
 
-## AUTH_SECRET_KEY and AUTH_SECRET_KEY_HEADER
+## `AUTH_SECRET_KEY` and `AUTH_SECRET_KEY_HEADER`
 
 The key and the header name for [`SecretKeyAuthentication`](./authentication.md). The header defaults to `X-Secret-Key`.
 
-## DEFAULT_SERIALIZER_CLASS
+## `DEFAULT_SERIALIZER_CLASS`
 
 The base class for the serializers of exposed models. Set it to `headless.rest.serializers.FlexibleSerializer` to [expand relations and serialize model properties](./serializers.md).
 
