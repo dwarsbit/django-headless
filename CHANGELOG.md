@@ -2,6 +2,8 @@
 
 ## Unreleased (v1.0.0)
 
+- 🐛 The generated routes are built when the `headless` app is ready. With `INSTALLED_APPS` as documented (`headless` without `headless.rest`), no routes were built, so the API only served its root. Projects that also install `headless.rest` keep working
+- 🎁 The system checks `headless.W008` and `headless.W009` warn when a model is exposed more than once with different options, and when an exposed model has no routes because it was exposed after the routes were built
 - 🛡️ The system checks `headless.W006` and `headless.W007` warn when an exposed model serializes a field that looks like a credential (such as `password_hash` or `api_token`) without naming it in `fields`, and when a user model is exposed without a `fields` list
 - 🎁 The system check `headless.W005` reports keys in `HEADLESS` that are not settings, such as a typo like `PAGESIZE`, with the closest setting name as a hint. A `HEADLESS` setting that is not a dictionary raises `ImproperlyConfigured` with a clear message
 - 🎁 System checks for risky or broken settings: `headless.E001` (`SecretKeyAuthentication` without a key) and `headless.E002` (identical full access and read-only keys) stop `runserver`; `headless.W002` warns when anyone can change the content of exposed models; with `check --deploy`, `headless.W001` (weak secret key), `headless.W003` (no authentication classes configured) and `headless.W004` (unpaginated list routes) warn as well

@@ -15,6 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.settings import api_settings
 
 from .registry import headless_registry
+from .rest.routers import rest_router, singleton_urls
 from .settings import DEFAULTS, SETTINGS_NAMESPACE, headless_settings
 from .utils import get_authentication_classes, get_permission_classes
 
@@ -91,6 +92,43 @@ def check_settings(app_configs=None, **kwargs):
                 id="headless.W005",
             )
         )
+
+    return warnings
+
+
+@checks.register()
+def check_registrations(app_configs=None, **kwargs):
+    """
+    W008: a model is exposed more than once with different options.
+    W009: an exposed model has no routes, because it was exposed after the routes were built.
+    """
+    warnings = []
+
+    for label in sorted(headless_registry.get_conflicting_labels()):
+        warnings.append(
+            checks.Warning(
+                "This model is exposed more than once with different options, for example with both @expose() "
+                "and expose_model(). Only the last registration is in effect.",
+                hint="Expose the model once, with all its options.",
+                obj=headless_registry.get_model(label)["model"],
+                id="headless.W008",
+            )
+        )
+
+    routed = {prefix for prefix, _, _ in rest_router.registry} | {str(url.pattern) for url in singleton_urls}
+    for config in headless_registry.get_models():
+        model = config["model"]
+        if model._meta.label_lower not in routed:
+            warnings.append(
+                checks.Warning(
+                    "This model is exposed, but has no routes: it was exposed after Django Headless built "
+                    "the routes, when the headless app was ready.",
+                    hint="Expose the model in its models module, or call expose_model() in the ready() method "
+                    'of an app listed before "headless" in INSTALLED_APPS.',
+                    obj=model,
+                    id="headless.W009",
+                )
+            )
 
     return warnings
 

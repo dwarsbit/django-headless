@@ -65,6 +65,22 @@ class IsolatedBuildMixin:
         super().tearDown()
 
 
+class AppReadyBuildTests(IsolatedBuildMixin, SimpleTestCase):
+    """The routes are built when the headless app is ready, the only app the installation requires"""
+
+    def test_headless_app_builds_the_routes(self):
+        from django.apps import apps
+
+        headless_registry.register(BuilderTestModel)
+        headless_registry.register(BuilderSingletonModel, singleton=True)
+
+        with override_settings(HEADLESS={"BOOT_LOG": False}):
+            apps.get_app_config("headless").ready()
+
+        self.assertEqual([prefix for prefix, _, _ in rest_router.registry], ["test.buildertestmodel"])
+        self.assertEqual([str(url.pattern) for url in singleton_urls], ["test.buildersingletonmodel"])
+
+
 class RestBuilderTests(IsolatedBuildMixin, SimpleTestCase):
     """Tests for the RestBuilder class"""
 

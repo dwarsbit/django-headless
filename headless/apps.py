@@ -20,14 +20,23 @@ class DjangoHeadlessConfig(AppConfig):
     label = "headless"
 
     def ready(self):
-        from headless.settings import headless_settings
-        from .registry import headless_registry
-
         # Register the system checks
         from . import checks  # noqa: F401
+        from .rest.builder import RestBuilder
 
-        if not is_boot_log_enabled():
-            return
+        boot_log_enabled = is_boot_log_enabled()
+        if boot_log_enabled:
+            self.log_boot()
+
+        # Build the generated routes. Every app's models have been imported
+        # by now, so every model exposed with @expose() is in the registry.
+        # Routes are built in every context (servers, management commands,
+        # tests); only the builder's log output is tied to the boot log.
+        RestBuilder(silent=not boot_log_enabled).build()
+
+    def log_boot(self):
+        from headless.settings import headless_settings
+        from .registry import headless_registry
 
         log("")
         log("[bold magenta]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/bold magenta]")

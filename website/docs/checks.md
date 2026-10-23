@@ -23,6 +23,8 @@ An error stops `runserver` and other management commands until you fix it. A war
 | `headless.W005` | Warning | Always                   | `HEADLESS` has a key that is not a setting.             |
 | `headless.W006` | Warning | Always                   | A field that looks like a credential is serialized.     |
 | `headless.W007` | Warning | Always                   | A user model is exposed without a `fields` list.        |
+| `headless.W008` | Warning | Always                   | A model is exposed more than once with other options.   |
+| `headless.W009` | Warning | Always                   | An exposed model has no routes.                         |
 
 ## `headless.E001`
 
@@ -99,6 +101,14 @@ from headless import expose_model
 
 expose_model(User, fields=["username", "first_name", "last_name"])
 ```
+
+## `headless.W008`
+
+A model is exposed more than once with different options, for example with `@expose()` on the model and `expose_model()` elsewhere. Only the last registration is in effect, so options of the earlier one are lost. Expose the model once, with all its options. Exposing a model again with the same options does not trigger the warning.
+
+## `headless.W009`
+
+A model is exposed but has no routes. Django Headless builds the routes when the `headless` app is ready, so a model exposed after that, for example with `expose_model()` in the `ready()` method of an app listed after `headless` in `INSTALLED_APPS`, is never added. Call `expose_model()` in a models module, or in the `ready()` method of an app listed before `headless`; see [Exposing models](./models.md).
 
 ## Silencing a check
 

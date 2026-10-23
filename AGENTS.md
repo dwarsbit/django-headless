@@ -24,11 +24,11 @@ headless/                    # The package itself
   __init__.py               # Public API: expose(), expose_model(), __version__
   registry.py               # HeadlessRegistry: model -> ModelConfig; validates all @expose() options
   settings.py               # HEADLESS-namespaced settings object (headless_settings), DRF-style
-  apps.py                   # AppConfig.ready(): registers the system checks, boot log (version check, exposed models, auth status)
+  apps.py                   # AppConfig.ready(): registers the system checks, boot log (version check, exposed models, auth status), runs RestBuilder
   checks.py                 # Django system checks (headless.E00x/W00x), documented in website/docs/checks.md
   utils.py                  # log(), is_runserver(), is_boot_log_enabled(), auth-config helpers, version check
   rest/
-    apps.py                 # AppConfig.ready(): runs RestBuilder (always; only its log is tied to the boot log)
+    apps.py                 # Optional app config; its ready() builds again (idempotent) for projects that also install headless.rest
     builder/                # Dynamic API construction
       base.py               # RestBuilder: iterates registry, registers routes
       serializer.py         # get_serializer(): DEFAULT_SERIALIZER_CLASS subclass per model (fields/exclude)
@@ -57,7 +57,7 @@ scripts/
 
 1. `@expose()` (or `expose_model()`) registers a model in `headless_registry`, keyed by `model._meta.label_lower`. Options: `singleton`, `search_fields`, `fields`, `exclude`, `read_only`, `lookup_fields`. Without `search_fields`, all non-choice `CharField` fields become searchable.
 2. Registration validates every option and raises `ImproperlyConfigured` on invalid input. This runs at model import time, during `django.setup()`, so misconfiguration stops the project at boot. Validation must only use forward fields (`_meta.fields` / `_meta.many_to_many`), never `_meta.get_fields()`, which raises `AppRegistryNotReady` at that point.
-3. On app ready, `RestBuilder` iterates the registry and dynamically builds a serializer class and a viewset class per model (both cached by `model._meta.label`). Routes are built in every context (runserver, management commands, tests, WSGI/ASGI).
+3. When the `headless` app is ready (the only app the installation requires), `RestBuilder` iterates the registry and dynamically builds a serializer class and a viewset class per model (both cached by `model._meta.label`). Routes are built in every context (runserver, management commands, tests, WSGI/ASGI).
 4. Regular models are registered on `rest_router` at `<label_lower>` (e.g. `blog.article`). `read_only` models get a `ReadOnlyModelViewSet`. Singletons get explicit paths in `singleton_urls` mapping GET (and PUT/PATCH unless read-only) to retrieve/update/partial_update.
 5. `lookup_fields` (opt-in, unique non-pk fields only) adds GET-only `by_<field>/<value>` actions through `LookupFieldsMixin`. On those routes `view.action` is `"retrieve"` (so action-based permissions apply) and `view.lookup_by` holds the field.
 6. The serializer base is `HEADLESS.DEFAULT_SERIALIZER_CLASS`, a plain `ModelSerializer` by default. Setting it to `FlexibleSerializer` enables `?expand=` / `?fields=` / `?omit=` and model properties as read-only fields; relations to other registered models become expandable.
