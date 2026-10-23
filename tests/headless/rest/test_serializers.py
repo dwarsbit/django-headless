@@ -59,7 +59,7 @@ class TestFlexibleSerializer:
 
     def test_invalid_model(self):
         """Test that serializer raises ImproperlyConfigured when model is not a Django model"""
-        with pytest.raises(ImproperlyConfigured, match="missing _meta attribute"):
+        with pytest.raises(ImproperlyConfigured, match="Model FakeModel is missing _meta attribute"):
 
             class FakeModel:
                 pass
@@ -70,6 +70,26 @@ class TestFlexibleSerializer:
 
             serializer = BadSerializer()
             _ = serializer._expandable_fields
+
+    def test_get_fields_error_names_the_model(self, monkeypatch):
+        """Test that errors name the model class, not its metaclass"""
+
+        class Gadget(models.Model):
+            class Meta:
+                app_label = "test"
+
+        def broken_get_fields():
+            raise AttributeError("broken")
+
+        monkeypatch.setattr(Gadget._meta, "get_fields", broken_get_fields)
+
+        class GadgetSerializer(FlexibleSerializer):
+            class Meta:
+                model = Gadget
+                fields = "__all__"
+
+        with pytest.raises(ImproperlyConfigured, match="Failed to get fields from model Gadget: broken"):
+            _ = GadgetSerializer()._expandable_fields
 
     def test_simple_model_no_relations(self):
         """Test serializer with a simple model that has no relational fields"""

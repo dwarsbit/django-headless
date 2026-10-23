@@ -34,12 +34,19 @@ class RestBuilder:
         Iterates through all registered models, creates appropriate viewsets and serializers,
         and registers them with the router based on whether they are singleton models
         or regular collection models.
+
+        Building is idempotent: routes that are already registered (e.g. when
+        app ready runs twice) are skipped, so building again neither raises
+        nor duplicates routes.
         """
         if not self._silent:
             log("\n:building_construction:  Setting up [bold]REST[/bold] routes")
 
         routes = 0
         singleton_routes = 0
+
+        registered_prefixes = {prefix for prefix, _, _ in rest_router.registry}
+        registered_singletons = {str(url.pattern) for url in singleton_urls}
 
         for model_config in self._models:
             # Validate model config has required fields
@@ -51,8 +58,12 @@ class RestBuilder:
 
             model_class = model_config["model"]
             singleton = model_config["singleton"]
-            view_set = get_view_set(model_config, self._viewset_classes, self._serializer_classes)
             base_path = model_class._meta.label_lower
+
+            if base_path in (registered_singletons if singleton else registered_prefixes):
+                continue
+
+            view_set = get_view_set(model_config, self._viewset_classes, self._serializer_classes)
 
             if singleton:
                 action_map = {"get": "retrieve"}

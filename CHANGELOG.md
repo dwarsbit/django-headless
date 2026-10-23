@@ -37,6 +37,7 @@
 - 🐛 The boot log only reports a new version when PyPI's version is newer than the installed one, including pre-releases, instead of whenever they differ
 - ⚙️ New `HEADLESS["VERSION_CHECK"]` (default `True`): set it to `False` to never contact PyPI from the boot log
 - 🐛 A create or update that violates a database constraint the serializer does not validate, such as a `CheckConstraint`, answers `400 Bad Request` instead of `500`. This includes creating a singleton, which answered `500` for any constraint violation other than a concurrent create
+- 🐛 Building the routes again, for example when app ready runs twice, no longer raises `ImproperlyConfigured` or adds a singleton route twice
 - 🐛 Reverse relations are expanded by the name they have on an object: on Django 5.0, a reverse foreign key without `related_name` (such as `review_set`) could not be expanded, and a reverse one-to-one with a `related_query_name` was expanded under that query name
 
 ## v1.0.0-rc.9

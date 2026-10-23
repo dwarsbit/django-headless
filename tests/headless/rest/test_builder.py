@@ -208,6 +208,25 @@ class RestBuilderTests(SimpleTestCase):
             self.assertEqual(len(rest_router.registry), 1)
             self.assertEqual(len(singleton_urls), 0)
 
+    def test_build_twice_does_not_duplicate_routes(self):
+        """Test that building again (e.g. when app ready runs twice) neither raises nor duplicates routes"""
+        headless_registry._models["test.buildertestmodel"] = {
+            "model": BuilderTestModel,
+            "singleton": False,
+            "search_fields": ["name"],
+        }
+        headless_registry._models["test.buildersingletonmodel"] = {
+            "model": BuilderSingletonModel,
+            "singleton": True,
+            "search_fields": [],
+        }
+
+        RestBuilder(silent=True).build()
+        RestBuilder(silent=True).build()
+
+        self.assertEqual([prefix for prefix, _, _ in rest_router.registry], ["test.buildertestmodel"])
+        self.assertEqual([str(url.pattern) for url in singleton_urls], ["test.buildersingletonmodel"])
+
     def test_build_registers_singleton_model(self):
         """Test that build registers singleton models to singleton_urls"""
         # Register a singleton model
