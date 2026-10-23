@@ -2,6 +2,7 @@ from django.core.exceptions import FieldDoesNotExist, FieldError, ValidationErro
 from rest_framework.exceptions import ParseError
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
+from rest_framework.settings import api_settings
 
 from headless.registry import headless_registry
 from headless.settings import headless_settings
@@ -34,6 +35,18 @@ class LookupFilter(BaseFilterBackend):
 
     NON_FILTER_FIELDS = headless_settings.NON_FILTER_FIELDS
 
+    # Attributes of filter backends and pagination classes that name the
+    # query parameters they read.
+    FILTER_BACKEND_PARAM_ATTRS = ["search_param", "ordering_param"]
+
+    PAGINATION_PARAM_ATTRS = [
+        "page_query_param",
+        "page_size_query_param",
+        "limit_query_param",
+        "offset_query_param",
+        "cursor_query_param",
+    ]
+
     def filter_queryset(self, request, queryset, view):
         """
         Build the queryset based on the query params and the view's model.
@@ -48,6 +61,7 @@ class LookupFilter(BaseFilterBackend):
                 model_class=model_class,
                 query_params=request.query_params,
                 filterable_fields=self.get_filterable_fields(model_class, view),
+                non_filter_fields=self.get_non_filter_fields(view),
             )
             queryset = queryset.filter(**filter_kwargs).exclude(**exclude_kwargs)
             # Filtering across a to-many relation can repeat rows; only then
@@ -62,6 +76,40 @@ class LookupFilter(BaseFilterBackend):
             # Each filter is validated on its own beforehand, so this is
             # unexpected. Don't pass internal error messages to the client.
             raise ParseError(detail="Invalid filter parameters.")
+
+    def get_non_filter_fields(self, view=None):
+        """
+        Return the query parameters that are never read as filters: those
+        in NON_FILTER_FIELDS, DRF's format parameter, drf-flex-fields'
+        parameters, and the parameters of the view's other filter backends
+        (e.g. SearchFilter's search_param) and pagination class.
+        """
+        from rest_flex_fields import EXPAND_PARAM, FIELDS_PARAM, OMIT_PARAM
+
+        names = set(self.NON_FILTER_FIELDS)
+
+        if api_settings.URL_FORMAT_OVERRIDE:
+            names.add(api_settings.URL_FORMAT_OVERRIDE)
+
+        for param in (EXPAND_PARAM, FIELDS_PARAM, OMIT_PARAM):
+            names.update((param, f"{param}[]"))
+
+        filter_backends = getattr(view, "filter_backends", None)
+        if isinstance(filter_backends, (list, tuple)):
+            for backend in filter_backends:
+                names.update(self._get_param_names(backend, self.FILTER_BACKEND_PARAM_ATTRS))
+
+        pagination_class = getattr(view, "pagination_class", None)
+        if isinstance(pagination_class, type):
+            names.update(self._get_param_names(pagination_class, self.PAGINATION_PARAM_ATTRS))
+
+        return names
+
+    @staticmethod
+    def _get_param_names(source, attrs):
+        """Return the query parameter names set on the given attributes of a class."""
+        names = (getattr(source, attr, None) for attr in attrs)
+        return {name for name in names if isinstance(name, str) and name}
 
     def get_filterable_fields(self, model_class, view=None):
         """
@@ -152,15 +200,18 @@ class LookupFilter(BaseFilterBackend):
             model = field.related_model
         return False
 
-    def get_filter_kwargs(self, model_class, query_params, filterable_fields=None):
+    def get_filter_kwargs(self, model_class, query_params, filterable_fields=None, non_filter_fields=None):
         filter_kwargs = {}
         exclude_kwargs = {}
 
         if filterable_fields is None:
             filterable_fields = self.get_filterable_fields(model_class)
 
+        if non_filter_fields is None:
+            non_filter_fields = self.get_non_filter_fields()
+
         for key, value in query_params.lists():
-            if key in self.NON_FILTER_FIELDS:
+            if key in non_filter_fields:
                 continue
             # By default Django supports repeated multi-values (e.g. `a=1&a=2`)
             # but we allow for comma-seperated multi-values as well (e.g. `a=1,2`).

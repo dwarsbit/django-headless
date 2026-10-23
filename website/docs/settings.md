@@ -109,7 +109,7 @@ These settings configure [`LookupFilter`](./filtering.md):
 - **`FILTER_EXCLUSION_SYMBOL`**: the prefix that turns a filter into an exclusion.
 - **`FILTER_TRUE_VALUES`, `FILTER_FALSE_VALUES`, `FILTER_NULL_VALUES`**: the values read as `True`, `False` and `None`.
 - **`FILTER_DISALLOWED_LOOKUPS`**: lookups that cannot be used in filters. The default, `["regex", "iregex"]`, blocks regular expressions; see [Filtering](./filtering.md#disallowed-lookups).
-- **`NON_FILTER_FIELDS`**: query parameters that are never read as filters. Add the parameters of your own filter backends and pagination here.
+- **`NON_FILTER_FIELDS`**: query parameters that are never read as filters. `LookupFilter` also skips the parameters of the other filter backends and the pagination class of a route (such as `SEARCH_PARAM`, `ORDERING_PARAM`, `limit` and `offset`), DRF's `format` parameter and the `expand`, `fields` and `omit` parameters. Add any other parameter your views read here.
 
 ## Related pages
 

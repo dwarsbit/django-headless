@@ -13,7 +13,7 @@ GET /api/blog.article?created_at__gte=2026-01-01
 GET /api/blog.article?category=2
 ```
 
-A parameter without a lookup matches exactly. Several parameters combine with AND:
+A parameter without a lookup matches exactly. Parameters read by the route's search, ordering and pagination, and `format`, `expand`, `fields` and `omit`, are not filters. Several parameters combine with AND:
 
 ```http
 GET /api/blog.article?published=true&created_at__year=2026
