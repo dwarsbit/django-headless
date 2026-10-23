@@ -341,6 +341,15 @@ class EndToEndApiTests(TransactionTestCase):
 
         self.assertEqual(headless_registry.get_model("e2e_blog.apikey")["search_fields"], ["name"])
 
+    def test_label_dot_matches_literally(self):
+        """Test that the dot in a route label only matches a dot"""
+        article = Article.objects.create(title="Hello")
+
+        self.assertEqual(self.client.get("/e2e_blog.article").status_code, 200)
+        self.assertEqual(self.client.get("/e2e_blogXarticle").status_code, 404)
+        self.assertEqual(self.client.get(f"/e2e_blog.article/{article.id}").status_code, 200)
+        self.assertEqual(self.client.get(f"/e2e_blogXarticle/{article.id}").status_code, 404)
+
     def test_api_root_lists_generated_routes(self):
         """Test that the API root lists the generated routes"""
         response = self.client.get("/")
