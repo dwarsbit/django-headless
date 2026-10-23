@@ -25,6 +25,9 @@ class HeadlessRegistry:
 
     def __init__(self):
         self._models: Dict[str, ModelConfig] = {}
+        # Labels of models registered again with different options; the
+        # last registration replaces the earlier ones.
+        self._conflicting_labels: set[str] = set()
 
     def register(
         self,
@@ -69,7 +72,8 @@ class HeadlessRegistry:
 
         self._validate_lookup_fields(model_class, lookup_fields)
 
-        self._models[model_class._meta.label_lower] = {
+        label = model_class._meta.label_lower
+        config: ModelConfig = {
             "model": model_class,
             "singleton": singleton,
             "search_fields": [] if singleton else search_fields,
@@ -78,6 +82,12 @@ class HeadlessRegistry:
             "read_only": read_only,
             "lookup_fields": list(lookup_fields or []),
         }
+
+        previous = self._models.get(label)
+        if previous is not None and previous != config:
+            self._conflicting_labels.add(label)
+
+        self._models[label] = config
 
     def get_model(self, label: str) -> Optional[ModelConfig]:
         """
@@ -93,6 +103,13 @@ class HeadlessRegistry:
         Get all registered models.
         """
         return list(self._models.values())
+
+    def get_conflicting_labels(self) -> set[str]:
+        """
+        Get the labels of models that were registered more than once with
+        different options. The last registration of each is in effect.
+        """
+        return set(self._conflicting_labels) & set(self._models)
 
     def __len__(self):
         return len(self._models)

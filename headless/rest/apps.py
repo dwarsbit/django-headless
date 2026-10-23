@@ -1,7 +1,5 @@
 from django.apps import AppConfig
 
-from ..utils import is_boot_log_enabled
-
 
 class DjangoHeadlessRestConfig(AppConfig):
     name = "headless.rest"
@@ -10,8 +8,7 @@ class DjangoHeadlessRestConfig(AppConfig):
     def ready(self):
         from .builder import RestBuilder
 
-        # Routes are always built, so they exist outside runserver as well
-        # (management commands, tests, WSGI/ASGI entrypoints). Only the
-        # builder's log output is tied to the boot log.
-        builder = RestBuilder(silent=not is_boot_log_enabled())
-        builder.build()
+        # The headless app builds the routes. Projects that also install
+        # headless.rest build them here as well; building is idempotent,
+        # so this only adds routes for models exposed in between.
+        RestBuilder(silent=True).build()

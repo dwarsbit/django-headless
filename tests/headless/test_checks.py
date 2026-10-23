@@ -11,6 +11,7 @@ from headless.checks import (
     check_implicit_authentication,
     check_pagination,
     check_public_writes,
+    check_registrations,
     check_secret_key_strength,
     check_secret_keys,
     check_sensitive_fields,
@@ -18,6 +19,8 @@ from headless.checks import (
     is_sensitive_field_name,
 )
 from headless.registry import headless_registry
+from headless.rest.builder import RestBuilder
+from headless.rest.routers import rest_router, singleton_urls
 
 SECRET_KEY_AUTH = ["headless.rest.authentication.SecretKeyAuthentication"]
 STRONG_KEY = "k3Jx9vQ2mZr7TbW1yN5cLp8HdFs4GaE6"
@@ -52,15 +55,28 @@ def ids(messages):
 
 
 class RegistryIsolationMixin:
-    """Run each check on a registry with only the models a test exposes."""
+    """Run each check on a registry and routes with only the models a test exposes."""
 
     def setUp(self):
         super().setUp()
-        self._saved_models = dict(headless_registry._models)
+        self._saved_state = (
+            dict(headless_registry._models),
+            set(headless_registry._conflicting_labels),
+            list(rest_router.registry),
+            list(singleton_urls),
+        )
         headless_registry._models = {}
+        headless_registry._conflicting_labels = set()
+        rest_router.registry = []
+        singleton_urls.clear()
 
     def tearDown(self):
-        headless_registry._models = self._saved_models
+        models_, conflicting_labels, router_registry, singletons = self._saved_state
+        headless_registry._models = models_
+        headless_registry._conflicting_labels = conflicting_labels
+        rest_router.registry = router_registry
+        # headless.rest.urls holds a reference to this list: update it in place
+        singleton_urls[:] = singletons
         super().tearDown()
 
 
@@ -84,6 +100,50 @@ class SettingsCheckTests(SimpleTestCase):
 
         with override_settings(HEADLESS={}):
             self.assertEqual(check_settings(), [])
+
+
+class RegistrationsCheckTests(RegistryIsolationMixin, SimpleTestCase):
+    def build(self):
+        with override_settings(HEADLESS={"BOOT_LOG": False}):
+            RestBuilder(silent=True).build()
+
+    def test_conflicting_registrations(self):
+        headless_registry.register(ChecksModelArticle)
+        headless_registry.register(ChecksModelArticle, read_only=True)
+        self.build()
+
+        messages = check_registrations()
+        self.assertEqual(ids(messages), ["headless.W008"])
+        self.assertIs(messages[0].obj, ChecksModelArticle)
+        # The last registration is in effect
+        self.assertTrue(headless_registry.get_model("checks_tests.checksmodelarticle")["read_only"])
+
+    def test_identical_registrations(self):
+        headless_registry.register(ChecksModelArticle, read_only=True)
+        headless_registry.register(ChecksModelArticle, read_only=True)
+        self.build()
+
+        self.assertEqual(check_registrations(), [])
+
+    def test_exposed_after_the_routes_were_built(self):
+        headless_registry.register(ChecksModelArticle)
+        self.build()
+        headless_registry.register(ChecksModelSettings, singleton=True)
+
+        messages = check_registrations()
+        self.assertEqual(ids(messages), ["headless.W009"])
+        self.assertIs(messages[0].obj, ChecksModelSettings)
+
+        # Building again adds the routes
+        self.build()
+        self.assertEqual(check_registrations(), [])
+
+    def test_all_models_have_routes(self):
+        headless_registry.register(ChecksModelArticle)
+        headless_registry.register(ChecksModelSettings, singleton=True)
+        self.build()
+
+        self.assertEqual(check_registrations(), [])
 
 
 class SensitiveFieldsCheckTests(RegistryIsolationMixin, SimpleTestCase):
@@ -294,6 +354,7 @@ class CheckRegistrationTests(SimpleTestCase):
         registered = checks.registry.registry.get_checks(include_deployment_checks=True)
         for check in (
             check_settings,
+            check_registrations,
             check_secret_keys,
             check_secret_key_strength,
             check_public_writes,
@@ -306,6 +367,7 @@ class CheckRegistrationTests(SimpleTestCase):
     def test_deploy_only_checks(self):
         registered = checks.registry.registry.get_checks(include_deployment_checks=False)
         self.assertIn(check_settings, registered)
+        self.assertIn(check_registrations, registered)
         self.assertIn(check_secret_keys, registered)
         self.assertIn(check_public_writes, registered)
         self.assertIn(check_sensitive_fields, registered)
