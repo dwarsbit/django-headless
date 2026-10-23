@@ -6,6 +6,8 @@ with deploy=True only run with manage.py check --deploy. Silence a single
 check with SILENCED_SYSTEM_CHECKS, e.g. ["headless.W002"].
 """
 
+from difflib import get_close_matches
+
 from django.conf import settings
 from django.core import checks
 from rest_framework.authentication import BasicAuthentication
@@ -13,7 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.settings import api_settings
 
 from .registry import headless_registry
-from .settings import headless_settings
+from .settings import DEFAULTS, SETTINGS_NAMESPACE, headless_settings
 from .utils import get_authentication_classes, get_permission_classes
 
 # The minimum length and number of unique characters of a secret key
@@ -37,6 +39,28 @@ def _uses_secret_key_authentication():
 def _labels(model_configs):
     """Return the labels of the given model configs, for messages."""
     return ", ".join(sorted(config["model"]._meta.label_lower for config in model_configs))
+
+
+@checks.register()
+def check_settings(app_configs=None, **kwargs):
+    """W005: the HEADLESS setting has a key that is not a Django Headless setting."""
+    # A HEADLESS setting that is not a dictionary raises ImproperlyConfigured
+    # on first use, at startup, so it never reaches the checks.
+    warnings = []
+    for key in headless_settings.user_settings:
+        if key in DEFAULTS:
+            continue
+        matches = get_close_matches(str(key), DEFAULTS, n=1)
+        hint = f'Did you mean "{matches[0]}"?' if matches else "Remove it, or see the settings reference."
+        warnings.append(
+            checks.Warning(
+                f'{SETTINGS_NAMESPACE}["{key}"] is not a Django Headless setting, so it has no effect.',
+                hint=hint,
+                id="headless.W005",
+            )
+        )
+
+    return warnings
 
 
 @checks.register(checks.Tags.security)

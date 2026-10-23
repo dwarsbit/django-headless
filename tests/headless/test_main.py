@@ -262,6 +262,13 @@ class UtilsTests(SimpleTestCase):
 
 
 class SettingsTests(SimpleTestCase):
+    def test_headless_setting_must_be_a_dictionary(self):
+        for value in (None, ["PAGE_SIZE", 25], "PAGE_SIZE=25"):
+            with self.subTest(value=value):
+                with override_settings(HEADLESS=value):
+                    with self.assertRaisesMessage(ImproperlyConfigured, "The HEADLESS setting must be a dictionary"):
+                        headless_settings.PAGE_SIZE
+
     def test_defaults_available(self):
         # Ensure default settings are accessible and of expected types
         self.assertIsNone(headless_settings.AUTH_SECRET_KEY)
