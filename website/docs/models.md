@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # 🎯 Exposing models
 
-Expose a model with the `@expose()` decorator to give it generated routes. Use the decorator options to make a model a singleton, limit its fields or make it read-only.
+Expose a model with the `@expose()` decorator to give it generated routes. Use the decorator options to make a model a singleton, limit its fields, make it read-only or add lookup routes by a unique field.
 
 ```python
 # blog/models.py
@@ -45,6 +45,7 @@ expose_model(FlatPage, read_only=True)
 | `fields`        | `list[str]` | All fields                  | Serialize only these fields.                                                                      |
 | `exclude`       | `list[str]` | `None`                      | Serialize all fields except these.                                                                |
 | `read_only`     | `bool`      | `False`                     | Generate `GET` routes only.                                                                       |
+| `lookup_fields` | `list[str]` | `None`                      | Unique fields to add a detail route for, at `by_<field>/<value>`. See [Lookup routes](#lookup-routes). |
 
 ## Field control
 
@@ -80,6 +81,51 @@ class Category(models.Model):
 ```
 
 A read-only model gets the list and detail routes only. `POST`, `PUT`, `PATCH` and `DELETE` answer `405 Method Not Allowed`.
+
+## Lookup routes
+
+A frontend often knows an object by a readable key, such as the slug in a page URL, rather than by its primary key. Use `lookup_fields` to add a detail route for each listed unique field:
+
+```python
+# blog/models.py
+from django.db import models
+from headless import expose
+
+
+@expose(lookup_fields=["slug"])
+class Article(models.Model):
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(unique=True)
+    body = models.TextField()
+```
+
+The article is then available by its slug as well as by its primary key:
+
+```http
+GET /api/blog.article/by_slug/getting-started-with-django
+```
+
+```json
+{
+    "id": 1,
+    "title": "Getting started with Django",
+    "slug": "getting-started-with-django",
+    "body": "..."
+}
+```
+
+A lookup route answers like the detail route:
+
+- An unknown value, or a value that does not fit the field's type (such as a malformed UUID), answers `404 Not Found`.
+- Values may contain dots, as in `by_slug/report.pdf`. URL-encode a value that contains a `/`.
+- The `expand` and `fields` query parameters work as on the detail route; see [Serializers](./serializers.md).
+- Only `GET` is allowed. Create, update and delete through the detail route by primary key.
+
+Lookup routes are opt-in, so a unique field such as an email address is never exposed as a lookup by accident. A field qualifies when it has `unique=True` or a single-field `UniqueConstraint` without a `condition`. The primary key already has the detail route, and singletons cannot have lookup routes.
+
+:::note Permissions treat lookups as retrieves
+On a lookup route, DRF's `view.action` is `"retrieve"`, so permission classes that check the action apply as they do on the detail route. `view.lookup_by` holds the field of the lookup, such as `"slug"`, and is `None` on other routes.
+:::
 
 ## Search fields
 
@@ -119,7 +165,8 @@ GET /api/blog.article?search=django
 
 - it decorates something that is not a Django model;
 - `search_fields`, `fields` or `exclude` name a field the model does not have;
-- `fields` and `exclude` are combined.
+- `fields` and `exclude` are combined;
+- `lookup_fields` is not a list of unique fields of the model, names the primary key or is set on a singleton.
 
 ## Related pages
 
