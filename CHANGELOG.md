@@ -2,6 +2,7 @@
 
 ## Unreleased (v1.0.0)
 
+- 🛡️ The system checks `headless.W006` and `headless.W007` warn when an exposed model serializes a field that looks like a credential (such as `password_hash` or `api_token`) without naming it in `fields`, and when a user model is exposed without a `fields` list
 - 🎁 The system check `headless.W005` reports keys in `HEADLESS` that are not settings, such as a typo like `PAGESIZE`, with the closest setting name as a hint. A `HEADLESS` setting that is not a dictionary raises `ImproperlyConfigured` with a clear message
 - 🎁 System checks for risky or broken settings: `headless.E001` (`SecretKeyAuthentication` without a key) and `headless.E002` (identical full access and read-only keys) stop `runserver`; `headless.W002` warns when anyone can change the content of exposed models; with `check --deploy`, `headless.W001` (weak secret key), `headless.W003` (no authentication classes configured) and `headless.W004` (unpaginated list routes) warn as well
 - ⚠️ Requires Django 5.2 or later and Django REST Framework 3.18 or later. Django 5.0 and 5.1 no longer receive security updates; the supported versions are Django 5.2 LTS, 6.0 and 6.1. Django 6.1 needs Django REST Framework 3.18, the first release that supports it

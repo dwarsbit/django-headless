@@ -21,6 +21,8 @@ An error stops `runserver` and other management commands until you fix it. A war
 | `headless.W003` | Warning | With `--deploy`          | No authentication classes are configured.               |
 | `headless.W004` | Warning | With `--deploy`          | List routes are not paginated.                          |
 | `headless.W005` | Warning | Always                   | `HEADLESS` has a key that is not a setting.             |
+| `headless.W006` | Warning | Always                   | A field that looks like a credential is serialized.     |
+| `headless.W007` | Warning | Always                   | A user model is exposed without a `fields` list.        |
 
 ## `headless.E001`
 
@@ -65,6 +67,38 @@ HEADLESS = {
 `HEADLESS` has a key that is not a Django Headless setting, usually a typo such as `PAGESIZE` for `PAGE_SIZE`. The key has no effect, so the default applies instead, which matters most for settings such as `DEFAULT_PERMISSION_CLASSES`. The hint suggests the closest setting name; see the [settings reference](./settings.md) for all names.
 
 `HEADLESS` itself must be a dictionary. Any other value raises `ImproperlyConfigured` when the project starts.
+
+## `headless.W006`
+
+An exposed model serializes a field whose name looks like a credential, and the field is not named in its `fields` option. A name counts when one of its parts (split on `_`) is `password`, `passwd`, `pwd`, `secret`, `token`, `otp`, `salt` or `apikey`, or when it contains `api_key`, `private_key` or `access_key`. For example, `password_hash`, `access_token` and `stripe_api_key` count, and `sort_key` and `tokenizer` do not. The warning names the model and the field.
+
+Leave the field out with `exclude`. A field that is left out can still be a [lookup field](./models.md#lookup-routes), for example a share token that fetches an object without appearing in the response:
+
+```python
+# blog/models.py
+from django.db import models
+from headless import expose
+
+
+@expose(exclude=["share_token"], lookup_fields=["share_token"])
+class Article(models.Model):
+    title = models.CharField(max_length=200)
+    share_token = models.CharField(max_length=64, unique=True)
+```
+
+If the API should serialize the field, name it in `fields`: a field listed there is a deliberate choice and does not trigger the warning.
+
+## `headless.W007`
+
+A user model, a subclass of Django's `AbstractBaseUser` such as `django.contrib.auth.models.User`, is exposed without a `fields` option. Such a model holds the password hash, the email address, permissions and login data, and `exclude` easily misses one. List the fields the API may serialize:
+
+```python
+# blog/models.py
+from django.contrib.auth.models import User
+from headless import expose_model
+
+expose_model(User, fields=["username", "first_name", "last_name"])
+```
 
 ## Silencing a check
 

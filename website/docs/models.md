@@ -65,6 +65,8 @@ class Article(models.Model):
 
 Excluded fields are never serialized and are ignored on create and update. They cannot be filtered, searched or expanded either.
 
+A [system check](./checks.md#headlessw006) warns when a field that looks like a credential, such as `password_hash` or `api_token`, is serialized without being named in `fields`. Exposing a user model requires a `fields` list to pass the checks ([`headless.W007`](./checks.md#headlessw007)).
+
 `fields` can also name model properties, which are serialized as read-only fields.
 
 ## Read-only models
