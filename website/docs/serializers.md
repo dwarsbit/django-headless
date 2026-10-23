@@ -68,7 +68,7 @@ GET /api/blog.category/1?expand=articles
 }
 ```
 
-Forward relations are expanded by field name (`category`), reverse relations by their `related_name` (`articles`). Only relations to exposed models can be expanded; other relations stay primary keys.
+Forward relations are expanded by field name (`category`). Reverse relations are expanded by the name they have on an object: their `related_name` (`articles`), or `<model>_set` without one, such as `review_set` for the reviews of an article. Only relations to exposed models can be expanded; other relations stay primary keys.
 
 Expanded relations of a list are loaded with one query per relation, not one per item.
 

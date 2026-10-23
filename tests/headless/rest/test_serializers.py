@@ -510,3 +510,55 @@ class TestExpansionDepth:
 
         with override_settings(HEADLESS={"MAX_EXPANSION_DEPTH": None}):
             self.serialize(serializer_class, "parent.parent.parent")
+
+
+class ReversePost(models.Model):
+    title = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "test_reverse"
+
+
+class ReverseComment(models.Model):
+    post = models.ForeignKey(ReversePost, on_delete=models.CASCADE)
+
+    class Meta:
+        app_label = "test_reverse"
+
+
+class ReverseCover(models.Model):
+    post = models.OneToOneField(
+        ReversePost, on_delete=models.CASCADE, related_name="cover", related_query_name="covers"
+    )
+
+    class Meta:
+        app_label = "test_reverse"
+
+
+class TestReverseRelationNames:
+    """Reverse relations are expanded by the attribute name on the instance"""
+
+    def test_reverse_relations_use_accessor_names(self, monkeypatch):
+        headless_registry.register(ReverseComment)
+        headless_registry.register(ReverseCover)
+
+        # The test app is not installed, so Django does not collect the
+        # reverse relations itself: provide them explicitly.
+        reverse_relations = (
+            ReverseComment._meta.get_field("post").remote_field,
+            ReverseCover._meta.get_field("post").remote_field,
+        )
+        fields = (*ReversePost._meta.get_fields(), *reverse_relations)
+        monkeypatch.setattr(ReversePost._meta, "get_fields", lambda: fields)
+
+        class PostSerializer(FlexibleSerializer):
+            class Meta:
+                model = ReversePost
+                fields = "__all__"
+
+        expandable_fields = PostSerializer()._expandable_fields
+        # Without related_name, a reverse foreign key is <model>_set
+        assert expandable_fields["reversecomment_set"][1] == {"many": True}
+        # A reverse one-to-one is named by related_name, not related_query_name
+        assert expandable_fields["cover"][1] == {"many": False}
+        assert set(expandable_fields) == {"reversecomment_set", "cover"}

@@ -35,6 +35,7 @@
 - 🐛 The PyPI version check in the boot log never stops the project from starting: timeouts, HTTP and connection errors and cache backend errors are caught
 - 🐛 The boot log only reports a new version when PyPI's version is newer than the installed one, including pre-releases, instead of whenever they differ
 - ⚙️ New `HEADLESS["VERSION_CHECK"]` (default `True`): set it to `False` to never contact PyPI from the boot log
+- 🐛 Reverse relations are expanded by the name they have on an object: on Django 5.0, a reverse foreign key without `related_name` (such as `review_set`) could not be expanded, and a reverse one-to-one with a `related_query_name` was expanded under that query name
 
 ## v1.0.0-rc.9
 
