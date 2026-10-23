@@ -10,7 +10,7 @@ The primary use case is running Django as the backend of a JAMstack setup: Djang
 
 ## Tech stack
 
-- Python >= 3.12, Django >= 5.0 (< 7.0), DRF >= 3.16 (< 4.0); CI tests Python 3.12/3.13 against Django 5.1, 5.2 and 6.0
+- Python >= 3.12, Django >= 5.2 (< 7.0), DRF >= 3.18 (< 4.0); CI tests Python 3.12/3.13 against Django 5.2, 6.0 and 6.1. The minimum Django version is the oldest one that still receives security updates; DRF 3.18 is the first release supporting Django 6.1
 - `drf-flex-fields` (expandable/sparse fields), `rich` (boot-time console output)
 - Packaging: Poetry (`poetry-core` build backend)
 - Formatting: black, line length 120, target py312

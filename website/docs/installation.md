@@ -9,8 +9,8 @@ This page sets up Django Headless in an existing Django project and exposes a fi
 ## Requirements
 
 - Python 3.12 or later
-- Django 5.0 or later, including 6.x
-- Django REST Framework 3.16 or later
+- Django 5.2 or later, including 6.x
+- Django REST Framework 3.18 or later
 
 ## Set up the project
 

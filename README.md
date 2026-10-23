@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/django-headless.svg)](https://badge.fury.io/py/django-headless)
 [![Python versions](https://img.shields.io/pypi/pyversions/django-headless.svg)](https://pypi.org/project/django-headless/)
-[![Django versions](https://img.shields.io/badge/django-5.0%2B-blue.svg)](https://www.djangoproject.com/)
+[![Django versions](https://img.shields.io/badge/django-5.2%2B-blue.svg)](https://www.djangoproject.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Django Headless generates a REST API for your Django models, so Django can serve as the backend of a headless CMS. Decorate a model with `@expose()` and it gets list, detail, create, update and delete routes, with no serializers, viewsets or URL patterns to write.
