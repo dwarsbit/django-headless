@@ -4,10 +4,13 @@ from django.db import models
 from django.test import TestCase, override_settings
 from rest_framework import serializers
 from rest_framework.exceptions import ParseError
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.generics import GenericAPIView
+from rest_framework.pagination import CursorPagination, LimitOffsetPagination
 from rest_framework.request import QueryDict
 
 from headless.registry import headless_registry
+from headless.rest.builder.viewset import get_view_set
 from headless.rest.filters import LookupFilter
 
 
@@ -545,3 +548,57 @@ class LookupFilterErrorTests(TestCase):
         with self.assertRaises(ParseError) as cm:
             self.filter_backend.filter_queryset(request, queryset, view)
         self.assertEqual(str(cm.exception.detail), "Invalid filter parameters.")
+
+
+class LookupFilterNonFilterFieldsTests(TestCase):
+    """Query parameters of other filter backends, pagination and DRF are never read as filters"""
+
+    def setUp(self):
+        self.filter_backend = LookupFilter()
+
+    def get_filter_kwargs(self, query, view):
+        filter_kwargs, _ = self.filter_backend.get_filter_kwargs(
+            model_class=FilterTestModel,
+            query_params=QueryDict(query),
+            non_filter_fields=self.filter_backend.get_non_filter_fields(view),
+        )
+        return filter_kwargs
+
+    def test_custom_search_and_ordering_params(self):
+        class QSearchFilter(SearchFilter):
+            search_param = "q"
+
+        class SortOrderingFilter(OrderingFilter):
+            ordering_param = "sort"
+
+        view = Mock(filter_backends=[LookupFilter, QSearchFilter, SortOrderingFilter], pagination_class=None)
+        self.assertEqual(self.get_filter_kwargs("q=django&sort=-age&name=a", view), {"name": "a"})
+
+    def test_pagination_params(self):
+        view = Mock(filter_backends=[LookupFilter], pagination_class=LimitOffsetPagination)
+        self.assertEqual(self.get_filter_kwargs("limit=10&offset=20&name=a", view), {"name": "a"})
+
+        view = Mock(filter_backends=[LookupFilter], pagination_class=CursorPagination)
+        self.assertEqual(self.get_filter_kwargs("cursor=abc&name=a", view), {"name": "a"})
+
+    def test_format_and_flex_fields_params(self):
+        view = Mock(filter_backends=[LookupFilter], pagination_class=None)
+        self.assertEqual(self.get_filter_kwargs("format=json&expand[]=a&omit=b&name=a", view), {"name": "a"})
+
+    def test_non_filter_fields_setting_still_applies(self):
+        self.assertEqual(self.get_filter_kwargs("search=django&page=2&name=a", None), {"name": "a"})
+
+    def test_generated_route_with_search_param(self):
+        with override_settings(
+            HEADLESS={
+                "DEFAULT_FILTER_BACKENDS": [
+                    "headless.rest.filters.LookupFilter",
+                    "rest_framework.filters.SearchFilter",
+                ],
+                "SEARCH_PARAM": "q",
+                "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+            }
+        ):
+            viewset = get_view_set({"model": FilterTestModel, "singleton": False, "search_fields": ["name"]}, {}, {})
+
+        self.assertTrue({"q", "limit", "offset"} <= self.filter_backend.get_non_filter_fields(viewset))

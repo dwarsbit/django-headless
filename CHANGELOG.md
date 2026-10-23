@@ -24,6 +24,7 @@
 - 🐛 `LookupFilter` only applies `DISTINCT` when a filter crosses a to-many relation, instead of on every filtered list
 - 🛡️ Filter errors no longer include Django's internal error messages: each filter is validated on its own and answers with a message about the query parameter, such as `Unsupported lookup in 'title__startwith'.`
 - 🐛 A `range` lookup with other than two values answers `400` instead of `500`
+- 🐛 `LookupFilter` skips the query parameters of the route's other filter backends and pagination class, DRF's `format` and drf-flex-fields' parameters. With `SEARCH_PARAM` or `ORDERING_PARAM` set, or `LimitOffsetPagination`, those parameters answered `400 Field does not exist`
 
 ## v1.0.0-rc.9
 
