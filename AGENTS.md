@@ -84,6 +84,7 @@ Run tests before considering any change done. New behavior needs tests in `tests
 
 - Format with black (line length 120). Do not reformat unrelated code.
 - Commit messages follow conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `test:`, etc. (see `git log`).
+- Pull request titles and descriptions are always written in English, regardless of the language used in the conversation.
 - Public API is what `headless/__init__.py` and `headless/rest/filters/__init__.py` export, plus the DRF integration points (`LookupFilter`, `SecretKeyAuthentication`, pagination class, `FlexibleSerializer`, `HEADLESS` settings, the `@expose()` options). Keep these stable; treat them as the package's backward-compatibility surface.
 - Prefer secure, opt-in defaults: nothing should become public or exposed (routes, fields, lookups) without the user asking for it.
 - User-facing changes update the docs in `website/docs/`, the README feature list where relevant, and `CHANGELOG.md`.
