@@ -442,10 +442,26 @@ class BootLogAuthTests(SimpleTestCase):
         self.assertNotIn("Using secret key authentication", output)
         self.assertIn("rest_framework.authentication.TokenAuthentication", output)
 
-    def test_no_auth_configured(self, _):
+    def test_drf_default_auth_reported(self, _):
+        # Without explicit configuration DRF's own defaults apply
         with override_settings(HEADLESS={"BOOT_LOG": True}, REST_FRAMEWORK={}):
             output = self.boot()
-        self.assertIn("No authentication class configured", output)
+        self.assertIn("rest_framework.authentication.SessionAuthentication", output)
+        self.assertIn("rest_framework.authentication.BasicAuthentication", output)
+
+    def test_no_auth_classes(self, _):
+        with override_settings(HEADLESS={"BOOT_LOG": True, "DEFAULT_AUTHENTICATION_CLASSES": []}):
+            output = self.boot()
+        self.assertIn("No authentication classes", output)
+
+    def test_permissions_reported(self, _):
+        with override_settings(HEADLESS={"BOOT_LOG": True}):
+            output = self.boot()
+        self.assertIn("Permissions:[/green] rest_framework.permissions.IsAdminUser", output)
+
+        with override_settings(HEADLESS={"BOOT_LOG": True, "DEFAULT_PERMISSION_CLASSES": []}):
+            output = self.boot()
+        self.assertIn("none (public)", output)
 
 
 class AuthUtilsTests(SimpleTestCase):
@@ -461,3 +477,33 @@ class AuthUtilsTests(SimpleTestCase):
 
         with override_settings(REST_FRAMEWORK={}):
             self.assertFalse(is_secret_key_auth_used())
+
+    def test_is_secret_key_auth_used_with_headless_auth(self):
+        from headless.utils import is_secret_key_auth_used
+
+        with override_settings(
+            HEADLESS={"DEFAULT_AUTHENTICATION_CLASSES": ["headless.rest.authentication.SecretKeyAuthentication"]}
+        ):
+            self.assertTrue(is_secret_key_auth_used())
+
+    def test_effective_classes_prefer_headless(self):
+        from rest_framework.authentication import BasicAuthentication, TokenAuthentication
+        from rest_framework.permissions import AllowAny, IsAdminUser
+        from headless.utils import get_authentication_classes, get_permission_classes
+
+        with override_settings(
+            HEADLESS={"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.TokenAuthentication"]},
+            REST_FRAMEWORK={"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.BasicAuthentication"]},
+        ):
+            self.assertEqual(get_authentication_classes(), [TokenAuthentication])
+            self.assertEqual(get_permission_classes(), [IsAdminUser])
+
+        with override_settings(
+            HEADLESS={"DEFAULT_PERMISSION_CLASSES": None},
+            REST_FRAMEWORK={
+                "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.BasicAuthentication"],
+                "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+            },
+        ):
+            self.assertEqual(get_authentication_classes(), [BasicAuthentication])
+            self.assertEqual(get_permission_classes(), [AllowAny])

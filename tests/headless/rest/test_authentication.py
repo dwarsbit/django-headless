@@ -2,10 +2,13 @@
 Tests for SecretKeyAuthentication
 """
 
+from unittest.mock import Mock
+
 import pytest
 from django.contrib.auth.models import User
 from django.test import RequestFactory
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.permissions import IsAdminUser
 
 from headless.rest.authentication import SecretKeyAuthentication
 from headless.settings import headless_settings
@@ -60,10 +63,13 @@ class TestSecretKeyAuthentication:
         factory = RequestFactory()
         request = factory.get("/test/", HTTP_X_API_KEY=secret_key)
 
-        # Should return (User(), None)
+        # Should return (User(is_staff=True), None)
         user, auth_token = auth.authenticate(request)
         assert isinstance(user, User)
         assert auth_token is None
+        # The key passes the default IsAdminUser permission of generated routes
+        assert user.is_staff
+        assert IsAdminUser().has_permission(Mock(user=user), None)
 
     def test_authenticate_with_incorrect_key(self, monkeypatch):
         """Test authentication with incorrect secret key"""

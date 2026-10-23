@@ -3,9 +3,12 @@ from django.apps import AppConfig
 from . import VERSION
 from .utils import (
     log,
+    class_path,
     is_secret_key_auth_configured,
+    is_secret_key_auth_used,
     is_boot_log_enabled,
-    configured_auth_classes,
+    get_authentication_classes,
+    get_permission_classes,
     get_latest_version,
     normalize_version,
 )
@@ -16,7 +19,7 @@ class DjangoHeadlessConfig(AppConfig):
     label = "headless"
 
     def ready(self):
-        from headless.settings import headless_settings, perform_import
+        from headless.settings import headless_settings
         from .registry import headless_registry
 
         if not is_boot_log_enabled():
@@ -48,41 +51,27 @@ class DjangoHeadlessConfig(AppConfig):
         # Authentication status logging
         log("")
 
-        # HEADLESS overrides REST_FRAMEWORK for the generated routes. Both are
-        # resolved to classes, since either may hold dotted import paths.
-        auth_classes = list(
-            headless_settings.DEFAULT_AUTHENTICATION_CLASSES
-            or perform_import(configured_auth_classes(), "DEFAULT_AUTHENTICATION_CLASSES")
-            or []
-        )
+        # The classes the generated routes actually use: HEADLESS first,
+        # then REST_FRAMEWORK, including DRF's own defaults.
+        auth_classes = get_authentication_classes()
 
         if auth_classes:
-            log(":lock:  [green]An authentication class is configured.[/green]")
+            log(":lock:  [green]Authentication:[/green] " + ", ".join(class_path(cls) for cls in auth_classes))
 
-            from headless.rest.authentication import SecretKeyAuthentication
-
-            uses_secret_key_auth = any(
-                isinstance(auth_class, type) and issubclass(auth_class, SecretKeyAuthentication)
-                for auth_class in auth_classes
-            )
-
-            if uses_secret_key_auth:
+            if is_secret_key_auth_used():
                 log(
                     f"  [cyan]•[/cyan] Using secret key authentication. ([dim]Header: {headless_settings.AUTH_SECRET_KEY_HEADER}[/dim])"
                 )
 
                 if not is_secret_key_auth_configured():
                     log("  [yellow]• HEADLESS.AUTH_SECRET_KEY is not configured![/yellow]")
-            else:
-                log(
-                    "  [cyan]•[/cyan] Using "
-                    + ", ".join(
-                        auth_class if isinstance(auth_class, str) else f"{auth_class.__module__}.{auth_class.__name__}"
-                        for auth_class in auth_classes
-                    )
-                )
-
         else:
             log(
-                ":lock:  [yellow]No authentication class configured. Generated routes require authenticated requests by default; configure one via REST_FRAMEWORK or HEADLESS.DEFAULT_AUTHENTICATION_CLASSES to grant access.[/yellow]"
+                ":lock:  [yellow]No authentication classes: every request to the generated routes is anonymous.[/yellow]"
             )
+
+        permission_classes = get_permission_classes()
+        log(
+            ":shield:  [green]Permissions:[/green] "
+            + (", ".join(class_path(cls) for cls in permission_classes) or "[yellow]none (public)[/yellow]")
+        )

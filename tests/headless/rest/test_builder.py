@@ -10,7 +10,7 @@ from django.test import SimpleTestCase, override_settings
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.filters import SearchFilter
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.test import APIRequestFactory, force_authenticate
 from rest_framework.renderers import JSONRenderer
 from rest_framework.settings import api_settings
@@ -376,8 +376,8 @@ class RestBuilderOptionsTests(SimpleTestCase):
             viewset = RestBuilder().get_view_set(config)
             self.assertEqual(viewset.permission_classes, [IsAuthenticated])
 
-    def test_viewset_permissions_default_to_is_authenticated(self):
-        """Test that generated routes require authentication by default"""
+    def test_viewset_permissions_default_to_is_admin_user(self):
+        """Test that generated routes require a staff user by default"""
         config = {
             "model": BuilderOptionsModel,
             "singleton": False,
@@ -386,7 +386,7 @@ class RestBuilderOptionsTests(SimpleTestCase):
 
         viewset = RestBuilder().get_view_set(config)
 
-        self.assertEqual(viewset.permission_classes, [IsAuthenticated])
+        self.assertEqual(viewset.permission_classes, [IsAdminUser])
 
     def test_viewset_filter_backends_default_to_lookup_filter(self):
         """Test that generated routes use the LookupFilter by default"""
@@ -442,13 +442,19 @@ class RestBuilderOptionsTests(SimpleTestCase):
         self.assertEqual(len(singleton_urls), 1)
 
         # The view rejects write methods without touching the database.
-        # The request must be authenticated, since generated routes are
-        # protected by default.
+        # The request must come from a staff user, since generated routes
+        # are protected by default.
         view = singleton_urls[0].callback
+        request = APIRequestFactory().put("/singleton/")
+        force_authenticate(request, user=User(is_staff=True))
+        response = view(request)
+        self.assertEqual(response.status_code, 405)
+
+        # Authenticated users without staff status are denied by default
         request = APIRequestFactory().put("/singleton/")
         force_authenticate(request, user=User())
         response = view(request)
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 403)
 
 
 class CustomSearchFilter(SearchFilter):
@@ -562,7 +568,7 @@ class BuilderDrfOverrideTests(SimpleTestCase):
         self.assertEqual(viewset.authentication_classes, api_settings.DEFAULT_AUTHENTICATION_CLASSES)
         self.assertIsNone(viewset.pagination_class)
         # The permission and filter backends have safe defaults
-        self.assertEqual(viewset.permission_classes, [IsAuthenticated])
+        self.assertEqual(viewset.permission_classes, [IsAdminUser])
         self.assertEqual(viewset.filter_backends, [LookupFilter])
 
     def test_generated_routes_are_protected_by_default(self):

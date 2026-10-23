@@ -8,6 +8,7 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from ..viewsets import LookupFieldsMixin, SingletonViewSet
 from ...registry import ModelConfig
 from ...settings import headless_settings
+from ...utils import get_authentication_classes, get_permission_classes
 from .serializer import get_serializer
 
 
@@ -118,11 +119,10 @@ def apply_drf_overrides(viewset: Type[Any]) -> None:
     if headless_settings.DEFAULT_PARSER_CLASSES is not None:
         viewset.parser_classes = list(headless_settings.DEFAULT_PARSER_CLASSES)
 
-    if headless_settings.DEFAULT_AUTHENTICATION_CLASSES is not None:
-        viewset.authentication_classes = list(headless_settings.DEFAULT_AUTHENTICATION_CLASSES)
-
-    if headless_settings.DEFAULT_PERMISSION_CLASSES is not None:
-        viewset.permission_classes = list(headless_settings.DEFAULT_PERMISSION_CLASSES)
+    # Resolved by the same helpers the boot log uses, so it reports the
+    # classes the generated routes actually use.
+    viewset.authentication_classes = get_authentication_classes()
+    viewset.permission_classes = get_permission_classes()
 
     pagination_class = headless_settings.DEFAULT_PAGINATION_CLASS
     page_size = headless_settings.PAGE_SIZE

@@ -11,6 +11,9 @@ class SecretKeyAuthentication(BaseAuthentication):
     """
     An authentication class that uses a secret key for authentication.
     Uses constant-time comparison to prevent timing attacks.
+
+    Requests with a valid key authenticate as an (unsaved) staff user, so
+    they pass the default IsAdminUser permission of the generated routes.
     """
 
     def __init__(self):
@@ -27,7 +30,7 @@ class SecretKeyAuthentication(BaseAuthentication):
         if not hmac.compare_digest(secret_key_header, headless_settings.AUTH_SECRET_KEY):
             raise AuthenticationFailed("Authentication failed")
 
-        return User(), None
+        return User(is_staff=True), None
 
     def authenticate_header(self, request):
         return f'{headless_settings.AUTH_SECRET_KEY_HEADER} realm="API"'

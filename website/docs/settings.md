@@ -15,7 +15,7 @@ HEADLESS = {
     "DEFAULT_RENDERER_CLASSES": None,
     "DEFAULT_PARSER_CLASSES": None,
     "DEFAULT_AUTHENTICATION_CLASSES": None,
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAdminUser"],
     "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
     "DEFAULT_PAGINATION_CLASS": None,
     "PAGE_SIZE": None,
@@ -40,7 +40,7 @@ HEADLESS = {
 
 ## `BOOT_LOG`
 
-Whether the boot log is shown when the project starts. The boot log lists the exposed models, the number of generated routes and the authentication in use.
+Whether the boot log is shown when the project starts. The boot log lists the exposed models, the number of generated routes, and the authentication and permission classes in use.
 
 - `None` (default): shown under `runserver` and WSGI or ASGI servers, not for other management commands.
 - `True`: always shown.
@@ -55,14 +55,14 @@ These settings take the same values as their Django REST Framework [counterparts
 | `DEFAULT_RENDERER_CLASSES`       | `None`: use `REST_FRAMEWORK`                     |
 | `DEFAULT_PARSER_CLASSES`         | `None`: use `REST_FRAMEWORK`                     |
 | `DEFAULT_AUTHENTICATION_CLASSES` | `None`: use `REST_FRAMEWORK`                     |
-| `DEFAULT_PERMISSION_CLASSES`     | `["rest_framework.permissions.IsAuthenticated"]` |
+| `DEFAULT_PERMISSION_CLASSES`     | `["rest_framework.permissions.IsAdminUser"]`     |
 | `DEFAULT_FILTER_BACKENDS`        | `["headless.rest.filters.LookupFilter"]`         |
 | `DEFAULT_PAGINATION_CLASS`       | `None`: use `REST_FRAMEWORK`                     |
 | `PAGE_SIZE`                      | `None`: use `REST_FRAMEWORK`                     |
 | `SEARCH_PARAM`                   | `None`: use DRF's default, `search`              |
 | `ORDERING_PARAM`                 | `None`: use DRF's default, `ordering`            |
 
-A setting set to `None` falls back to `REST_FRAMEWORK`. `DEFAULT_PERMISSION_CLASSES` and `DEFAULT_FILTER_BACKENDS` have their own defaults and never fall back: the generated routes require authentication and support [filtering](./filtering.md) whatever `REST_FRAMEWORK` says. Set them under `HEADLESS` to change them.
+A setting set to `None` falls back to `REST_FRAMEWORK`. `DEFAULT_PERMISSION_CLASSES` and `DEFAULT_FILTER_BACKENDS` have their own defaults and never fall back: the generated routes require a staff user and support [filtering](./filtering.md) whatever `REST_FRAMEWORK` says. Set them under `HEADLESS` to change them.
 
 ```python
 # mysite/settings.py
