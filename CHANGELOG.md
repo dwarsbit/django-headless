@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (v1.1.0)
+
+- 🎁 New `@expose(lookup_fields=[...])` option: retrieve an object by a unique field at `GET /<app_label>.<model>/by_<field>/<value>` (e.g. `/blog.post/by_slug/hello-world`), next to the existing detail route by ID
+- 🔑 Lookup routes are opt-in and GET-only; `@expose()` fails fast when a lookup field is unknown, not unique, the primary key, or set on a singleton
+
 ## v1.0.0-rc.9
 
 - 🐛 Fixes `runserver` crashing at boot when authentication classes are configured: as import paths in `REST_FRAMEWORK`, or only in `HEADLESS.DEFAULT_AUTHENTICATION_CLASSES`

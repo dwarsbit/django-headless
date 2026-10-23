@@ -13,7 +13,7 @@ from .registry import headless_registry
 VERSION = __version__
 
 
-def expose(singleton=False, search_fields=None, fields=None, exclude=None, read_only=False):
+def expose(singleton=False, search_fields=None, fields=None, exclude=None, read_only=False, lookup_fields=None):
     """
     Decorator to register a Django model to the headless registry.
 
@@ -23,6 +23,7 @@ def expose(singleton=False, search_fields=None, fields=None, exclude=None, read_
         fields: Restrict the exposed serializer to these field names.
         exclude: Exclude these field names from the exposed serializer.
         read_only: If True, the model is exposed read-only (no create, update or delete).
+        lookup_fields: Names of unique fields to expose a retrieve route for, at by_<field>/<value>.
 
     Usage:
         @expose()
@@ -38,6 +39,7 @@ def expose(singleton=False, search_fields=None, fields=None, exclude=None, read_
             fields=fields,
             exclude=exclude,
             read_only=read_only,
+            lookup_fields=lookup_fields,
         )
 
         return model_class
@@ -52,6 +54,7 @@ def expose_model(
     fields=None,
     exclude=None,
     read_only=False,
+    lookup_fields=None,
 ):
     """
     Register a Django model to the headless registry.
@@ -63,6 +66,7 @@ def expose_model(
         fields: Restrict the exposed serializer to these field names.
         exclude: Exclude these field names from the exposed serializer.
         read_only: If True, the model is exposed read-only (no create, update or delete).
+        lookup_fields: Names of unique fields to expose a retrieve route for, at by_<field>/<value>.
 
     Usage:
         expose_model(MyModel, singleton=False, search_fields=['name', 'description'])
@@ -75,4 +79,5 @@ def expose_model(
         fields=fields,
         exclude=exclude,
         read_only=read_only,
+        lookup_fields=lookup_fields,
     )

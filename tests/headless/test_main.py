@@ -200,6 +200,24 @@ class RegistryTestModel(models.Model):
         app_label = "registry_tests"
 
 
+class RegistryLookupModel(models.Model):
+    slug = models.SlugField(unique=True)
+    code = models.CharField(max_length=20)
+    sku = models.CharField(max_length=20)
+    partner = models.CharField(max_length=20)
+    title = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "registry_tests"
+        constraints = [
+            models.UniqueConstraint(fields=["code"], name="registry_lookup_unique_code"),
+            models.UniqueConstraint(fields=["sku", "partner"], name="registry_lookup_unique_sku_partner"),
+            models.UniqueConstraint(
+                fields=["partner"], condition=models.Q(title="x"), name="registry_lookup_unique_partner_if"
+            ),
+        ]
+
+
 class RegistryTests(SimpleTestCase):
     def setUp(self):
         self.registry = HeadlessRegistry()
@@ -222,6 +240,8 @@ class RegistryTests(SimpleTestCase):
         self.assertEqual(cfg["search_fields"], ["title", "author"])
         self.assertIsNone(cfg["fields"])
         self.assertIsNone(cfg["exclude"])
+        # Lookup routes are opt-in
+        self.assertEqual(cfg["lookup_fields"], [])
 
     def test_singleton_has_no_search_fields(self):
         self.registry.register(RegistryTestModel, singleton=True)
@@ -288,6 +308,30 @@ class RegistryTests(SimpleTestCase):
         self.registry.register(RegistryTestModel, fields=["title", "tags"])
         cfg = self.registry.get_model("registry_tests.registrytestmodel")
         self.assertEqual(cfg["fields"], ["title", "tags"])
+
+    def test_lookup_fields_config(self):
+        # unique=True and single-field unconditional unique constraints are valid
+        self.registry.register(RegistryLookupModel, lookup_fields=["slug", "code"])
+        cfg = self.registry.get_model("registry_tests.registrylookupmodel")
+        self.assertEqual(cfg["lookup_fields"], ["slug", "code"])
+
+    def test_invalid_lookup_fields_rejected(self):
+        invalid = [
+            ["bogus"],  # Unknown field
+            ["title"],  # Not unique
+            ["sku"],  # Only unique together with another field
+            ["partner"],  # Only unique under a condition
+            ["id"],  # Primary key already has the detail route
+            "slug",  # Not a list
+        ]
+        for lookup_fields in invalid:
+            with self.subTest(lookup_fields=lookup_fields):
+                with self.assertRaises(ImproperlyConfigured):
+                    self.registry.register(RegistryLookupModel, lookup_fields=lookup_fields)
+
+    def test_lookup_fields_rejected_on_singletons(self):
+        with self.assertRaises(ImproperlyConfigured):
+            self.registry.register(RegistryLookupModel, singleton=True, lookup_fields=["slug"])
 
 
 @patch("headless.apps.get_latest_version", return_value=None)
