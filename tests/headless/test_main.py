@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from unittest.mock import patch, mock_open
 from urllib.error import URLError
@@ -33,37 +34,76 @@ class UtilsTests(SimpleTestCase):
     def test_flatten(self):
         self.assertEqual(flatten([[1, 2], [3], [], [4, 5]]), [1, 2, 3, 4, 5])
 
+    def assertServer(self, argv, expected, environ=None):
+        # patch.dict restores os.environ afterwards
+        with patch.object(sys, "argv", argv), patch.dict(os.environ):
+            os.environ.pop("RUN_MAIN", None)
+            os.environ.pop("WERKZEUG_RUN_MAIN", None)
+            os.environ.update(environ or {})
+            self.assertIs(is_runserver(), expected, argv)
+
     def test_is_runserver_with_runserver(self):
-        with patch.object(sys, "argv", ["/path/manage.py", "runserver"]):
-            self.assertTrue(is_runserver())
+        # The autoreloader runs the server in a child process with RUN_MAIN set
+        self.assertServer(["/path/manage.py", "runserver"], True, {"RUN_MAIN": "true"})
+        self.assertServer(["/path/manage.py", "runserver", "--noreload"], True)
+
+    def test_is_runserver_with_runserver_reloader_parent(self):
+        # The parent process of the autoreloader only watches files
+        self.assertServer(["/path/manage.py", "runserver"], False)
 
     def test_is_runserver_with_runserver_plus(self):
-        with patch.object(sys, "argv", ["/path/manage.py", "runserver_plus"]):
-            self.assertTrue(is_runserver())
+        self.assertServer(["/path/manage.py", "runserver_plus"], True, {"WERKZEUG_RUN_MAIN": "true"})
 
-    def test_is_runserver_with_migrate(self):
-        with patch.object(sys, "argv", ["/path/manage.py", "migrate"]):
-            self.assertFalse(is_runserver())
+    def test_is_runserver_with_django_admin_and_python_m_django(self):
+        self.assertServer(["/venv/bin/django-admin", "runserver", "--noreload"], True)
+        self.assertServer(
+            ["/venv/lib/python3.12/site-packages/django/__main__.py", "runserver"], True, {"RUN_MAIN": "true"}
+        )
+        self.assertServer(["/venv/bin/django-admin", "migrate"], False)
 
-    def test_is_runserver_with_wsgi(self):
-        with patch.object(sys, "argv", ["/path/wsgi.py"]):
-            self.assertTrue(is_runserver())
+    def test_is_runserver_with_management_commands(self):
+        self.assertServer(["/path/manage.py", "migrate"], False)
+        self.assertServer(["/path/manage.py", "shell"], False)
+        self.assertServer(["/path/manage.py"], False)
+
+    def test_is_runserver_with_servers(self):
+        for argv in (
+            ["/venv/bin/gunicorn", "mysite.wsgi"],
+            ["/venv/bin/uvicorn", "mysite.asgi:application"],
+            ["/venv/bin/daphne", "mysite.asgi:application"],
+            ["/venv/bin/hypercorn", "mysite.asgi:application"],
+            ["uwsgi"],
+            ["mod_wsgi"],
+            ["/venv/bin/waitress-serve", "mysite.wsgi:application"],
+            ["/venv/bin/granian", "mysite.wsgi:application"],
+            ["/venv/lib/python3.12/site-packages/gunicorn/__main__.py", "mysite.wsgi"],
+            ["C:\\venv\\Scripts\\gunicorn.exe", "mysite.wsgi"],
+        ):
+            with self.subTest(argv=argv):
+                self.assertServer(argv, True)
+
+    def test_is_runserver_with_other_programs(self):
+        for argv in (
+            ["/venv/bin/pytest"],
+            ["/venv/lib/python3.12/site-packages/pytest/__main__.py"],
+            ["/venv/bin/celery", "-A", "mysite", "worker"],
+            ["/path/wsgi.py"],
+            ["/path/import_articles.py"],
+            ["-c"],
+            [""],
+        ):
+            with self.subTest(argv=argv):
+                self.assertServer(argv, False)
 
     def test_is_runserver_with_empty_args(self):
-        with patch.object(sys, "argv", []):
-            self.assertFalse(is_runserver())
-
-    def test_is_runserver_with_insufficient_args(self):
-        with patch.object(sys, "argv", ["/path/manage.py"]):
-            self.assertFalse(is_runserver())
+        self.assertServer([], False)
 
     def test_is_runserver_with_relative_manage_py(self):
-        with patch.object(sys, "argv", ["manage.py", "runserver"]):
-            self.assertTrue(is_runserver())
+        self.assertServer(["manage.py", "runserver"], True, {"RUN_MAIN": "true"})
 
     def test_is_runserver_with_windows_path(self):
-        with patch.object(sys, "argv", ["C:\\path\\manage.py", "runserver"]):
-            self.assertTrue(is_runserver())
+        self.assertServer(["C:\\path\\manage.py", "runserver"], True, {"RUN_MAIN": "true"})
+        self.assertServer(["C:\\path\\manage.py", "migrate"], False)
 
     def test_boot_log_setting_true(self):
         with override_settings(HEADLESS={"BOOT_LOG": True}):
@@ -75,7 +115,7 @@ class UtilsTests(SimpleTestCase):
 
     def test_boot_log_defaults_to_server_detection(self):
         with override_settings(HEADLESS={}):
-            with patch.object(sys, "argv", ["/path/manage.py", "runserver"]):
+            with patch.object(sys, "argv", ["/path/manage.py", "runserver", "--noreload"]):
                 self.assertTrue(is_boot_log_enabled())
             with patch.object(sys, "argv", ["/path/manage.py", "migrate"]):
                 self.assertFalse(is_boot_log_enabled())

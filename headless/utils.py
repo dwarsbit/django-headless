@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sys
 from typing import List, Optional
 from urllib.error import URLError
@@ -26,35 +27,68 @@ def is_jsonable(x):
         return False
 
 
-def is_runserver():
+# Programs that serve a Django project, by the name they are started with.
+SERVER_PROGRAMS = {
+    "gunicorn",
+    "uvicorn",
+    "daphne",
+    "hypercorn",
+    "uwsgi",
+    "waitress-serve",
+    "granian",
+    "mod_wsgi",
+}
+
+# Programs that run Django management commands: manage.py, django-admin
+# and python -m django.
+MANAGEMENT_PROGRAMS = {"manage", "django-admin", "django"}
+
+# Management commands that run a development server.
+SERVER_COMMANDS = {"runserver", "runserver_plus", "runsslserver"}
+
+
+def get_program_name(argv0: str) -> str:
+    """
+    Return the name of the program from sys.argv[0]: the file name without
+    its .py or .exe extension, or the package name for python -m <package>.
+    Handles both POSIX and Windows paths.
+    """
+    parts = re.split(r"[\\/]", argv0)
+    name = parts[-1]
+    if name == "__main__.py" and len(parts) > 1:
+        name = parts[-2]
+    return re.sub(r"\.(py|exe)$", "", name)
+
+
+def is_runserver() -> bool:
     """
     Checks if the Django application is running as a server.
 
-    Returns True if:
-    - Django is started via WSGI/ASGI (not using manage.py)
-    - Using manage.py with server commands like runserver, runserver_plus, etc.
-    - Running in a context that suggests server mode (e.g., DJANGO_RUNSERVER env var)
+    Returns True for:
+    - the development server (runserver, runserver_plus, runsslserver), in
+      the process that serves requests: with autoreload, the parent process
+      only watches files and runs the server in a child process;
+    - known WSGI and ASGI servers, such as Gunicorn and Uvicorn.
 
-    Returns False for management commands like migrate, makemigrations, etc.
+    Returns False for everything else: other management commands, tests,
+    task workers such as Celery, scripts and shells.
     """
-    try:
-        # Check if we're using manage.py
-        if os.path.basename(sys.argv[0]) == "manage.py":
-            # If using manage.py, we need at least 2 arguments to have a command
-            if len(sys.argv) > 1:
-                # Common server commands
-                server_commands = {"runserver", "runserver_plus", "runsslserver"}
-                return sys.argv[1] in server_commands
-            else:
-                # manage.py without a command - not a server
-                return False
-        else:
-            # If not using manage.py, assume it's a server (WSGI/ASGI)
-            return True
-
-    except IndexError:
-        # If sys.argv is malformed, default to False to be safe
+    argv = getattr(sys, "argv", None) or []
+    if not argv:
         return False
+
+    program = get_program_name(argv[0])
+
+    if program in MANAGEMENT_PROGRAMS:
+        if len(argv) < 2 or argv[1] not in SERVER_COMMANDS:
+            return False
+        return (
+            "--noreload" in argv
+            or os.environ.get("RUN_MAIN") == "true"
+            or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+        )
+
+    return program in SERVER_PROGRAMS
 
 
 def is_boot_log_enabled() -> bool:

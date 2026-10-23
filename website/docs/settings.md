@@ -46,8 +46,8 @@ HEADLESS = {
 
 Whether the boot log is shown when the project starts. The boot log lists the exposed models, the number of generated routes, and the authentication and permission classes in use.
 
-- `None` (default): shown under `runserver` and WSGI or ASGI servers, not for other management commands.
-- `True`: always shown.
+- `None` (default): shown under `runserver` and the WSGI and ASGI servers Gunicorn, Uvicorn, Daphne, Hypercorn, uWSGI, Waitress, Granian and mod_wsgi. Not shown for other management commands, tests, task workers such as Celery, or scripts. With autoreload, `runserver` shows it once, in the process that serves requests.
+- `True`: always shown. Use it for a server that is not in the list above.
 - `False`: never shown.
 
 ## DRF overrides
