@@ -437,6 +437,20 @@ class LookupFilterExposureTests(TestCase):
         self.assertEqual(filter_kwargs, {"owner__name__icontains": "leon"})
         self.assertEqual(exclude_kwargs, {"owner__id": 2})
 
+    def test_pk_alias(self):
+        filter_kwargs, exclude_kwargs = self.get_filter_kwargs(ExposureOwner, "pk__in=1,2&~pk=3")
+        self.assertEqual(filter_kwargs, {"pk__in": [1, 2]})
+        self.assertEqual(exclude_kwargs, {"pk": 3})
+
+    def test_pk_alias_across_relations(self):
+        # The primary key of a model that is not exposed is filterable, like the relation itself
+        filter_kwargs, _ = self.get_filter_kwargs(ExposurePost, "owner__pk=1&hidden__pk__in=1,2")
+        self.assertEqual(filter_kwargs, {"owner__pk": 1, "hidden__pk__in": [1, 2]})
+
+    def test_pk_alias_casts_and_validates(self):
+        with self.assertRaises(ParseError):
+            self.get_filter_kwargs(ExposureOwner, "pk=abc")
+
     def test_traversal_casts_with_target_field(self):
         filter_kwargs, _ = self.get_filter_kwargs(ExposurePost, "owner__is_active=true")
         self.assertEqual(filter_kwargs, {"owner__is_active": True})
