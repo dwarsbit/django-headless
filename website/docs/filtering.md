@@ -62,6 +62,8 @@ GET /api/blog.article?created_at__range=2026-01-01,2026-06-30
 
 Repeating the parameter works as well: `?id__in=1&id__in=2`.
 
+Only `in` and `range` split on commas. Other lookups take the value as sent, so `?title=Hello, world` matches the title `Hello, world`. Values of `in` and `range` cannot contain a comma; filter such values with a single-value lookup such as `exact`.
+
 ## Type casting
 
 `LookupFilter` casts each value to the type of its field:
