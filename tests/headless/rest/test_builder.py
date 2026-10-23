@@ -66,19 +66,30 @@ class IsolatedBuildMixin:
 
 
 class AppReadyBuildTests(IsolatedBuildMixin, SimpleTestCase):
-    """The routes are built when the headless app is ready, the only app the installation requires"""
+    """The headless.rest app builds the REST routes; the headless app only manages the registry"""
 
-    def test_headless_app_builds_the_routes(self):
-        from django.apps import apps
-
+    def setUp(self):
+        super().setUp()
         headless_registry.register(BuilderTestModel)
         headless_registry.register(BuilderSingletonModel, singleton=True)
+
+    def test_headless_rest_app_builds_the_routes(self):
+        from django.apps import apps
+
+        with override_settings(HEADLESS={"BOOT_LOG": False}):
+            apps.get_app_config("headless_rest").ready()
+
+        self.assertEqual([prefix for prefix, _, _ in rest_router.registry], ["test.buildertestmodel"])
+        self.assertEqual([str(url.pattern) for url in singleton_urls], ["test.buildersingletonmodel"])
+
+    def test_headless_app_does_not_build_routes(self):
+        from django.apps import apps
 
         with override_settings(HEADLESS={"BOOT_LOG": False}):
             apps.get_app_config("headless").ready()
 
-        self.assertEqual([prefix for prefix, _, _ in rest_router.registry], ["test.buildertestmodel"])
-        self.assertEqual([str(url.pattern) for url in singleton_urls], ["test.buildersingletonmodel"])
+        self.assertEqual(rest_router.registry, [])
+        self.assertEqual(singleton_urls, [])
 
 
 class RestBuilderTests(IsolatedBuildMixin, SimpleTestCase):

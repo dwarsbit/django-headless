@@ -36,7 +36,7 @@ from headless import expose_model
 expose_model(FlatPage, read_only=True)
 ```
 
-Django Headless builds the routes when the `headless` app is ready, after every app's models module is imported. Call `expose_model()` in a models module, as above, or in the `ready()` method of an app listed before `headless` in `INSTALLED_APPS`. A model exposed later has no routes; the [system check](./checks.md#headlessw009) `headless.W009` reports it. Expose each model once: a second registration with other options replaces the first, and `headless.W008` warns about it.
+Django Headless builds the routes when the `headless.rest` app is ready, after every app's models module is imported. Call `expose_model()` in a models module, as above, or in the `ready()` method of an app listed before `headless.rest` in `INSTALLED_APPS`. A model exposed later has no routes; the [system check](./checks.md#headlessw009) `headless.W009` reports it. Expose each model once: a second registration with other options replaces the first, and `headless.W008` warns about it.
 
 ## Options
 

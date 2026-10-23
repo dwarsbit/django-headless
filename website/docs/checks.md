@@ -25,6 +25,7 @@ An error stops `runserver` and other management commands until you fix it. A war
 | `headless.W007` | Warning | Always                   | A user model is exposed without a `fields` list.        |
 | `headless.W008` | Warning | Always                   | A model is exposed more than once with other options.   |
 | `headless.W009` | Warning | Always                   | An exposed model has no routes.                         |
+| `headless.W010` | Warning | Always                   | Models are exposed, but `headless.rest` is not installed. |
 
 ## `headless.E001`
 
@@ -108,7 +109,21 @@ A model is exposed more than once with different options, for example with `@exp
 
 ## `headless.W009`
 
-A model is exposed but has no routes. Django Headless builds the routes when the `headless` app is ready, so a model exposed after that, for example with `expose_model()` in the `ready()` method of an app listed after `headless` in `INSTALLED_APPS`, is never added. Call `expose_model()` in a models module, or in the `ready()` method of an app listed before `headless`; see [Exposing models](./models.md).
+A model is exposed but has no routes. Django Headless builds the routes when the `headless.rest` app is ready, so a model exposed after that, for example with `expose_model()` in the `ready()` method of an app listed after `headless.rest` in `INSTALLED_APPS`, is never added. Call `expose_model()` in a models module, or in the `ready()` method of an app listed before `headless.rest`; see [Exposing models](./models.md).
+
+## `headless.W010`
+
+Models are exposed, but `headless.rest`, the app that serves them, is not in `INSTALLED_APPS`, so the API has no routes. `headless` only keeps track of the exposed models. Add `headless.rest` after `headless`; see [Installation](./installation.md):
+
+```python
+# mysite/settings.py
+INSTALLED_APPS = [
+    # ...
+    "rest_framework",
+    "headless",
+    "headless.rest",
+]
+```
 
 ## Silencing a check
 
