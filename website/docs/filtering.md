@@ -41,6 +41,8 @@ GET /api/blog.article?category__name__icontains=tutorials
 GET /api/blog.article?category__in=2,3
 ```
 
+`pk` stands for the primary key, as in Django: `?pk__in=1,2,3` on a list route, or `?category__pk=2` across a relation.
+
 ## Exclusions
 
 Start a parameter with `~` to exclude the matches instead:

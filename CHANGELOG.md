@@ -27,6 +27,7 @@
 - 🐛 `LookupFilter` skips the query parameters of the route's other filter backends and pagination class, DRF's `format` and drf-flex-fields' parameters. With `SEARCH_PARAM` or `ORDERING_PARAM` set, or `LimitOffsetPagination`, those parameters answered `400 Field does not exist`
 - 🐛 `LookupFilter` reads the `FILTER_*` and `NON_FILTER_FIELDS` settings on every request instead of once at import, so changes to `HEADLESS` (such as `override_settings` in tests) apply. Subclasses can still override `TRUE_VALUES`, `EXCLUDE_SYMBOL` and the other class attributes
 - 🐛 `LookupFilter` only splits values on commas for the `in` and `range` lookups. Other lookups take the value as sent, so `?title=Hello, world` matches `Hello, world` instead of `Hello`
+- 🐛 `LookupFilter` accepts `pk` for the primary key, also across relations (`?pk__in=1,2`, `?category__pk=2`), instead of answering `400 Field 'pk' does not exist`
 
 ## v1.0.0-rc.9
 

@@ -163,7 +163,8 @@ class LookupFilter(BaseFilterBackend):
         """
         Resolve a filter path (e.g. "author__name__icontains") to the model
         field it targets and its lookup. Relations are only traversed into
-        exposed models, on their exposed fields.
+        exposed models, on their exposed fields; the primary key of a related
+        model is always allowed. "pk" is accepted as the primary key name.
 
         Returns:
             A (field, lookup) tuple, where lookup is None if the path has none.
@@ -172,26 +173,30 @@ class LookupFilter(BaseFilterBackend):
             ParseError: If a field does not exist or may not be filtered on.
         """
         parts = path.split("__")
+        # "pk" is an alias for the primary key, as in Django's own lookups
+        name = model_class._meta.pk.name if parts[0] == "pk" else parts[0]
 
-        if parts[0] not in filterable_fields:
+        if name not in filterable_fields:
             raise ParseError(detail=f"Field '{parts[0]}' does not exist")
 
         try:
-            field = model_class._meta.get_field(parts[0])
+            field = model_class._meta.get_field(name)
         except FieldDoesNotExist:
             raise ParseError(detail=f"Field '{parts[0]}' does not exist")
 
         index = 1
         while index < len(parts) and field.is_relation and field.related_model is not None:
             related_model = field.related_model
+            name = related_model._meta.pk.name if parts[index] == "pk" else parts[index]
             try:
-                next_field = related_model._meta.get_field(parts[index])
+                next_field = related_model._meta.get_field(name)
             except FieldDoesNotExist:
                 # Not a field, so a lookup or transform on the relation (e.g. author__in)
                 break
 
-            exposed_fields = headless_registry.get_exposed_fields(related_model)
-            if exposed_fields is None or parts[index] not in exposed_fields:
+            # The primary key is always filterable: it is the value of the relation itself
+            exposed_fields = headless_registry.get_exposed_fields(related_model) or set()
+            if name != related_model._meta.pk.name and name not in exposed_fields:
                 raise ParseError(detail=f"Field '{'__'.join(parts[: index + 1])}' does not exist")
 
             field = next_field
