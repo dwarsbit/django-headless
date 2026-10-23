@@ -11,12 +11,13 @@ import uuid
 from django.db import connection, models
 from django.test import TransactionTestCase, override_settings
 from django.urls import clear_url_caches
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APIRequestFactory
 
 import headless.rest.urls as headless_urls
 from headless import expose
 from headless.registry import headless_registry
 from headless.rest.builder import RestBuilder
+from headless.rest.builder.viewset import get_view_set
 from headless.rest.routers import rest_router, singleton_urls
 
 
@@ -374,3 +375,28 @@ class EndToEndApiTests(TransactionTestCase):
 
         response = self.client.get("/e2e_blog.page/by_slug/about-us", {"published": "true"})
         self.assertEqual(response.status_code, 200)
+
+    def test_lookup_field_routes_support_flexible_serializer(self):
+        """Test that ?expand= and ?fields= work on lookup routes like on retrieve"""
+        category = Category.objects.create(name="News")
+        page = Page.objects.create(slug="about-us", title="About", category=category)
+
+        # Expansion is opt-in through the serializer class; build a fresh viewset with it
+        with override_settings(
+            HEADLESS={
+                "DEFAULT_SERIALIZER_CLASS": "headless.rest.serializers.FlexibleSerializer",
+                "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+            }
+        ):
+            view_set = get_view_set(headless_registry.get_model("e2e_blog.page"), {}, {})
+
+        factory = APIRequestFactory()
+        query = "?expand=category&fields=id,category"
+        expected = {"id": page.id, "category": {"id": category.id, "name": "News"}}
+
+        response = view_set.as_view({"get": "retrieve"})(factory.get(query), pk=page.id)
+        self.assertEqual(response.data, expected)
+
+        response = view_set.as_view({"get": "by_slug"})(factory.get(query), value="about-us")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, expected)
