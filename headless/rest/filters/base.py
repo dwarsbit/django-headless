@@ -1,4 +1,4 @@
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, FieldError, ValidationError
 from rest_framework.exceptions import ParseError
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
@@ -58,8 +58,10 @@ class LookupFilter(BaseFilterBackend):
         except ParseError:
             # ParseErrors already carry a descriptive detail; pass them through.
             raise
-        except Exception as e:
-            raise ParseError(detail=f"Invalid filter parameters: {e}")
+        except Exception:
+            # Each filter is validated on its own beforehand, so this is
+            # unexpected. Don't pass internal error messages to the client.
+            raise ParseError(detail="Invalid filter parameters.")
 
     def get_filterable_fields(self, model_class, view=None):
         """
@@ -172,6 +174,8 @@ class LookupFilter(BaseFilterBackend):
             # Some lookups allow multiple values, otherwise
             # the first value is used.
             is_multi = lookup in self.MULTI_VALUE_LOOKUPS
+            if lookup == "range" and len(value) != 2:
+                raise ParseError(detail=f"The range lookup in '{key}' takes two values.")
             # Depending on the field type we cast the value to
             # its correct type (i.e. number, boolean, etc.).
             if is_multi:
@@ -186,12 +190,33 @@ class LookupFilter(BaseFilterBackend):
             else:
                 casted_value = cast_field_value(value[0], field)
 
+            self.validate_filter(model_class, path, casted_value, key)
+
             if is_exclude:
                 exclude_kwargs[path] = casted_value
             else:
                 filter_kwargs[key] = casted_value
 
         return filter_kwargs, exclude_kwargs
+
+    def validate_filter(self, model_class, path, value, key):
+        """
+        Build (without running) a query for a single filter, so an invalid
+        filter answers with a message about that query parameter instead of
+        failing later, and Django's internal error messages stay internal.
+
+        Raises:
+            ParseError: If the filter is invalid.
+        """
+        try:
+            model_class._base_manager.filter(**{path: value})
+        except ValidationError as e:
+            # Validation messages are written for users (e.g. an invalid date format)
+            raise ParseError(detail=f"Invalid value for '{key}': {' '.join(e.messages)}")
+        except FieldError:
+            raise ParseError(detail=f"Unsupported lookup in '{key}'.")
+        except (ValueError, TypeError):
+            raise ParseError(detail=f"Invalid value for '{key}'.")
 
     def cast_field_value(self, value: str, field):
         """

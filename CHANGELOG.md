@@ -22,6 +22,8 @@
 - ⚙️ New `HEADLESS["MAX_EXPANSION_DEPTH"]` (default `2`): limits how deep `FlexibleSerializer` relations can be expanded
 - 🐛 Expanded relations are prefetched: one query per relation instead of one per item
 - 🐛 `LookupFilter` only applies `DISTINCT` when a filter crosses a to-many relation, instead of on every filtered list
+- 🛡️ Filter errors no longer include Django's internal error messages: each filter is validated on its own and answers with a message about the query parameter, such as `Unsupported lookup in 'title__startwith'.`
+- 🐛 A `range` lookup with other than two values answers `400` instead of `500`
 
 ## v1.0.0-rc.9
 

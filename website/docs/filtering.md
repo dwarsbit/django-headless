@@ -94,6 +94,8 @@ An unknown field, an unsupported lookup or a value that cannot be cast answers `
 }
 ```
 
+The reason names the query parameter that failed, such as `Unsupported lookup in 'title__startwith'.` or `Invalid value for 'created_at__gte'`, followed by the expected format when Django provides one. The `range` lookup takes exactly two values.
+
 ## Related pages
 
 - [Pagination](./pagination.md)
