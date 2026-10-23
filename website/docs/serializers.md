@@ -72,7 +72,7 @@ Forward relations are expanded by field name (`category`), reverse relations by 
 
 Expanded relations of a list are loaded with one query per relation, not one per item.
 
-An expanded object is serialized with `HEADLESS["DEFAULT_SERIALIZER_CLASS"]`, so it expands further only when that is `FlexibleSerializer`. Paths are limited to two relations, such as `?expand=category.articles`; change the limit with `HEADLESS["MAX_EXPANSION_DEPTH"]`.
+An expanded object is serialized with `HEADLESS["DEFAULT_SERIALIZER_CLASS"]`, so it expands further only when that is `FlexibleSerializer`. Paths are limited to two relations, such as `?expand=category.articles`, and a longer path answers `400 Bad Request`. Change the limit with [`HEADLESS["MAX_EXPANSION_DEPTH"]`](./settings.md#max_expansion_depth).
 
 An expanded object follows the `fields` and `exclude` options of its own model. Relations and properties left out with `fields` or `exclude` are not serialized and cannot be expanded.
 

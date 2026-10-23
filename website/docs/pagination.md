@@ -49,7 +49,7 @@ A list route answers with a `pagination` object and the items in `data`:
 }
 ```
 
-`count` is the number of items in the whole list, `pages` the number of pages, `current` the page number and `limit` the number of items per page, after the `limit` query parameter and `MAX_PAGE_SIZE` are applied.
+`count` is the number of items in the whole list, `pages` the number of pages, `current` the page number and `limit` the number of items per page, after the `limit` query parameter and the [maximum page size](#page-size) are applied.
 
 `links.next` and `links.previous` are complete URLs, so the frontend can page through a list without building URLs itself. On the first and last page, the missing link is `null`.
 

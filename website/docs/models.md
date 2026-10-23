@@ -41,8 +41,8 @@ expose_model(FlatPage, read_only=True)
 | Option          | Type        | Default                     | Description                                                                                       |
 | --------------- | ----------- | --------------------------- | ------------------------------------------------------------------------------------------------- |
 | `singleton`     | `bool`      | `False`                     | Expose the model as a single resource with `GET`, `PUT` and `PATCH`. See [Singletons](./singletons.md). |
-| `search_fields` | `list[str]` | All non-choice `CharField`s | Fields searched by DRF's `SearchFilter`.                                                          |
-| `fields`        | `list[str]` | All fields                  | Serialize only these fields.                                                                      |
+| `search_fields` | `list[str]` | All serialized non-choice `CharField`s | Fields searched by DRF's `SearchFilter`.                                               |
+| `fields`        | `list[str]` | All fields                  | Serialize only these fields and model properties.                                                 |
 | `exclude`       | `list[str]` | `None`                      | Serialize all fields except these.                                                                |
 | `read_only`     | `bool`      | `False`                     | Generate `GET` routes only.                                                                       |
 | `lookup_fields` | `list[str]` | `None`                      | Unique fields to add a detail route for, at `by_<field>/<value>`. See [Lookup routes](#lookup-routes). |

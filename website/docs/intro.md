@@ -31,7 +31,7 @@ This decorator generates these routes:
 | `DELETE` | `/api/blog.article/1`  | Delete         |
 
 :::note Protected by default
-Generated routes answer `403 Forbidden` to requests that are not authenticated, so an exposed model is never public by accident. To open the routes up, see [Permissions](./permissions.md).
+Generated routes answer `403 Forbidden` to everyone but staff users, so an exposed model is never public by accident. To open the routes up, see [Permissions](./permissions.md).
 :::
 
 ## When to use it
