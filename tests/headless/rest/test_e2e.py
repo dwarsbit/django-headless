@@ -45,15 +45,23 @@ class Article(models.Model):
 
     class Meta:
         app_label = "e2e_blog"
+        # Database constraints are not validated by DRF serializers
+        constraints = [models.CheckConstraint(condition=models.Q(views__gte=0), name="e2e_article_views_gte_0")]
 
 
 @expose(singleton=True)
 class SiteConfig(models.Model):
-    site_name = models.CharField(max_length=100, default="")
+    site_name = models.CharField(max_length=100, default="", blank=True)
     maintenance_mode = models.BooleanField(default=False)
 
     class Meta:
         app_label = "e2e_config"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(maintenance_mode=False) | ~models.Q(site_name=""),
+                name="e2e_siteconfig_maintenance_needs_name",
+            )
+        ]
 
 
 @expose(read_only=True)
@@ -295,6 +303,37 @@ class EndToEndApiTests(TransactionTestCase):
         response = self.client.put("/e2e_config.siteconfig", {"site_name": "New Site"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(SiteConfig.objects.count(), 1)
+
+    def assertConstraintError(self, response):
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data, {"non_field_errors": ["The data conflicts with a database constraint."]})
+
+    def test_constraint_violation_answers_400(self):
+        """Test that a violated database constraint answers 400 on create and update"""
+        response = self.client.post("/e2e_blog.article", {"title": "Hello", "views": -1}, format="json")
+        self.assertConstraintError(response)
+        self.assertFalse(Article.objects.exists())
+
+        article = Article.objects.create(title="Hello", views=3)
+        response = self.client.patch(f"/e2e_blog.article/{article.id}", {"views": -1}, format="json")
+        self.assertConstraintError(response)
+        article.refresh_from_db()
+        self.assertEqual(article.views, 3)
+
+    def test_singleton_constraint_violation_answers_400(self):
+        """Test that a violated database constraint answers 400 when creating or updating a singleton"""
+        data = {"site_name": "", "maintenance_mode": True}
+
+        # Creating the singleton
+        response = self.client.put("/e2e_config.siteconfig", data, format="json")
+        self.assertConstraintError(response)
+        self.assertFalse(SiteConfig.objects.exists())
+
+        # Updating the singleton
+        SiteConfig.objects.create(site_name="My Site")
+        response = self.client.patch("/e2e_config.siteconfig", data, format="json")
+        self.assertConstraintError(response)
+        self.assertFalse(SiteConfig.objects.get().maintenance_mode)
 
     def test_read_only_routes_reject_writes(self):
         """Test that read-only models only serve GET requests"""
