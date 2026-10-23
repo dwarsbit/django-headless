@@ -238,9 +238,6 @@ class LookupFilter(BaseFilterBackend):
         for key, value in query_params.lists():
             if key in non_filter_fields:
                 continue
-            # By default Django supports repeated multi-values (e.g. `a=1&a=2`)
-            # but we allow for comma-seperated multi-values as well (e.g. `a=1,2`).
-            value = flatten([param.split(",") for param in value])
             is_exclude = key.startswith(self.EXCLUDE_SYMBOL)
             # Strip the exclusion symbol for field lookup
             path = key[len(self.EXCLUDE_SYMBOL) :] if is_exclude else key
@@ -250,6 +247,11 @@ class LookupFilter(BaseFilterBackend):
             # Some lookups allow multiple values, otherwise
             # the first value is used.
             is_multi = lookup in self.MULTI_VALUE_LOOKUPS
+            if is_multi:
+                # Multi-value lookups take repeated parameters (e.g. `a=1&a=2`)
+                # as well as comma-separated values (e.g. `a=1,2`). Other
+                # lookups keep commas, so text like "Hello, world" matches.
+                value = flatten([param.split(",") for param in value])
             if lookup == "range" and len(value) != 2:
                 raise ParseError(detail=f"The range lookup in '{key}' takes two values.")
             # Depending on the field type we cast the value to

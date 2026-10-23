@@ -640,3 +640,24 @@ class LookupFilterSettingsTests(TestCase):
             self.assertEqual(CustomLookupFilter.EXCLUDE_SYMBOL, "not_")
             self.assertEqual(CustomLookupFilter.BOOLEANS, ["y", "false", "0", "off"])
             self.assertEqual(self.get_kwargs(CustomLookupFilter(), "not_age=1"), ({}, {"age": 1}))
+
+
+class LookupFilterCommaTests(TestCase):
+    """Only multi-value lookups split values on commas"""
+
+    def get_filter_kwargs(self, query):
+        filter_kwargs, _ = LookupFilter().get_filter_kwargs(model_class=FilterTestModel, query_params=QueryDict(query))
+        return filter_kwargs
+
+    def test_single_value_lookups_keep_commas(self):
+        self.assertEqual(self.get_filter_kwargs("name=Hello,%20world"), {"name": "Hello, world"})
+        self.assertEqual(self.get_filter_kwargs("name__icontains=a,b"), {"name__icontains": "a,b"})
+
+    def test_multi_value_lookups_split_commas(self):
+        self.assertEqual(self.get_filter_kwargs("age__in=1,2&age__in=3"), {"age__in": [1, 2, 3]})
+        self.assertEqual(self.get_filter_kwargs("age__range=1,2"), {"age__range": [1, 2]})
+        self.assertEqual(self.get_filter_kwargs("age__range=1&age__range=2"), {"age__range": [1, 2]})
+
+    def test_comma_in_number_is_invalid(self):
+        with self.assertRaises(ParseError):
+            self.get_filter_kwargs("age=1,2")
