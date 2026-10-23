@@ -30,6 +30,8 @@
 - 🐛 `LookupFilter` accepts `pk` for the primary key, also across relations (`?pk__in=1,2`, `?category__pk=2`), instead of answering `400 Field 'pk' does not exist`
 - 🐛 The dot in a route label only matches a dot: `/api/blogXarticle` no longer serves the `blog.article` routes
 - 🐛 The `limit` in the pagination envelope is the page size the request used (after `?limit=` and `MAX_PAGE_SIZE`), not the configured `PAGE_SIZE`
+- 🐛 The boot log, and its PyPI version check, only run under `runserver` and known WSGI and ASGI servers (Gunicorn, Uvicorn, Daphne, Hypercorn, uWSGI, Waitress, Granian, mod_wsgi). Tests, Celery workers, `django-admin` commands and scripts no longer show it; set `HEADLESS["BOOT_LOG"]` to `True` for other servers
+- 🐛 With autoreload, `runserver` shows the boot log once instead of twice
 
 ## v1.0.0-rc.9
 
