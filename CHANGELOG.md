@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (v1.1.0)
+## Unreleased (v1.0.0)
 
 - 🎁 New `lookup_fields` decorator option: fetch an object by a unique field at `GET /api/blog.article/by_slug/<value>`, next to the detail route by primary key
 - 🛡️ Lookup routes are opt-in and `GET`-only; `@expose()` raises `ImproperlyConfigured` when a lookup field is unknown, not unique, the primary key, or set on a singleton
