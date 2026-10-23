@@ -27,6 +27,38 @@ EXAMPLE_SECRET_KEYS = {"your-secret-key", "your-read-only-key"}
 
 SECRET_KEY_SETTINGS = ["AUTH_SECRET_KEY", "AUTH_READ_ONLY_SECRET_KEY"]
 
+# Parts of a field name (split on "_") that mark it as a credential
+SENSITIVE_NAME_PARTS = {"password", "passwd", "pwd", "secret", "token", "otp", "salt", "apikey"}
+
+# Consecutive parts of a field name that mark it as a credential
+SENSITIVE_NAME_PAIRS = {("api", "key"), ("private", "key"), ("access", "key")}
+
+
+def is_sensitive_field_name(name: str) -> bool:
+    """
+    Check whether a field name looks like a credential, such as password_hash,
+    access_token or api_key. Only whole parts of the name count, so names
+    like sort_key or tokenizer do not match.
+    """
+    parts = name.lower().split("_")
+    return any(part in SENSITIVE_NAME_PARTS for part in parts) or any(
+        pair in SENSITIVE_NAME_PAIRS for pair in zip(parts, parts[1:])
+    )
+
+
+def _implicitly_serialized_fields(config):
+    """
+    Return the names of the fields of an exposed model that are serialized
+    without being named in its fields option: all forward fields minus the
+    excluded ones. Fields named in a fields option are a deliberate choice.
+    """
+    if config["fields"] is not None:
+        return []
+
+    model = config["model"]
+    excluded = set(config["exclude"] or [])
+    return [field.name for field in (*model._meta.fields, *model._meta.many_to_many) if field.name not in excluded]
+
 
 def _uses_secret_key_authentication():
     """Check if the generated routes or the project's own views use SecretKeyAuthentication."""
@@ -144,6 +176,48 @@ def check_public_writes(app_configs=None, **kwargs):
             id="headless.W002",
         )
     ]
+
+
+@checks.register(checks.Tags.security)
+def check_sensitive_fields(app_configs=None, **kwargs):
+    """
+    W006: an exposed model serializes a field that looks like a credential.
+    W007: a user model is exposed without a fields allowlist.
+    """
+    try:
+        from django.contrib.auth.base_user import AbstractBaseUser
+    except ImportError:  # pragma: no cover
+        AbstractBaseUser = None
+
+    warnings = []
+
+    for config in headless_registry.get_models():
+        model = config["model"]
+
+        if AbstractBaseUser is not None and issubclass(model, AbstractBaseUser) and config["fields"] is None:
+            warnings.append(
+                checks.Warning(
+                    "This user model is exposed without a fields option, so the API serializes every field "
+                    "that is not excluded, which can include the password hash, email address and permissions.",
+                    hint='List the fields the API may serialize, e.g. @expose(fields=["username", "first_name"]).',
+                    obj=model,
+                    id="headless.W007",
+                )
+            )
+
+        for name in _implicitly_serialized_fields(config):
+            if is_sensitive_field_name(name):
+                warnings.append(
+                    checks.Warning(
+                        f"The API serializes the field {name}, which looks like a credential.",
+                        hint=f'Add "{name}" to the exclude option, or list it in the fields option '
+                        "if the API should serialize it.",
+                        obj=model,
+                        id="headless.W006",
+                    )
+                )
+
+    return warnings
 
 
 @checks.register(checks.Tags.security, deploy=True)

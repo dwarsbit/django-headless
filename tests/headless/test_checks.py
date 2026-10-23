@@ -2,6 +2,7 @@
 Tests for the Django Headless system checks
 """
 
+from django.contrib.auth.models import User
 from django.core import checks
 from django.db import models
 from django.test import SimpleTestCase, override_settings
@@ -12,7 +13,9 @@ from headless.checks import (
     check_public_writes,
     check_secret_key_strength,
     check_secret_keys,
+    check_sensitive_fields,
     check_settings,
+    is_sensitive_field_name,
 )
 from headless.registry import headless_registry
 
@@ -23,6 +26,15 @@ OTHER_STRONG_KEY = "Qw8eRt5yUi2oPa9sDf3gHj7kLz1xCv4b"
 
 class ChecksModelArticle(models.Model):
     title = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "checks_tests"
+
+
+class ChecksModelIntegration(models.Model):
+    name = models.CharField(max_length=100)
+    api_token = models.CharField(max_length=100)
+    client_secret = models.CharField(max_length=100)
 
     class Meta:
         app_label = "checks_tests"
@@ -72,6 +84,75 @@ class SettingsCheckTests(SimpleTestCase):
 
         with override_settings(HEADLESS={}):
             self.assertEqual(check_settings(), [])
+
+
+class SensitiveFieldsCheckTests(RegistryIsolationMixin, SimpleTestCase):
+    def test_sensitive_field_names(self):
+        sensitive = [
+            "password",
+            "password_hash",
+            "Passwd",
+            "pwd",
+            "client_secret",
+            "access_token",
+            "refresh_token",
+            "otp_code",
+            "salt",
+            "api_key",
+            "apikey",
+            "stripe_api_key",
+            "private_key",
+            "access_key_id",
+        ]
+        not_sensitive = ["title", "sort_key", "keywords", "tokenizer", "secretary", "passage", "key", "public_key"]
+        for name in sensitive:
+            with self.subTest(name=name):
+                self.assertTrue(is_sensitive_field_name(name))
+        for name in not_sensitive:
+            with self.subTest(name=name):
+                self.assertFalse(is_sensitive_field_name(name))
+
+    def test_implicitly_serialized_sensitive_fields(self):
+        headless_registry.register(ChecksModelIntegration)
+
+        messages = check_sensitive_fields()
+        self.assertEqual(ids(messages), ["headless.W006", "headless.W006"])
+        self.assertEqual(messages[0].msg, "The API serializes the field api_token, which looks like a credential.")
+        self.assertIs(messages[0].obj, ChecksModelIntegration)
+        self.assertIn("client_secret", messages[1].msg)
+
+    def test_excluded_sensitive_fields(self):
+        # A lookup route by an excluded token serves the object without serializing the token
+        headless_registry.register(ChecksModelIntegration, exclude=["client_secret"])
+        self.assertEqual(
+            [message.msg for message in check_sensitive_fields()],
+            ["The API serializes the field api_token, which looks like a credential."],
+        )
+
+        headless_registry.register(ChecksModelIntegration, exclude=["api_token", "client_secret"])
+        self.assertEqual(check_sensitive_fields(), [])
+
+    def test_sensitive_fields_named_in_fields_are_deliberate(self):
+        headless_registry.register(ChecksModelIntegration, fields=["name", "api_token"])
+        self.assertEqual(check_sensitive_fields(), [])
+
+    def test_user_model_without_fields(self):
+        for options in ({}, {"exclude": ["password"]}):
+            with self.subTest(options=options):
+                headless_registry._models = {}
+                headless_registry.register(User, **options)
+                messages = check_sensitive_fields()
+                self.assertEqual(ids(messages)[0], "headless.W007")
+                self.assertIs(messages[0].obj, User)
+
+        # The password hash is also reported when it is not excluded
+        headless_registry._models = {}
+        headless_registry.register(User)
+        self.assertEqual(ids(check_sensitive_fields()), ["headless.W007", "headless.W006"])
+
+    def test_user_model_with_fields(self):
+        headless_registry.register(User, fields=["username", "first_name"])
+        self.assertEqual(check_sensitive_fields(), [])
 
 
 class SecretKeyChecksTests(RegistryIsolationMixin, SimpleTestCase):
@@ -216,6 +297,7 @@ class CheckRegistrationTests(SimpleTestCase):
             check_secret_keys,
             check_secret_key_strength,
             check_public_writes,
+            check_sensitive_fields,
             check_implicit_authentication,
             check_pagination,
         ):
@@ -226,6 +308,7 @@ class CheckRegistrationTests(SimpleTestCase):
         self.assertIn(check_settings, registered)
         self.assertIn(check_secret_keys, registered)
         self.assertIn(check_public_writes, registered)
+        self.assertIn(check_sensitive_fields, registered)
         self.assertNotIn(check_secret_key_strength, registered)
         self.assertNotIn(check_implicit_authentication, registered)
         self.assertNotIn(check_pagination, registered)
