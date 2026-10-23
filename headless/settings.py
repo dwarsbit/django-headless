@@ -12,6 +12,7 @@ back to the defaults.
 """
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 from django.core.signals import setting_changed
 from django.utils.module_loading import import_string
@@ -137,7 +138,12 @@ class HeadlessSettings:
     @property
     def user_settings(self):
         if not hasattr(self, "_user_settings"):
-            self._user_settings = getattr(settings, SETTINGS_NAMESPACE, {})
+            user_settings = getattr(settings, SETTINGS_NAMESPACE, {})
+            if not isinstance(user_settings, dict):
+                raise ImproperlyConfigured(
+                    f"The {SETTINGS_NAMESPACE} setting must be a dictionary, not {type(user_settings).__name__}."
+                )
+            self._user_settings = user_settings
         return self._user_settings
 
     def __getattr__(self, attr):

@@ -20,6 +20,7 @@ An error stops `runserver` and other management commands until you fix it. A war
 | `headless.W002` | Warning | Always                   | Anyone can change the content of exposed models.        |
 | `headless.W003` | Warning | With `--deploy`          | No authentication classes are configured.               |
 | `headless.W004` | Warning | With `--deploy`          | List routes are not paginated.                          |
+| `headless.W005` | Warning | Always                   | `HEADLESS` has a key that is not a setting.             |
 
 ## `headless.E001`
 
@@ -58,6 +59,12 @@ HEADLESS = {
     "PAGE_SIZE": 25,
 }
 ```
+
+## `headless.W005`
+
+`HEADLESS` has a key that is not a Django Headless setting, usually a typo such as `PAGESIZE` for `PAGE_SIZE`. The key has no effect, so the default applies instead, which matters most for settings such as `DEFAULT_PERMISSION_CLASSES`. The hint suggests the closest setting name; see the [settings reference](./settings.md) for all names.
+
+`HEADLESS` itself must be a dictionary. Any other value raises `ImproperlyConfigured` when the project starts.
 
 ## Silencing a check
 

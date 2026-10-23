@@ -12,6 +12,7 @@ from headless.checks import (
     check_public_writes,
     check_secret_key_strength,
     check_secret_keys,
+    check_settings,
 )
 from headless.registry import headless_registry
 
@@ -49,6 +50,28 @@ class RegistryIsolationMixin:
     def tearDown(self):
         headless_registry._models = self._saved_models
         super().tearDown()
+
+
+class SettingsCheckTests(SimpleTestCase):
+    def test_unknown_setting_with_suggestion(self):
+        with override_settings(HEADLESS={"PAGESIZE": 25, "MAX_PAGE_SIZE": 50}):
+            messages = check_settings()
+        self.assertEqual(ids(messages), ["headless.W005"])
+        self.assertEqual(messages[0].msg, 'HEADLESS["PAGESIZE"] is not a Django Headless setting, so it has no effect.')
+        self.assertEqual(messages[0].hint, 'Did you mean "PAGE_SIZE"?')
+
+    def test_unknown_setting_without_suggestion(self):
+        with override_settings(HEADLESS={"THEME": "dark"}):
+            messages = check_settings()
+        self.assertEqual(ids(messages), ["headless.W005"])
+        self.assertEqual(messages[0].hint, "Remove it, or see the settings reference.")
+
+    def test_known_settings(self):
+        with override_settings(HEADLESS={"PAGE_SIZE": 25, "AUTH_SECRET_KEY": STRONG_KEY, "BOOT_LOG": False}):
+            self.assertEqual(check_settings(), [])
+
+        with override_settings(HEADLESS={}):
+            self.assertEqual(check_settings(), [])
 
 
 class SecretKeyChecksTests(RegistryIsolationMixin, SimpleTestCase):
@@ -189,6 +212,7 @@ class CheckRegistrationTests(SimpleTestCase):
     def test_checks_are_registered(self):
         registered = checks.registry.registry.get_checks(include_deployment_checks=True)
         for check in (
+            check_settings,
             check_secret_keys,
             check_secret_key_strength,
             check_public_writes,
@@ -199,6 +223,7 @@ class CheckRegistrationTests(SimpleTestCase):
 
     def test_deploy_only_checks(self):
         registered = checks.registry.registry.get_checks(include_deployment_checks=False)
+        self.assertIn(check_settings, registered)
         self.assertIn(check_secret_keys, registered)
         self.assertIn(check_public_writes, registered)
         self.assertNotIn(check_secret_key_strength, registered)

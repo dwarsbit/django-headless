@@ -4,7 +4,7 @@ sidebar_position: 10
 
 # ⚙️ Settings reference
 
-All Django Headless settings live in the `HEADLESS` dictionary in your Django settings. Every key is optional; this is the full dictionary with the defaults:
+All Django Headless settings live in the `HEADLESS` dictionary in your Django settings. Every key is optional, and a key that is not a setting is reported by the [system check](./checks.md#headlessw005) `headless.W005`. This is the full dictionary with the defaults:
 
 ```python
 # mysite/settings.py
