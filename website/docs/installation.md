@@ -20,7 +20,7 @@ This page sets up Django Headless in an existing Django project and exposes a fi
    pip install django-headless
    ```
 
-2. Add `rest_framework` and `headless` to `INSTALLED_APPS`:
+2. Add `rest_framework`, `headless` and `headless.rest` to `INSTALLED_APPS`:
 
    ```python
    # mysite/settings.py
@@ -29,8 +29,11 @@ This page sets up Django Headless in an existing Django project and exposes a fi
        "django.contrib.staticfiles",
        "rest_framework",
        "headless",
+       "headless.rest",
    ]
    ```
+
+   `headless` keeps track of the exposed models; `headless.rest` serves them as a REST API and builds its routes when the project starts. Without `headless.rest`, the API has no routes, and the [system check](./checks.md#headlessw010) `headless.W010` warns about it.
 
 3. Configure an authentication class, so requests can authenticate, and a pagination class if you want paginated lists. Add this to the same file:
 

@@ -26,6 +26,7 @@ if not settings.configured:
             "django.contrib.auth",
             "rest_framework",
             "headless",
+            "headless.rest",
         ],
         SECRET_KEY="test-secret-key-for-testing-only",
         USE_TZ=True,

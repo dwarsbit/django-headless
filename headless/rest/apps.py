@@ -1,14 +1,19 @@
 from django.apps import AppConfig
 
+from ..utils import is_boot_log_enabled
+
 
 class DjangoHeadlessRestConfig(AppConfig):
     name = "headless.rest"
     label = "headless_rest"
 
     def ready(self):
+        # Register the system checks of the REST routes
+        from . import checks  # noqa: F401
         from .builder import RestBuilder
 
-        # The headless app builds the routes. Projects that also install
-        # headless.rest build them here as well; building is idempotent,
-        # so this only adds routes for models exposed in between.
-        RestBuilder(silent=True).build()
+        # Build the REST routes. Every app's models have been imported by now,
+        # so every model exposed with @expose() is in the registry. Routes are
+        # built in every context (servers, management commands, tests); only
+        # the builder's log output is tied to the boot log.
+        RestBuilder(silent=not is_boot_log_enabled()).build()

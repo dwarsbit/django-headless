@@ -26,7 +26,7 @@ Read the documentation at [djangoheadless.org](https://djangoheadless.org).
    pip install django-headless
    ```
 
-2. Add `rest_framework` and `headless` to `INSTALLED_APPS`:
+2. Add `rest_framework`, `headless` and `headless.rest` to `INSTALLED_APPS`:
 
    ```python
    # mysite/settings.py
@@ -34,6 +34,7 @@ Read the documentation at [djangoheadless.org](https://djangoheadless.org).
        # ...
        "rest_framework",
        "headless",
+       "headless.rest",
    ]
    ```
 

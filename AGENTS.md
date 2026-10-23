@@ -24,11 +24,12 @@ headless/                    # The package itself
   __init__.py               # Public API: expose(), expose_model(), __version__
   registry.py               # HeadlessRegistry: model -> ModelConfig; validates all @expose() options
   settings.py               # HEADLESS-namespaced settings object (headless_settings), DRF-style
-  apps.py                   # AppConfig.ready(): registers the system checks, boot log (version check, exposed models, auth status), runs RestBuilder
-  checks.py                 # Django system checks (headless.E00x/W00x), documented in website/docs/checks.md
+  apps.py                   # AppConfig.ready(): registers the registry/settings checks, boot log (version check, exposed models, auth status)
+  checks.py                 # System checks of the registry and settings (W005-W008, W010), documented in website/docs/checks.md
   utils.py                  # log(), is_runserver(), is_boot_log_enabled(), auth-config helpers, version check
   rest/
-    apps.py                 # Optional app config; its ready() builds again (idempotent) for projects that also install headless.rest
+    apps.py                 # AppConfig.ready(): registers the REST checks and runs RestBuilder (always; only its log is tied to the boot log)
+    checks.py               # System checks of the REST routes (E001, E002, W001-W004, W009)
     builder/                # Dynamic API construction
       base.py               # RestBuilder: iterates registry, registers routes
       serializer.py         # get_serializer(): DEFAULT_SERIALIZER_CLASS subclass per model (fields/exclude)
@@ -57,7 +58,7 @@ scripts/
 
 1. `@expose()` (or `expose_model()`) registers a model in `headless_registry`, keyed by `model._meta.label_lower`. Options: `singleton`, `search_fields`, `fields`, `exclude`, `read_only`, `lookup_fields`. Without `search_fields`, all non-choice `CharField` fields become searchable.
 2. Registration validates every option and raises `ImproperlyConfigured` on invalid input. This runs at model import time, during `django.setup()`, so misconfiguration stops the project at boot. Validation must only use forward fields (`_meta.fields` / `_meta.many_to_many`), never `_meta.get_fields()`, which raises `AppRegistryNotReady` at that point.
-3. When the `headless` app is ready (the only app the installation requires), `RestBuilder` iterates the registry and dynamically builds a serializer class and a viewset class per model (both cached by `model._meta.label`). Routes are built in every context (runserver, management commands, tests, WSGI/ASGI).
+3. When the `headless.rest` app is ready, `RestBuilder` iterates the registry and dynamically builds a serializer class and a viewset class per model (both cached by `model._meta.label`). Routes are built in every context (runserver, management commands, tests, WSGI/ASGI).
 4. Regular models are registered on `rest_router` at `<label_lower>` (e.g. `blog.article`). `read_only` models get a `ReadOnlyModelViewSet`. Singletons get explicit paths in `singleton_urls` mapping GET (and PUT/PATCH unless read-only) to retrieve/update/partial_update.
 5. `lookup_fields` (opt-in, unique non-pk fields only) adds GET-only `by_<field>/<value>` actions through `LookupFieldsMixin`. On those routes `view.action` is `"retrieve"` (so action-based permissions apply) and `view.lookup_by` holds the field.
 6. The serializer base is `HEADLESS.DEFAULT_SERIALIZER_CLASS`, a plain `ModelSerializer` by default. Setting it to `FlexibleSerializer` enables `?expand=` / `?fields=` / `?omit=` and model properties as read-only fields; relations to other registered models become expandable.
@@ -87,6 +88,7 @@ Run tests before considering any change done. New behavior needs tests in `tests
 - Commit messages follow conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `test:`, etc. (see `git log`).
 - Pull request titles and descriptions are always written in English, regardless of the language used in the conversation.
 - Public API is what `headless/__init__.py` and `headless/rest/filters/__init__.py` export, plus the DRF integration points (`LookupFilter`, `SecretKeyAuthentication`, pagination class, `FlexibleSerializer`, `HEADLESS` settings, the `@expose()` options). Keep these stable; treat them as the package's backward-compatibility surface.
+- `headless` manages the registry, settings and exposure-independent checks; it does not build routes or depend on how models are served. Each exposure app builds its own routes and owns its checks: `headless.rest` today, possibly `headless.graphql` later (add it to `EXPOSURE_APPS` in `headless/checks.py`). Both `headless` and `headless.rest` belong in `INSTALLED_APPS`.
 - Prefer secure, opt-in defaults: nothing should become public or exposed (routes, fields, lookups) without the user asking for it.
 - User-facing changes update the docs in `website/docs/`, the README feature list where relevant, and `CHANGELOG.md`.
 - User-facing text (README, docs website, CHANGELOG, console output) follows `STYLE.md`: voice, terminology, emoji use and code example conventions. Keep code and commit messages plain.
