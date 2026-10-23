@@ -5,6 +5,11 @@
 - 🎁 New `lookup_fields` decorator option: fetch an object by a unique field at `GET /api/blog.article/by_slug/<value>`, next to the detail route by primary key
 - 🛡️ Lookup routes are opt-in and `GET`-only; `@expose()` raises `ImproperlyConfigured` when a lookup field is unknown, not unique, the primary key, or set on a singleton
 - 🛡️ Lookup routes report `view.action == "retrieve"`, so action-based permissions, serializers and throttles apply as on the detail route; `view.lookup_by` holds the field of the lookup
+- 🛡️ Filtering only targets exposed fields: the `LookupFilter` rejects fields hidden by `fields`/`exclude`, and only traverses relations into exposed models, on their exposed fields. Previously hidden values (e.g. `?author__password__startswith=`) could be probed through filters
+- 🛡️ Default `search_fields` no longer include fields hidden by `fields`/`exclude`
+- 🛡️ `FlexibleSerializer` honors `fields`/`exclude`: expanded relations use the related model's options instead of `__all__`, and hidden relations and properties are no longer expanded or added
+- ⚠️ `LookupFilter` on custom views of models that aren't exposed only filters on the fields of the view's serializer
+- ✨ `fields` in `@expose()` may list model properties
 
 ## v1.0.0-rc.9
 

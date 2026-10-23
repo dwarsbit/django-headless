@@ -29,6 +29,33 @@ def get_serializer(
     if model_name in serializer_cache:
         return serializer_cache[model_name]
 
+    Serializer = type(
+        "Serializer",
+        (headless_settings.DEFAULT_SERIALIZER_CLASS,),
+        {"Meta": type("Meta", (), get_meta_attrs(model_class, fields, exclude))},
+    )
+
+    serializer_cache[model_name] = Serializer
+
+    return Serializer
+
+
+def get_meta_attrs(
+    model_class: Type[Model],
+    fields: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    Get the serializer Meta attributes for the given model and field options.
+
+    Args:
+        model_class: The Django model class to serialize
+        fields: Restrict the serializer to these field names
+        exclude: Exclude these field names from the serializer
+
+    Returns:
+        A dictionary of Meta attributes
+    """
     meta_attrs = {"model": model_class}
     if fields:
         meta_attrs["fields"] = fields
@@ -38,12 +65,4 @@ def get_serializer(
     else:
         meta_attrs["fields"] = "__all__"
 
-    Serializer = type(
-        "Serializer",
-        (headless_settings.DEFAULT_SERIALIZER_CLASS,),
-        {"Meta": type("Meta", (), meta_attrs)},
-    )
-
-    serializer_cache[model_name] = Serializer
-
-    return Serializer
+    return meta_attrs

@@ -5,6 +5,7 @@ from django.db.models import Model
 from rest_flex_fields import FlexFieldsModelSerializer
 from rest_framework import serializers
 
+from .builder.serializer import get_meta_attrs
 from ..registry import headless_registry
 from ..settings import headless_settings
 from ..utils import log
@@ -14,6 +15,10 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
     """
     The flexible serializer is based on the flex fields model serializer
     and includes property fields as read-only fields.
+
+    The fields and exclude options of the serializer Meta are honored for
+    property fields and expandable fields alike, and expanded relations
+    honor the fields and exclude options of the related exposed model.
     """
 
     def __init__(self, *args, **kwargs):
@@ -30,9 +35,25 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
 
         for name in dir(self.Meta.model):
             attr = getattr(self.Meta.model, name)
-            if isinstance(attr, property) and name != "pk" and not name.startswith("_"):
+            if (
+                isinstance(attr, property)
+                and name != "pk"
+                and not name.startswith("_")
+                and self._is_field_allowed(name)
+            ):
                 fields[name] = serializers.ReadOnlyField()
         return fields
+
+    def _is_field_allowed(self, name: str) -> bool:
+        """
+        Check whether a field name is allowed by the fields and exclude
+        options of the serializer Meta.
+        """
+        meta_fields = getattr(self.Meta, "fields", None)
+        if isinstance(meta_fields, (list, tuple)) and name not in meta_fields:
+            return False
+
+        return name not in (getattr(self.Meta, "exclude", None) or ())
 
     @property
     def _expandable_fields(self) -> dict:
@@ -80,24 +101,9 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
                         continue
 
                     # Do not expand if model is not in registry
-                    # Use direct dictionary lookup instead of get_model method for better performance
-                    model_label = related_model._meta.label_lower
-                    if model_label not in headless_registry._models:
+                    related_config = headless_registry.get_model(related_model._meta.label_lower)
+                    if related_config is None:
                         continue
-
-                    # Create serializer class dynamically
-                    # Use type() instead of class definition for better performance
-                    Serializer = type(
-                        f"{related_model.__name__}Serializer",
-                        (headless_settings.DEFAULT_SERIALIZER_CLASS,),
-                        {
-                            "Meta": type(
-                                "Meta",
-                                (),
-                                {"model": related_model, "fields": "__all__"},
-                            )
-                        },
-                    )
 
                     is_many = field.many_to_many or field.one_to_many
                     name = field.name
@@ -108,6 +114,24 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
                         related_name = getattr(field, "related_name", None)
                         accessor_name = getattr(field, "accessor_name", None)
                         name = related_name or accessor_name or field.name
+
+                    # Do not expand relations hidden by the fields or exclude options
+                    if not self._is_field_allowed(name):
+                        continue
+
+                    # Create serializer class dynamically, honoring the fields
+                    # and exclude options of the related model
+                    Serializer = type(
+                        f"{related_model.__name__}Serializer",
+                        (headless_settings.DEFAULT_SERIALIZER_CLASS,),
+                        {
+                            "Meta": type(
+                                "Meta",
+                                (),
+                                get_meta_attrs(related_model, related_config["fields"], related_config["exclude"]),
+                            )
+                        },
+                    )
 
                     expandable_fields[name] = (
                         Serializer,

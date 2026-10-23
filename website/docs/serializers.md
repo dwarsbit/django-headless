@@ -70,6 +70,8 @@ GET /api/blog.category/1?expand=articles
 
 Forward relations are expanded by field name (`category`), reverse relations by their `related_name` (`articles`). Only relations to exposed models can be expanded; other relations stay primary keys.
 
+An expanded object follows the `fields` and `exclude` options of its own model. Relations and properties left out with `fields` or `exclude` are not serialized and cannot be expanded.
+
 ## Related pages
 
 - [Exposing models](./models.md)

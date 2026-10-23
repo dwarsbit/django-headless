@@ -333,6 +333,64 @@ class RegistryTests(SimpleTestCase):
         with self.assertRaises(ImproperlyConfigured):
             self.registry.register(RegistryLookupModel, singleton=True, lookup_fields=["slug"])
 
+    def test_property_names_allowed_in_fields(self):
+        class RegistryPropertyModel(models.Model):
+            title = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = "registry_tests"
+
+            @property
+            def slug(self):
+                return self.title.lower()
+
+        self.registry.register(RegistryPropertyModel, fields=["title", "slug"])
+        cfg = self.registry.get_model("registry_tests.registrypropertymodel")
+        self.assertEqual(cfg["fields"], ["title", "slug"])
+
+        # Properties cannot be excluded: DRF only accepts model fields there
+        with self.assertRaises(ImproperlyConfigured):
+            self.registry.register(RegistryPropertyModel, exclude=["slug"])
+
+    def test_default_search_fields_honor_fields_and_exclude(self):
+        self.registry.register(RegistryTestModel, exclude=["author"])
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["search_fields"], ["title"])
+
+        self.registry.register(RegistryTestModel, fields=["author", "views"])
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["search_fields"], ["author"])
+
+    def test_exposed_fields(self):
+        self.registry.register(RegistryTestModel, exclude=["author"])
+        self.assertEqual(
+            self.registry.get_exposed_fields(RegistryTestModel),
+            {"id", "title", "views", "category", "tags"},
+        )
+
+    def test_exposed_fields_with_fields_option_include_pk(self):
+        self.registry.register(RegistryTestModel, fields=["title"])
+        self.assertEqual(self.registry.get_exposed_fields(RegistryTestModel), {"id", "title"})
+
+    def test_exposed_fields_reverse_relations_require_registered_model(self):
+        # The test app is not installed, so Django does not collect the
+        # reverse relation itself: provide it explicitly.
+        reverse_relation = RegistryTestModel._meta.get_field("category").remote_field
+        fields = (*RegistryRelatedModel._meta.get_fields(), reverse_relation)
+
+        with patch.object(RegistryRelatedModel._meta, "get_fields", return_value=fields):
+            self.registry.register(RegistryRelatedModel)
+            self.assertEqual(self.registry.get_exposed_fields(RegistryRelatedModel), {"id", "name"})
+
+            self.registry.register(RegistryTestModel)
+            self.assertEqual(
+                self.registry.get_exposed_fields(RegistryRelatedModel),
+                {"id", "name", "registrytestmodel"},
+            )
+
+    def test_exposed_fields_of_unregistered_model(self):
+        self.assertIsNone(self.registry.get_exposed_fields(RegistryTestModel))
+
 
 @patch("headless.apps.get_latest_version", return_value=None)
 class BootLogAuthTests(SimpleTestCase):

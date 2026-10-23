@@ -1,11 +1,12 @@
 from django.core.exceptions import FieldDoesNotExist
 from rest_framework.exceptions import ParseError
 from rest_framework.filters import BaseFilterBackend
+from rest_framework.serializers import BaseSerializer
 
+from headless.registry import headless_registry
 from headless.settings import headless_settings
 from headless.utils import flatten
 from .casting import cast_field_value
-from .lookups import get_field_lookups
 
 
 class LookupFilter(BaseFilterBackend):
@@ -13,6 +14,10 @@ class LookupFilter(BaseFilterBackend):
     A permissive filter backend that basically allows every supported lookup
     for a given field. Automatically handles multi-value lookups and booleans.
     Also supports exclusion.
+
+    Only exposed fields can be filtered on: fields hidden by the fields or
+    exclude options of @expose() are rejected, and relations can only be
+    traversed into exposed models, on their exposed fields.
     """
 
     MULTI_VALUE_LOOKUPS = ["in", "range"]
@@ -38,9 +43,11 @@ class LookupFilter(BaseFilterBackend):
             return queryset
 
         try:
+            model_class = view.queryset.model
             filter_kwargs, exclude_kwargs = self.get_filter_kwargs(
-                model_class=view.queryset.model,
+                model_class=model_class,
                 query_params=request.query_params,
+                filterable_fields=self.get_filterable_fields(model_class, view),
             )
             return queryset.filter(**filter_kwargs).exclude(**exclude_kwargs).distinct()
         except ParseError:
@@ -49,11 +56,78 @@ class LookupFilter(BaseFilterBackend):
         except Exception as e:
             raise ParseError(detail=f"Invalid filter parameters: {e}")
 
-    def get_filter_kwargs(self, model_class, query_params):
+    def get_filterable_fields(self, model_class, view=None):
+        """
+        Return the names of the fields of the model that may be filtered on.
+
+        For exposed models these are the fields exposed through the API. For
+        other models (e.g. a custom view using this backend) these are the
+        model fields readable through the view's serializer, or all fields
+        of the model if the view has no serializer.
+        """
+        exposed_fields = headless_registry.get_exposed_fields(model_class)
+        if exposed_fields is not None:
+            return exposed_fields
+
+        field_names = {field.name for field in model_class._meta.get_fields()}
+
+        serializer_class = getattr(view, "get_serializer_class", lambda: None)()
+        if isinstance(serializer_class, type) and issubclass(serializer_class, BaseSerializer):
+            serializer = view.get_serializer()
+            readable = {field.source for field in serializer.fields.values() if not field.write_only}
+            return (readable & field_names) | {model_class._meta.pk.name}
+
+        return field_names
+
+    def resolve_field(self, model_class, path, filterable_fields):
+        """
+        Resolve a filter path (e.g. "author__name__icontains") to the model
+        field it targets and its lookup. Relations are only traversed into
+        exposed models, on their exposed fields.
+
+        Returns:
+            A (field, lookup) tuple, where lookup is None if the path has none.
+
+        Raises:
+            ParseError: If a field does not exist or may not be filtered on.
+        """
+        parts = path.split("__")
+
+        if parts[0] not in filterable_fields:
+            raise ParseError(detail=f"Field '{parts[0]}' does not exist")
+
+        try:
+            field = model_class._meta.get_field(parts[0])
+        except FieldDoesNotExist:
+            raise ParseError(detail=f"Field '{parts[0]}' does not exist")
+
+        index = 1
+        while index < len(parts) and field.is_relation and field.related_model is not None:
+            related_model = field.related_model
+            try:
+                next_field = related_model._meta.get_field(parts[index])
+            except FieldDoesNotExist:
+                # Not a field, so a lookup or transform on the relation (e.g. author__in)
+                break
+
+            exposed_fields = headless_registry.get_exposed_fields(related_model)
+            if exposed_fields is None or parts[index] not in exposed_fields:
+                raise ParseError(detail=f"Field '{'__'.join(parts[: index + 1])}' does not exist")
+
+            field = next_field
+            index += 1
+
+        # The last part of a path is considered its lookup, but it's not required.
+        lookup = parts[-1] if index < len(parts) and parts[-1] in field.get_lookups() else None
+
+        return field, lookup
+
+    def get_filter_kwargs(self, model_class, query_params, filterable_fields=None):
         filter_kwargs = {}
         exclude_kwargs = {}
 
-        field_lookups = get_field_lookups(model_class=model_class)
+        if filterable_fields is None:
+            filterable_fields = self.get_filterable_fields(model_class)
 
         for key, value in query_params.lists():
             if key in self.NON_FILTER_FIELDS:
@@ -62,26 +136,10 @@ class LookupFilter(BaseFilterBackend):
             # but we allow for comma-seperated multi-values as well (e.g. `a=1,2`).
             value = flatten([param.split(",") for param in value])
             is_exclude = key.startswith(self.EXCLUDE_SYMBOL)
-            # The first part of a key is considered the field name
             # Strip the exclusion symbol for field lookup
-            field_name = key.split("__")[0]
-            if is_exclude:
-                field_name = field_name[len(self.EXCLUDE_SYMBOL) :]
-            # Get the model field.
-            try:
-                field = model_class._meta.get_field(field_name)
-            except FieldDoesNotExist:
-                raise ParseError(detail=f"Field '{field_name}' does not exist")
-            # Get the allowed lookups for this field.
-            lookups = field_lookups.get(field_name, [])
-            try:
-                # The last part of a key is considered its lookup
-                # but it's not required.
-                lookup = key.split("__")[-1]
-                if lookup not in lookups:
-                    lookup = None
-            except IndexError:
-                lookup = None
+            path = key[len(self.EXCLUDE_SYMBOL) :] if is_exclude else key
+            # Get the targeted model field and its lookup (if any).
+            field, lookup = self.resolve_field(model_class, path, filterable_fields)
 
             # Some lookups allow multiple values, otherwise
             # the first value is used.
@@ -101,9 +159,7 @@ class LookupFilter(BaseFilterBackend):
                 casted_value = cast_field_value(value[0], field)
 
             if is_exclude:
-                # Strip the exclusion symbol from the key for Django's exclude method
-                exclude_key = key[len(self.EXCLUDE_SYMBOL) :] if key.startswith(self.EXCLUDE_SYMBOL) else key
-                exclude_kwargs[exclude_key] = casted_value
+                exclude_kwargs[path] = casted_value
             else:
                 filter_kwargs[key] = casted_value
 
