@@ -1,3 +1,4 @@
+import http.client
 import json
 import os
 import sys
@@ -17,6 +18,7 @@ from headless.utils import (
     is_runserver,
     is_boot_log_enabled,
     get_latest_version,
+    is_newer_version,
     normalize_version,
 )
 
@@ -183,6 +185,63 @@ class UtilsTests(SimpleTestCase):
         with patch("headless.utils.urlopen", return_value=MockResponse()):
             version = get_latest_version()
             self.assertIsNone(version)
+
+    def test_get_latest_version_never_raises(self):
+        errors = (
+            TimeoutError("timed out"),
+            http.client.RemoteDisconnected("Remote end closed connection"),
+            ConnectionResetError("Connection reset"),
+            ValueError("unknown url type"),
+        )
+        for error in errors:
+            with self.subTest(error=error):
+                cache.clear()
+                with patch("headless.utils.urlopen", side_effect=error):
+                    self.assertIsNone(get_latest_version())
+
+    def test_get_latest_version_with_failing_cache(self):
+        class MockResponse:
+            def read(self):
+                return json.dumps({"info": {"version": "1.2.3"}}).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        with (
+            patch("django.core.cache.cache.get", side_effect=ConnectionError("cache down")),
+            patch("django.core.cache.cache.set", side_effect=ConnectionError("cache down")),
+            patch("headless.utils.urlopen", return_value=MockResponse()),
+        ):
+            self.assertEqual(get_latest_version(), "1.2.3")
+
+    def test_is_newer_version(self):
+        newer = [
+            ("1.0.1", "1.0.0"),
+            ("1.0.0", "1.0.0rc9"),
+            ("1.0.0", "1.0.0-rc.9"),
+            ("1.0.0rc10", "1.0.0-rc.9"),
+            ("1.0.0rc1", "1.0.0b6"),
+            ("1.0.0b1", "1.0.0a9"),
+            ("2.0", "1.9.9"),
+        ]
+        not_newer = [
+            ("1.0.0", "1.0.0"),
+            ("1.0.0rc9", "1.0.0-rc.9"),
+            ("1.0.0-rc.9", "1.0.0"),
+            ("1.0.0", "1.1.0"),
+            ("1.0", "1.0.0"),
+            ("not-a-version", "1.0.0"),
+            ("1.0.0", "unknown"),
+        ]
+        for latest, current in newer:
+            with self.subTest(latest=latest, current=current):
+                self.assertTrue(is_newer_version(latest, current))
+        for latest, current in not_newer:
+            with self.subTest(latest=latest, current=current):
+                self.assertFalse(is_newer_version(latest, current))
 
     def test_normalize_version(self):
         # Test version normalization
@@ -430,6 +489,41 @@ class RegistryTests(SimpleTestCase):
 
     def test_exposed_fields_of_unregistered_model(self):
         self.assertIsNone(self.registry.get_exposed_fields(RegistryTestModel))
+
+
+@patch("headless.apps.VERSION", "1.0.0-rc.9")
+class BootLogVersionTests(SimpleTestCase):
+    """The boot log only reports a newer version, and the check can be turned off."""
+
+    def boot(self, latest_version, headless=None):
+        from django.apps import apps
+
+        with (
+            override_settings(HEADLESS={"BOOT_LOG": True, **(headless or {})}),
+            patch("headless.apps.get_latest_version", return_value=latest_version) as mock_latest,
+            patch("headless.apps.log") as mock_log,
+        ):
+            apps.get_app_config("headless").ready()
+        output = "\n".join(str(call.args[0]) for call in mock_log.call_args_list if call.args)
+        return output, mock_latest
+
+    def test_newer_version_reported(self):
+        output, _ = self.boot("1.0.0")
+        self.assertIn("New version available", output)
+        self.assertIn("Current: [bold]1.0.0-rc.9[/bold] → Latest: 1.0.0", output)
+
+    def test_same_or_older_version_not_reported(self):
+        for latest_version in ("1.0.0rc9", "1.0.0rc8", None):
+            with self.subTest(latest_version=latest_version):
+                output, _ = self.boot(latest_version)
+                self.assertNotIn("New version available", output)
+                self.assertIn("Version 1.0.0-rc.9", output)
+
+    def test_version_check_setting(self):
+        output, mock_latest = self.boot("2.0.0", {"VERSION_CHECK": False})
+        mock_latest.assert_not_called()
+        self.assertNotIn("New version available", output)
+        self.assertIn("Version 1.0.0-rc.9", output)
 
 
 @patch("headless.apps.get_latest_version", return_value=None)

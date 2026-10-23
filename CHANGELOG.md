@@ -32,6 +32,9 @@
 - 🐛 The `limit` in the pagination envelope is the page size the request used (after `?limit=` and `MAX_PAGE_SIZE`), not the configured `PAGE_SIZE`
 - 🐛 The boot log, and its PyPI version check, only run under `runserver` and known WSGI and ASGI servers (Gunicorn, Uvicorn, Daphne, Hypercorn, uWSGI, Waitress, Granian, mod_wsgi). Tests, Celery workers, `django-admin` commands and scripts no longer show it; set `HEADLESS["BOOT_LOG"]` to `True` for other servers
 - 🐛 With autoreload, `runserver` shows the boot log once instead of twice
+- 🐛 The PyPI version check in the boot log never stops the project from starting: timeouts, HTTP and connection errors and cache backend errors are caught
+- 🐛 The boot log only reports a new version when PyPI's version is newer than the installed one, including pre-releases, instead of whenever they differ
+- ⚙️ New `HEADLESS["VERSION_CHECK"]` (default `True`): set it to `False` to never contact PyPI from the boot log
 
 ## v1.0.0-rc.9
 

@@ -3,7 +3,6 @@ import os
 import re
 import sys
 from typing import List, Optional
-from urllib.error import URLError
 from urllib.request import urlopen
 
 from rich.console import Console
@@ -222,15 +221,58 @@ def normalize_version(version: str) -> str:
     return version
 
 
+# Pre-release markers in version strings and their order; a final release
+# sorts after all of them.
+PRE_RELEASE_ORDER = {"a": 0, "alpha": 0, "b": 1, "beta": 1, "c": 2, "rc": 2}
+FINAL_RELEASE = 3
+
+VERSION_PATTERN = re.compile(r"^v?(\d+(?:\.\d+)*)(?:[-.]?(alpha|beta|rc|a|b|c)[-.]?(\d*))?$", re.IGNORECASE)
+
+
+def parse_version(version: str) -> Optional[tuple]:
+    """
+    Parse a version such as "1.0.0", "1.0.0rc9" or "1.0.0-rc.9" into a
+    comparable tuple. Returns None for versions that can't be parsed.
+    """
+    match = VERSION_PATTERN.match((version or "").strip())
+    if not match:
+        return None
+
+    release, pre_release, pre_number = match.groups()
+    numbers = [int(part) for part in release.split(".")]
+    # Pad the release, so "1.0" and "1.0.0" compare equal
+    numbers += [0] * (3 - len(numbers))
+    pre_rank = PRE_RELEASE_ORDER[pre_release.lower()] if pre_release else FINAL_RELEASE
+
+    return (*numbers, pre_rank, int(pre_number or 0))
+
+
+def is_newer_version(latest: str, current: str) -> bool:
+    """
+    Check whether the latest version is newer than the current one. Versions
+    that can't be parsed are never reported as newer.
+    """
+    latest_parsed = parse_version(latest)
+    current_parsed = parse_version(current)
+    return latest_parsed is not None and current_parsed is not None and latest_parsed > current_parsed
+
+
 def get_latest_version() -> Optional[str]:
     """
     Fetch the latest version of django-headless from PyPI.
     The result is cached: successful lookups for a day, failures for a few
     minutes, so a slow or unreachable PyPI can stall at most one boot.
+
+    The check is best-effort: any error, from the network, PyPI's response
+    or the cache backend, results in None and never stops the project
+    from starting.
     """
     from django.core.cache import cache
 
-    cached = cache.get(LATEST_VERSION_CACHE_KEY)
+    try:
+        cached = cache.get(LATEST_VERSION_CACHE_KEY)
+    except Exception:
+        cached = None
     if cached is not None:
         return cached or None
 
@@ -241,12 +283,18 @@ def get_latest_version() -> Optional[str]:
         with urlopen("https://pypi.org/pypi/django-headless/json", timeout=5) as response:
             data = json.loads(response.read().decode("utf-8"))
             version = data.get("info", {}).get("version")
-    except (URLError, json.JSONDecodeError, KeyError):
-        # If there's any error (network, JSON parsing, etc.), version stays None
+    except Exception:
+        # Network errors, timeouts, HTTP errors, invalid JSON: version stays None
         pass
+
+    if not isinstance(version, str):
+        version = None
 
     # Cache the version, or an empty sentinel on failure, so a single slow
     # or failing request doesn't repeat on every boot.
-    cache.set(LATEST_VERSION_CACHE_KEY, version or "", LATEST_VERSION_TTL if version else 60 * 5)
+    try:
+        cache.set(LATEST_VERSION_CACHE_KEY, version or "", LATEST_VERSION_TTL if version else 60 * 5)
+    except Exception:
+        pass
 
     return version
