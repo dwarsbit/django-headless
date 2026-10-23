@@ -357,8 +357,7 @@ class LookupFilterTests(TestCase):
         with self.assertRaises(ParseError) as context:
             self.filter_backend.filter_queryset(request, FilterTestModel.objects.none(), self.mock_view)
 
-        self.assertIn("Invalid filter parameters", str(context.exception.detail))
-        self.assertIn("bogus", str(context.exception.detail))
+        self.assertEqual(str(context.exception.detail), "Unsupported lookup in 'name__bogus'.")
 
 
 class ExposureOwner(models.Model):
@@ -499,3 +498,50 @@ class LookupFilterCostTests(TestCase):
         self.assertTrue(self.filter_backend.crosses_to_many(ExposurePost, "editors__name__icontains"))
         self.assertFalse(self.filter_backend.crosses_to_many(ExposurePost, "owner__name__icontains"))
         self.assertFalse(self.filter_backend.crosses_to_many(ExposurePost, "title__in"))
+
+
+class LookupFilterErrorTests(TestCase):
+    """Invalid filters answer with a message about the query parameter, never Django internals"""
+
+    def setUp(self):
+        self.filter_backend = LookupFilter()
+
+    def filter(self, query):
+        view = Mock(action="list", queryset=FilterTestModel.objects.none())
+        request = Mock(query_params=QueryDict(query))
+        return self.filter_backend.filter_queryset(request, FilterTestModel.objects.all(), view)
+
+    def assertDetail(self, query, detail):
+        with self.assertRaises(ParseError) as cm:
+            self.filter(query)
+        self.assertEqual(str(cm.exception.detail), detail)
+
+    def test_unsupported_lookup(self):
+        self.assertDetail("name__foo=1", "Unsupported lookup in 'name__foo'.")
+        self.assertDetail("~age__lower__bar=1", "Unsupported lookup in '~age__lower__bar'.")
+
+    def test_invalid_value_keeps_validation_message(self):
+        with self.assertRaises(ParseError) as cm:
+            self.filter("created_at__gte=not-a-date")
+        detail = str(cm.exception.detail)
+        self.assertTrue(detail.startswith("Invalid value for 'created_at__gte': "))
+        self.assertIn("invalid format", detail)
+        self.assertNotIn("['", detail)
+
+    def test_invalid_value_without_details(self):
+        self.assertDetail("created_at__year=abc", "Invalid value for 'created_at__year'.")
+
+    def test_range_takes_two_values(self):
+        self.assertDetail("age__range=1,2,3", "The range lookup in 'age__range' takes two values.")
+        self.assertDetail("age__range=1", "The range lookup in 'age__range' takes two values.")
+        self.assertIn("BETWEEN", str(self.filter("age__range=1,2").query))
+
+    def test_unexpected_errors_are_not_exposed(self):
+        queryset = Mock()
+        queryset.filter.side_effect = RuntimeError("connection to 10.0.0.5 refused")
+        view = Mock(action="list", queryset=FilterTestModel.objects.none())
+        request = Mock(query_params=QueryDict("name=a"))
+
+        with self.assertRaises(ParseError) as cm:
+            self.filter_backend.filter_queryset(request, queryset, view)
+        self.assertEqual(str(cm.exception.detail), "Invalid filter parameters.")
