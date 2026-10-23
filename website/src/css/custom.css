@@ -23,6 +23,22 @@
   --dhh-ink: #1d2420;
   --dhh-muted: #5b6862;
   --dhh-line: #dfe4df;
+  --dhh-card: #ffffff;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #34d399;
+  --ifm-color-primary-dark: #10b981;
+  --ifm-color-primary-darker: #059669;
+  --ifm-color-primary-darkest: #047857;
+  --ifm-color-primary-light: #6ee7b7;
+  --ifm-color-primary-lighter: #a7f3d0;
+  --ifm-color-primary-lightest: #d1fae5;
+  --dhh-paper: var(--ifm-background-color);
+  --dhh-ink: #e6ebe8;
+  --dhh-muted: #a1aba6;
+  --dhh-line: #2f3532;
+  --dhh-card: #222624;
 }
 
 html {
@@ -65,6 +81,12 @@ html {
   color: #a7f3d0;
   margin: 0 0 1.75rem;
   max-width: 34rem;
+}
+
+.hero-dhh .tagline code {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #ecfdf5;
 }
 
 .hero-dhh .buttons {
@@ -146,7 +168,7 @@ html {
   border: 1px solid var(--dhh-line);
   border-radius: 8px;
   padding: 1.4rem 1.4rem 1.3rem;
-  background: #ffffff;
+  background: var(--dhh-card);
   transition: border-color 0.15s ease;
 }
 
