@@ -1,24 +1,24 @@
 /**
  * Django Headless docs theme
- * Palette: Django greens — deep #0c4b33 as primary, #44b78b as light accent.
+ * Palette: Tailwind emerald — emerald-700 #047857 as primary, emerald-400 #34d399 as light accent.
  */
 :root {
-  --ifm-color-primary: #0c4b33;
-  --ifm-color-primary-dark: #0b422e;
-  --ifm-color-primary-darker: #0a3a27;
-  --ifm-color-primary-darkest: #082f1f;
-  --ifm-color-primary-light: #16663f;
-  --ifm-color-primary-lighter: #2a7a58;
-  --ifm-color-primary-lightest: #3f8f6e;
+  --ifm-color-primary: #047857;
+  --ifm-color-primary-dark: #065f46;
+  --ifm-color-primary-darker: #064e3b;
+  --ifm-color-primary-darkest: #022c22;
+  --ifm-color-primary-light: #059669;
+  --ifm-color-primary-lighter: #10b981;
+  --ifm-color-primary-lightest: #34d399;
   --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ifm-heading-font-family: 'Space Grotesk', 'Inter', sans-serif;
   --ifm-font-family-monospace: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', 'Menlo',
     'Consolas', monospace;
   --ifm-heading-font-weight: 700;
-  --ifm-footer-background-color: #0c4b33;
-  --ifm-footer-color: #e9f5ef;
-  --dhh-hero-bg: #0c4b33;
-  --dhh-hero-accent: #44b78b;
+  --ifm-footer-background-color: #064e3b;
+  --ifm-footer-color: #ecfdf5;
+  --dhh-hero-bg: #064e3b;
+  --dhh-hero-accent: #34d399;
   --dhh-paper: #fbfbf8;
   --dhh-ink: #1d2420;
   --dhh-muted: #5b6862;
@@ -32,7 +32,7 @@ html {
 /* Hero */
 .hero-dhh {
   background: var(--dhh-hero-bg);
-  color: #e9f5ef;
+  color: #ecfdf5;
   padding: 4.5rem 0 4rem;
 }
 
@@ -62,7 +62,7 @@ html {
 .hero-dhh .tagline {
   font-size: 1.15rem;
   line-height: 1.6;
-  color: #bfe0cf;
+  color: #a7f3d0;
   margin: 0 0 1.75rem;
   max-width: 34rem;
 }
@@ -75,11 +75,11 @@ html {
 
 /* Hero code visual */
 .hero-visual {
-  background: #08331f;
-  border: 1px solid rgba(68, 183, 139, 0.35);
+  background: #022c22;
+  border: 1px solid rgba(52, 211, 153, 0.35);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 12px 32px rgba(8, 51, 31, 0.35);
+  box-shadow: 0 12px 32px rgba(2, 44, 34, 0.35);
 }
 
 .hero-visual pre {
@@ -90,7 +90,7 @@ html {
 }
 
 .hero-routes {
-  border-top: 1px solid rgba(68, 183, 139, 0.25);
+  border-top: 1px solid rgba(52, 211, 153, 0.25);
   background: rgba(255, 255, 255, 0.03);
   padding: 0.9rem 1.2rem 1rem;
   display: grid;
@@ -103,7 +103,7 @@ html {
   align-items: baseline;
   font-family: var(--ifm-font-family-monospace);
   font-size: 0.78rem;
-  color: #cdeadd;
+  color: #d1fae5;
 }
 
 .hero-route .method {
@@ -114,7 +114,7 @@ html {
 
 .hero-route .auto {
   margin-left: auto;
-  color: #6f9c85;
+  color: #059669;
   font-size: 0.7rem;
 }
 
@@ -178,14 +178,14 @@ html {
 /* Buttons */
 .button-dhh-primary {
   background: var(--dhh-hero-accent);
-  color: #06281a;
+  color: #022c22;
   border: none;
   font-weight: 600;
 }
 
 .button-dhh-primary:hover {
-  background: #6ecaa4;
-  color: #06281a;
+  background: #6ee7b7;
+  color: #022c22;
 }
 
 .button-dhh-secondary {
