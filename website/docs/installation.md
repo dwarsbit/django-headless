@@ -58,7 +58,7 @@ This page sets up Django Headless in an existing Django project and exposes a fi
    ```
 
 :::note Authentication required
-Generated routes answer `403 Forbidden` to requests that are not authenticated, because `HEADLESS["DEFAULT_PERMISSION_CLASSES"]` defaults to `IsAuthenticated`. For a public API, set it to `AllowAny`; see [Permissions](./permissions.md).
+Generated routes answer `403 Forbidden` to everyone but staff users, because `HEADLESS["DEFAULT_PERMISSION_CLASSES"]` defaults to `IsAdminUser`. For a public API, set it to `AllowAny`; see [Permissions](./permissions.md).
 :::
 
 ## Expose a model

@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # 🔑 Authentication
 
-Generated routes require authentication by default, so a client gets access by authenticating. Django Headless works with any Django REST Framework [authentication class](https://www.django-rest-framework.org/api-guide/authentication/), and ships `SecretKeyAuthentication` for clients that run without a user, such as a static site build.
+Generated routes only answer staff users by default (see [Permissions](./permissions.md)), so a client gets access by authenticating. Django Headless works with any Django REST Framework [authentication class](https://www.django-rest-framework.org/api-guide/authentication/), and ships `SecretKeyAuthentication` for clients that run without a user, such as a static site build.
 
 ## Secret key authentication
 
@@ -38,7 +38,7 @@ To use `SecretKeyAuthentication` on your own views as well, add it to `REST_FRAM
 Without `AUTH_SECRET_KEY`, every request to a route that uses `SecretKeyAuthentication` fails with an error. The boot log warns about a missing key; set it before deploying.
 :::
 
-A request authenticated with the secret key is not tied to a user account. It passes `IsAuthenticated`, but not permission classes that check a user, such as `IsAdminUser`.
+A request authenticated with the secret key is not tied to a user account. It counts as a staff user, so it passes the default `IsAdminUser` permission and can read and change content on the generated routes.
 
 ## Other authentication classes
 

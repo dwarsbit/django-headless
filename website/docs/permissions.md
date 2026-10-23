@@ -4,7 +4,9 @@ sidebar_position: 9
 
 # 🛡️ Permissions
 
-Generated routes require authentication by default: `HEADLESS["DEFAULT_PERMISSION_CLASSES"]` defaults to DRF's `IsAuthenticated`. A newly exposed model is not public until you open its routes up in your settings.
+Generated routes only answer staff users by default: `HEADLESS["DEFAULT_PERMISSION_CLASSES"]` defaults to DRF's `IsAdminUser`. A newly exposed model is not public until you open its routes up in your settings, and users without staff status cannot change content. This matters because DRF enables session and basic authentication when `REST_FRAMEWORK` sets no authentication classes, so every user account of your site can authenticate.
+
+Requests with a valid [secret key](./authentication.md#secret-key-authentication) count as staff. The boot log shows the authentication and permission classes the generated routes use.
 
 ## Public content
 
@@ -32,20 +34,20 @@ HEADLESS = {
 
 ```python
 # mysite/settings.py
-# Your own views are public; the generated routes are for staff users only.
+# Your own views are for staff users only; the generated routes are open to every authenticated user.
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAdminUser"],
 }
 
 HEADLESS = {
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAdminUser"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
 }
 ```
 
 Both settings take dotted paths and classes.
 
 :::warning Configure authentication
-`IsAuthenticated` only grants access to clients that can authenticate. Configure an authentication class in `REST_FRAMEWORK` or `HEADLESS["DEFAULT_AUTHENTICATION_CLASSES"]`; see [Authentication](./authentication.md).
+Permission classes only grant access to clients that can authenticate. Configure an authentication class in `REST_FRAMEWORK` or `HEADLESS["DEFAULT_AUTHENTICATION_CLASSES"]`; see [Authentication](./authentication.md).
 :::
 
 Other DRF settings, such as renderers, parsers and pagination, can be set for the generated routes in the same way; see [DRF overrides](./settings.md#drf-overrides).

@@ -16,7 +16,7 @@ Read the documentation at [djangoheadless.org](https://djangoheadless.org).
 - **Filtering**: every lookup a field supports, from the query string.
 - **Lookup routes**: fetch an object by a unique field such as a slug, at `/api/blog.article/by_slug/<value>`.
 - **Pagination**: a stable, paginated list envelope with ready-to-fetch links.
-- **Protected by default**: generated routes require authentication until you open them up.
+- **Protected by default**: generated routes only answer staff users until you open them up.
 
 ## Quick start
 
@@ -70,7 +70,7 @@ Read the documentation at [djangoheadless.org](https://djangoheadless.org).
 
 Run `python manage.py runserver`; the article list is at `/api/blog.article`.
 
-Generated routes answer `403 Forbidden` to requests that are not authenticated, so an exposed model is never public by accident. To configure authentication or open the routes up, see [Permissions](https://djangoheadless.org/docs/permissions).
+Generated routes answer `403 Forbidden` to everyone but staff users, so an exposed model is never public by accident. To configure authentication or open the routes up, see [Permissions](https://djangoheadless.org/docs/permissions).
 
 ## Documentation
 
