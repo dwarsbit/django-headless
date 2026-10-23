@@ -4,36 +4,58 @@ sidebar_position: 3
 
 # 🎯 Exposing models
 
-Models are exposed with the `@expose()` decorator (or the `expose_model()` function). Each exposed model gets a generated serializer and viewset, registered at the model's `app_label.model_name` label.
+Expose a model with the `@expose()` decorator to give it generated routes. Use the decorator options to make a model a singleton, limit its fields or make it read-only.
 
 ```python
+# blog/models.py
 from django.db import models
 from headless import expose
+
+
+@expose()
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+
 
 @expose()
 class Article(models.Model):
     title = models.CharField(max_length=200)
-    content = models.TextField()
-    author = models.ForeignKey("user.User", on_delete=models.CASCADE)
+    body = models.TextField()
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="articles")
 ```
 
-Generated routes live at `/api/<app_label>.<model_name>` — e.g. `/api/blog.article`.
+Each exposed model gets routes at `/api/<app_label>.<model_name>`, such as `/api/blog.article`.
+
+To expose a model you cannot decorate, such as one from `django.contrib` or a third-party app, call `expose_model()`. It takes the model and the same options. This example needs `django.contrib.flatpages` in `INSTALLED_APPS`:
+
+```python
+# blog/models.py
+from django.contrib.flatpages.models import FlatPage
+from headless import expose_model
+
+expose_model(FlatPage, read_only=True)
+```
 
 ## Options
 
-| Option          | Type        | Default                    | Description                                                       |
-| --------------- | ----------- | -------------------------- | ----------------------------------------------------------------- |
-| `singleton`     | `bool`      | `False`                    | Treat the model as a singleton: a single GET/PUT/PATCH resource. See [singletons](./singletons.md). |
-| `search_fields` | `List[str]` | All non-choice `CharField` | Fields enabled for DRF's `SearchFilter`.                           |
-| `fields`        | `List[str]` | All fields                 | Restrict the exposed serializer to these field names.             |
-| `exclude`       | `List[str]` | None                       | Exclude these field names from the exposed serializer.            |
-| `read_only`     | `bool`      | `False`                    | Generate GET-only routes (list + retrieve). Writes return 405.    |
+| Option          | Type        | Default                     | Description                                                                                       |
+| --------------- | ----------- | --------------------------- | ------------------------------------------------------------------------------------------------- |
+| `singleton`     | `bool`      | `False`                     | Expose the model as a single resource with `GET`, `PUT` and `PATCH`. See [Singletons](./singletons.md). |
+| `search_fields` | `list[str]` | All non-choice `CharField`s | Fields searched by DRF's `SearchFilter`.                                                          |
+| `fields`        | `list[str]` | All fields                  | Serialize only these fields.                                                                      |
+| `exclude`       | `list[str]` | `None`                      | Serialize all fields except these.                                                                |
+| `read_only`     | `bool`      | `False`                     | Generate `GET` routes only.                                                                       |
 
-## 🔒 Field control
+## Field control
 
-By default the generated serializer exposes all model fields. Use `fields` or `exclude` (they cannot be combined) to keep sensitive data out of the API:
+By default, every model field is serialized. Use `fields` or `exclude` to keep data such as internal notes out of the API. The two options cannot be combined.
 
 ```python
+# blog/models.py
+from django.db import models
+from headless import expose
+
+
 @expose(exclude=["internal_notes"])
 class Article(models.Model):
     title = models.CharField(max_length=200)
@@ -42,24 +64,29 @@ class Article(models.Model):
 
 Excluded fields are never serialized and are ignored on create and update.
 
-## 👁 Read-only models
+## Read-only models
 
-Content that should be served but never mutated through the API:
+Use `read_only=True` for content that the API serves but never changes:
 
 ```python
+# blog/models.py
+from django.db import models
+from headless import expose
+
+
 @expose(read_only=True)
-class Page(models.Model):
-    title = models.CharField(max_length=200)
-    body = models.TextField()
+class Category(models.Model):
+    name = models.CharField(max_length=100)
 ```
 
-Read-only models only get `GET` routes; `POST`, `PUT`, `PATCH` and `DELETE` answer `405 Method Not Allowed`.
+A read-only model gets the list and detail routes only. `POST`, `PUT`, `PATCH` and `DELETE` answer `405 Method Not Allowed`.
 
-## 🔎 Search fields
+## Search fields
 
-`search_fields` is passed to the viewset, so it works with DRF's `SearchFilter` when that backend is enabled — e.g. alongside the default `LookupFilter`:
+`search_fields` sets the fields DRF's [`SearchFilter`](https://www.django-rest-framework.org/api-guide/filtering/#searchfilter) searches. The filter is not enabled by default; add it to `HEADLESS["DEFAULT_FILTER_BACKENDS"]` next to `LookupFilter`:
 
 ```python
+# mysite/settings.py
 HEADLESS = {
     "DEFAULT_FILTER_BACKENDS": [
         "rest_framework.filters.SearchFilter",
@@ -68,12 +95,33 @@ HEADLESS = {
 }
 ```
 
-Without `search_fields`, all non-choice `CharField` fields are searchable. DRF lookup prefixes (`^`, `=`, `@`, `$`) and relation traversal (`author__name`) are supported.
+```python
+# blog/models.py
+from django.db import models
+from headless import expose
 
-## ⚠️ Validation
 
-The decorator fails fast with a clear `ImproperlyConfigured` error when:
+@expose(search_fields=["title", "category__name"])
+class Article(models.Model):
+    title = models.CharField(max_length=200)
+    category = models.ForeignKey("blog.Category", on_delete=models.PROTECT, related_name="articles")
+```
 
-- it is applied to something that is not a Django model,
-- `search_fields`, `fields` or `exclude` name fields that do not exist,
+Without `search_fields`, every `CharField` without choices is searched. DRF's lookup prefixes (`^`, `=`, `@`, `$`) and relations (`category__name`) are supported. Search with the `search` query parameter:
+
+```http
+GET /api/blog.article?search=django
+```
+
+## Validation
+
+`@expose()` and `expose_model()` raise `ImproperlyConfigured` when the model is defined if:
+
+- it decorates something that is not a Django model;
+- `search_fields`, `fields` or `exclude` name a field the model does not have;
 - `fields` and `exclude` are combined.
+
+## Related pages
+
+- [Singletons](./singletons.md)
+- [Serializers](./serializers.md)

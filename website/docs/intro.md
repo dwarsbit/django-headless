@@ -4,45 +4,48 @@ sidebar_position: 1
 
 # 🐍 Introduction
 
-**Django Headless** turns Django into a headless CMS backend. Decorate a model with `@expose()` and a standard Django REST Framework API appears — with list, detail and CRUD endpoints, filtering, pagination and singleton support. No serializers, viewsets or URL wiring to write.
+Django Headless turns Django into the backend of a headless CMS. Decorate a model with `@expose()` and a [Django REST Framework](https://www.django-rest-framework.org/) API appears, with list, detail, create, update and delete routes, filtering, pagination and singletons. You write no serializers, viewsets or URL patterns.
 
 ```python
+# blog/models.py
 from django.db import models
 from headless import expose
 
+
 @expose()
-class BlogPost(models.Model):
+class Article(models.Model):
     title = models.CharField(max_length=200)
-    content = models.TextField()
+    body = models.TextField()
     published = models.BooleanField(default=False)
 ```
 
-This single decorator generates:
+This decorator generates these routes:
 
-| Method   | Route                    | Action                     |
-| -------- | ------------------------ | -------------------------- |
-| `GET`    | `/api/blog.blogpost`     | List (filterable)          |
-| `POST`   | `/api/blog.blogpost`     | Create                    |
-| `GET`    | `/api/blog.blogpost/1`   | Retrieve                   |
-| `PUT`    | `/api/blog.blogpost/1`   | Update                     |
-| `PATCH`  | `/api/blog.blogpost/1`   | Partial update             |
-| `DELETE` | `/api/blog.blogpost/1`   | Delete                     |
+| Method   | Route                  | Action         |
+| -------- | ---------------------- | -------------- |
+| `GET`    | `/api/blog.article`    | List           |
+| `POST`   | `/api/blog.article`    | Create         |
+| `GET`    | `/api/blog.article/1`  | Retrieve       |
+| `PUT`    | `/api/blog.article/1`  | Update         |
+| `PATCH`  | `/api/blog.article/1`  | Partial update |
+| `DELETE` | `/api/blog.article/1`  | Delete         |
 
 :::note Protected by default
-Generated routes answer `403` for unauthenticated requests — exposed models are never accidentally public. See [permissions](./permissions.md) for opening routes up.
+Generated routes answer `403 Forbidden` to requests that are not authenticated, so an exposed model is never public by accident. To open the routes up, see [Permissions](./permissions.md).
 :::
 
-## ✨ Why Django Headless?
+## When to use it
 
-The primary use case is running Django as the backend of a JAMstack setup: Django serves content through this generated REST API, while the frontend lives elsewhere (Next.js, Astro, etc.). The API is designed to be predictable and read-friendly for such frontend consumers:
+Use Django Headless when Django holds your content and the frontend lives elsewhere: a Next.js or Astro site, a static site build, a mobile app. The API is predictable for such a frontend:
 
-- **🎯 Easy configuration** — a decorator is all it takes
-- **🤝 Plays nice** — integrates with existing Django applications
-- **💈 Singletons** — settings and configuration objects as a single resource
-- **🔍 Flexible filtering** — every supported ORM lookup, straight from the query string
-- **🛡️ Secure by default** — generated routes require authentication until you open them up
-- **⚡ Predictable** — stable ordering, pagination envelope, and validation with clear errors
+- **Routes per model**: one decorator per model, no URL patterns to maintain.
+- **Singletons**: site settings and other one-off objects as a single route.
+- **Filtering**: every lookup a field supports, from the query string.
+- **Stable lists**: ordered by primary key, with a pagination envelope that includes ready-to-fetch links.
+- **Clear errors**: invalid filters and options answer with the reason.
 
-## 🧭 What's next?
+If your editors also need an admin to manage that content, see [Django Content Studio](https://dwarsbit.github.io/django-content-studio/).
 
-Read the [installation guide](./installation.md) to get your first headless model running in minutes.
+## Next steps
+
+Follow the [installation guide](./installation.md) to expose your first model.

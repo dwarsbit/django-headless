@@ -4,20 +4,27 @@ sidebar_position: 6
 
 # 📃 Pagination
 
-Django Headless ships a page-based pagination class with a read-friendly envelope. Enable it for the generated routes via `HEADLESS` (or via `REST_FRAMEWORK`, from which the generated routes inherit when the `HEADLESS` versions are unset):
+`PageNumberPagination` splits list routes into pages and wraps them in an envelope with the total count and links to the next and previous page. Enable it for the generated routes in `HEADLESS`:
 
 ```python
+# mysite/settings.py
 HEADLESS = {
     "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
 }
 ```
 
-Parameters: `page` for the page number, `limit` for the page size. The configured `PAGE_SIZE` is the default; the client's `limit` parameter overrides it per request.
+When these two settings are not in `HEADLESS`, the generated routes use the ones in `REST_FRAMEWORK`.
+
+Request a page with the `page` query parameter. The `limit` query parameter overrides `PAGE_SIZE` for one request:
+
+```http
+GET /api/blog.article?page=2&limit=10
+```
 
 ## The envelope
 
-List endpoints return a `pagination` object alongside the `data`:
+A list route answers with a `pagination` object and the items in `data`:
 
 ```json
 {
@@ -27,19 +34,28 @@ List endpoints return a `pagination` object alongside the `data`:
         "current": 1,
         "limit": 25,
         "links": {
-            "self": "https://example.org/api/blog.blogpost?limit=25",
-            "next": "https://example.org/api/blog.blogpost?limit=25&page=2",
+            "self": "https://example.org/api/blog.article?limit=25",
+            "next": "https://example.org/api/blog.article?limit=25&page=2",
             "previous": null
         }
     },
     "data": [
-        { "id": 1, "title": "Hello world", "...": "..." }
+        {
+            "id": 1,
+            "title": "Getting started with Django",
+            "...": "..."
+        }
     ]
 }
 ```
 
-The `links.next` and `links.previous` URLs are ready to fetch: a frontend can page through content without constructing URLs itself.
+`links.next` and `links.previous` are complete URLs, so the frontend can page through a list without building URLs itself. On the first and last page, the missing link is `null`.
 
-## Stable ordering
+## Ordering
 
-Generated list endpoints are ordered by primary key, so pages are deterministic between requests.
+Generated list routes are ordered by primary key, so a page holds the same items on every request.
+
+## Related pages
+
+- [Filtering](./filtering.md)
+- [Settings reference](./settings.md#drf-overrides)

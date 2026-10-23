@@ -4,31 +4,35 @@ sidebar_position: 9
 
 # 🛡️ Permissions
 
-Generated routes **require authentication by default**: `HEADLESS.DEFAULT_PERMISSION_CLASSES` defaults to `rest_framework.permissions.IsAuthenticated`. A freshly exposed model is never accidentally public — requests must authenticate before the API answers.
+Generated routes require authentication by default: `HEADLESS["DEFAULT_PERMISSION_CLASSES"]` defaults to DRF's `IsAuthenticated`. A newly exposed model is not public until you open its routes up in your settings.
+
+## Public content
+
+For a public headless CMS, allow every request on the generated routes:
 
 ```python
-# This is the default; generated routes answer 403 for unauthenticated requests
-HEADLESS = {
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
-}
-```
-
-:::note Public content
-For a public headless CMS, open the generated routes up explicitly — that decision should be visible in your settings:
-
-```python
+# mysite/settings.py
 HEADLESS = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
 }
 ```
-:::
 
-## Overriding for generated routes only
-
-When you want different permissions for the headless API than for the rest of your project, set `HEADLESS.DEFAULT_PERMISSION_CLASSES`. It **replaces** DRF's `DEFAULT_PERMISSION_CLASSES` for the generated routes only; your own views are untouched. To use your `REST_FRAMEWORK` permission classes on the generated routes, set it to the same classes.
+`AllowAny` also allows writes. To serve content publicly and accept changes only from authenticated clients, use `IsAuthenticatedOrReadOnly`, or mark models that should never change through the API with `read_only=True` (see [Exposing models](./models.md#read-only-models)).
 
 ```python
-# Public reads on the rest of your API, admin-only generated routes
+# mysite/settings.py
+HEADLESS = {
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"],
+}
+```
+
+## Generated routes and your own views
+
+`HEADLESS["DEFAULT_PERMISSION_CLASSES"]` applies to the generated routes only. It replaces `REST_FRAMEWORK["DEFAULT_PERMISSION_CLASSES"]` there and leaves your own views untouched. The generated routes do not use the `REST_FRAMEWORK` permission classes; to use the same classes on both, set them in both settings.
+
+```python
+# mysite/settings.py
+# Your own views are public; the generated routes are for staff users only.
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
 }
@@ -38,12 +42,15 @@ HEADLESS = {
 }
 ```
 
-Both dotted paths and classes are accepted.
+Both settings take dotted paths and classes.
 
-:::tip Not just permissions
-All DRF-level settings — renderers, parsers, authentication, filter backends, pagination and more — can be scoped to the generated routes this way. See the [settings reference](./settings.md#drf-overrides).
+:::warning Configure authentication
+`IsAuthenticated` only grants access to clients that can authenticate. Configure an authentication class in `REST_FRAMEWORK` or `HEADLESS["DEFAULT_AUTHENTICATION_CLASSES"]`; see [Authentication](./authentication.md).
 :::
 
-:::warning Authentication still applies
-Requiring authentication only helps if requests *can* authenticate. Configure authentication classes via `REST_FRAMEWORK` or `HEADLESS.DEFAULT_AUTHENTICATION_CLASSES` — see [authentication](./authentication.md).
-:::
+Other DRF settings, such as renderers, parsers and pagination, can be set for the generated routes in the same way; see [DRF overrides](./settings.md#drf-overrides).
+
+## Related pages
+
+- [Authentication](./authentication.md)
+- [Settings reference](./settings.md)

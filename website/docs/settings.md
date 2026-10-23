@@ -4,20 +4,14 @@ sidebar_position: 10
 
 # ⚙️ Settings reference
 
-All Django Headless configuration lives in the `HEADLESS` dict in your Django settings:
+All Django Headless settings live in the `HEADLESS` dictionary in your Django settings. Every key is optional; this is the full dictionary with the defaults:
 
 ```python
+# mysite/settings.py
 HEADLESS = {
-    # True always shows the boot log, False never does.
-    # The default (None) shows it automatically in server mode.
     "BOOT_LOG": None,
-
     "AUTH_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
-
-    # DRF-level settings for the generated routes. The permission and
-    # filter backends have safe defaults; the rest inherits from
-    # REST_FRAMEWORK.
     "DEFAULT_RENDERER_CLASSES": None,
     "DEFAULT_PARSER_CLASSES": None,
     "DEFAULT_AUTHENTICATION_CLASSES": None,
@@ -27,14 +21,11 @@ HEADLESS = {
     "PAGE_SIZE": None,
     "SEARCH_PARAM": None,
     "ORDERING_PARAM": None,
-
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
-
     "FILTER_EXCLUSION_SYMBOL": "~",
     "FILTER_TRUE_VALUES": ["true", "1", "on"],
     "FILTER_FALSE_VALUES": ["false", "0", "off"],
     "FILTER_NULL_VALUES": ["null", "none", "empty"],
-
     "NON_FILTER_FIELDS": [
         "search",
         "limit",
@@ -49,65 +40,63 @@ HEADLESS = {
 
 ## BOOT_LOG
 
-Controls the boot log shown when the project starts. `None` (default) auto-detects server mode — the log appears under `runserver` and WSGI/ASGI servers, and stays silent for management commands. `True` always shows it, `False` never does.
+Whether the boot log is shown when the project starts. The boot log lists the exposed models, the number of generated routes and the authentication in use.
+
+- `None` (default): shown under `runserver` and WSGI or ASGI servers, not for other management commands.
+- `True`: always shown.
+- `False`: never shown.
 
 ## DRF overrides
 
-The following settings mirror DRF's `REST_FRAMEWORK` options. When set, they **override** the `REST_FRAMEWORK` value for the generated routes only — the rest of your project's API is untouched. The permission classes and filter backends have safe defaults: generated routes require authentication and support ORM filtering out of the box:
+These settings take the same values as their Django REST Framework [counterparts](https://www.django-rest-framework.org/api-guide/settings/) in `REST_FRAMEWORK`. They apply to the generated routes only and leave your own views untouched.
 
-| Setting                           | Default                                          |
-| --------------------------------- | ------------------------------------------------ |
-| `DEFAULT_RENDERER_CLASSES`        | None — inherit from `REST_FRAMEWORK`             |
-| `DEFAULT_PARSER_CLASSES`          | None — inherit from `REST_FRAMEWORK`             |
-| `DEFAULT_AUTHENTICATION_CLASSES`  | None — inherit from `REST_FRAMEWORK`            |
-| `DEFAULT_PERMISSION_CLASSES`      | `["rest_framework.permissions.IsAuthenticated"]` |
-| `DEFAULT_FILTER_BACKENDS`         | `["headless.rest.filters.LookupFilter"]`         |
-| `DEFAULT_PAGINATION_CLASS`        | None — inherit from `REST_FRAMEWORK`             |
-| `PAGE_SIZE`                       | None — no page size override                     |
-| `SEARCH_PARAM`                    | None — DRF's default (`search`)                  |
-| `ORDERING_PARAM`                  | None — DRF's default (`ordering`)                |
+| Setting                          | Default                                          |
+| -------------------------------- | ------------------------------------------------ |
+| `DEFAULT_RENDERER_CLASSES`       | `None`: use `REST_FRAMEWORK`                     |
+| `DEFAULT_PARSER_CLASSES`         | `None`: use `REST_FRAMEWORK`                     |
+| `DEFAULT_AUTHENTICATION_CLASSES` | `None`: use `REST_FRAMEWORK`                     |
+| `DEFAULT_PERMISSION_CLASSES`     | `["rest_framework.permissions.IsAuthenticated"]` |
+| `DEFAULT_FILTER_BACKENDS`        | `["headless.rest.filters.LookupFilter"]`         |
+| `DEFAULT_PAGINATION_CLASS`       | `None`: use `REST_FRAMEWORK`                     |
+| `PAGE_SIZE`                      | `None`: use `REST_FRAMEWORK`                     |
+| `SEARCH_PARAM`                   | `None`: use DRF's default, `search`              |
+| `ORDERING_PARAM`                 | `None`: use DRF's default, `ordering`            |
+
+A setting set to `None` falls back to `REST_FRAMEWORK`. `DEFAULT_PERMISSION_CLASSES` and `DEFAULT_FILTER_BACKENDS` have their own defaults and never fall back: the generated routes require authentication and support [filtering](./filtering.md) whatever `REST_FRAMEWORK` says. Set them under `HEADLESS` to change them.
 
 ```python
+# mysite/settings.py
 HEADLESS = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
-    "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
     "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
     "SEARCH_PARAM": "q",
 }
 ```
 
-Notes:
+All these settings take dotted paths and classes.
 
-- `PAGE_SIZE` requires a pagination class — either `DEFAULT_PAGINATION_CLASS` in `HEADLESS` or DRF's. Without one, it does nothing.
-- `SEARCH_PARAM` / `ORDERING_PARAM` apply by substituting DRF's own `SearchFilter` / `OrderingFilter` backends with parameter-carrying subclasses. Custom filter backends (including subclasses of DRF's filters) are never touched.
-- Dotted paths and already-imported classes are both accepted everywhere.
+`PAGE_SIZE` has no effect without a pagination class; set `DEFAULT_PAGINATION_CLASS` here or in `REST_FRAMEWORK`.
 
-## AUTH_SECRET_KEY / AUTH_SECRET_KEY_HEADER
+`SEARCH_PARAM` and `ORDERING_PARAM` apply to DRF's `SearchFilter` and `OrderingFilter` when they are in `DEFAULT_FILTER_BACKENDS`. Subclasses of those filters and other filter backends keep their own parameter names.
 
-The secret key and header name used by [`SecretKeyAuthentication`](./authentication.md). The header defaults to `X-Secret-Key`.
+## AUTH_SECRET_KEY and AUTH_SECRET_KEY_HEADER
+
+The key and the header name for [`SecretKeyAuthentication`](./authentication.md). The header defaults to `X-Secret-Key`.
 
 ## DEFAULT_SERIALIZER_CLASS
 
-The base class for generated serializers — point it at `headless.rest.serializers.FlexibleSerializer` for [expansion and property fields](./serializers.md).
+The base class for the serializers of exposed models. Set it to `headless.rest.serializers.FlexibleSerializer` to [expand relations and serialize model properties](./serializers.md).
 
-## FILTER_* options
+## Filter settings
 
-Configure the [`LookupFilter`](./filtering.md) backend: the exclusion symbol, the recognized boolean/null values, and query parameters that are never treated as filters.
+These settings configure [`LookupFilter`](./filtering.md):
 
-## REST_FRAMEWORK
+- **`FILTER_EXCLUSION_SYMBOL`**: the prefix that turns a filter into an exclusion.
+- **`FILTER_TRUE_VALUES`, `FILTER_FALSE_VALUES`, `FILTER_NULL_VALUES`**: the values read as `True`, `False` and `None`.
+- **`NON_FILTER_FIELDS`**: query parameters that are never read as filters. Add the parameters of your own filter backends and pagination here.
 
-DRF-level configuration lives in the standard `REST_FRAMEWORK` setting. For the generated routes:
+## Related pages
 
-- Authentication, renderers, parsers and pagination are inherited from `REST_FRAMEWORK` when their `HEADLESS` equivalents are unset.
-- Permission classes and filter backends are **not** inherited — they have safe `HEADLESS` defaults (see [DRF overrides](#drf-overrides)). Configure them under `HEADLESS` to change what the generated routes use; `REST_FRAMEWORK` still governs the rest of your API.
-
-```python
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
-    ],
-    "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
-    "PAGE_SIZE": 25,
-}
-```
+- [Permissions](./permissions.md)
+- [Authentication](./authentication.md)
