@@ -17,6 +17,11 @@
 - ⚙️ New `HEADLESS["AUTH_READ_ONLY_SECRET_KEY"]`: a second secret key that only allows `GET`, `HEAD` and `OPTIONS`, so a frontend no longer needs a key that can write
 - ⚠️ `request.auth` is a `SecretKey` (with `read_only`) for requests authenticated by `SecretKeyAuthentication`, instead of `None`
 - 🐛 A secret key header with non-ASCII characters is rejected with `401` instead of crashing with a `500`
+- ⚙️ New `HEADLESS["MAX_PAGE_SIZE"]` (default `100`): caps the page size a client can request with `?limit=` on the generated routes. `PageNumberPagination` uses a maximum of `100` on your own views as well
+- ⚙️ New `HEADLESS["FILTER_DISALLOWED_LOOKUPS"]` (default `["regex", "iregex"]`): regular expression lookups answer `400`, since costly patterns can keep the database busy and invalid ones caused a `500`
+- ⚙️ New `HEADLESS["MAX_EXPANSION_DEPTH"]` (default `2`): limits how deep `FlexibleSerializer` relations can be expanded
+- 🐛 Expanded relations are prefetched: one query per relation instead of one per item
+- 🐛 `LookupFilter` only applies `DISTINCT` when a filter crosses a to-many relation, instead of on every filtered list
 
 ## v1.0.0-rc.9
 

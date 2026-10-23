@@ -26,6 +26,14 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
         # Cache the expandable fields to avoid recomputation
         self._expandable_fields_cache = None
 
+    def get_maximum_expansion_depth(self) -> Optional[int]:
+        """
+        Limit how deep relations can be expanded (e.g. ?expand=a.b), since
+        every level multiplies the work of a request. drf-flex-fields'
+        own setting takes precedence over HEADLESS["MAX_EXPANSION_DEPTH"].
+        """
+        return super().get_maximum_expansion_depth() or headless_settings.MAX_EXPANSION_DEPTH
+
     def get_fields(self, *args, **kwargs):
         """
         Include property fields as read-only fields.

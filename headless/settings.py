@@ -39,12 +39,21 @@ DEFAULTS = {
     "DEFAULT_RENDERER_CLASSES": None,
     "ORDERING_PARAM": None,
     "PAGE_SIZE": None,
+    # The largest page size a client can request (e.g. with ?limit=) on
+    # the generated routes. None allows any size.
+    "MAX_PAGE_SIZE": 100,
+    # The deepest relation path a client can expand (e.g. ?expand=a.b) with
+    # FlexibleSerializer. None allows any depth.
+    "MAX_EXPANSION_DEPTH": 2,
     "SEARCH_PARAM": None,
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "FILTER_EXCLUSION_SYMBOL": "~",
     "FILTER_TRUE_VALUES": ["true", "1", "on"],
     "FILTER_FALSE_VALUES": ["false", "0", "off"],
     "FILTER_NULL_VALUES": ["null", "none", "empty"],
+    # Lookups that can't be used in filters. Regular expressions are
+    # disallowed by default: costly patterns can tie up the database.
+    "FILTER_DISALLOWED_LOOKUPS": ["regex", "iregex"],
     "NON_FILTER_FIELDS": [
         "search",
         "limit",

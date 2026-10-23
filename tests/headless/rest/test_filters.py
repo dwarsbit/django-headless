@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 from django.db import models
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework import serializers
 from rest_framework.exceptions import ParseError
 from rest_framework.generics import GenericAPIView
@@ -382,6 +382,7 @@ class ExposurePost(models.Model):
     body = models.TextField()
     owner = models.ForeignKey(ExposureOwner, null=True, on_delete=models.CASCADE)
     hidden = models.ForeignKey(ExposureHidden, null=True, on_delete=models.CASCADE)
+    editors = models.ManyToManyField(ExposureOwner, related_name="edited_posts")
 
     class Meta:
         app_label = "test_app"
@@ -456,3 +457,45 @@ class LookupFilterExposureTests(TestCase):
         view.request, view.format_kwarg = None, None
         filterable_fields = self.filter_backend.get_filterable_fields(ExposureHidden, view)
         self.assertEqual(filterable_fields, {"id"})
+
+
+class LookupFilterCostTests(TestCase):
+    """Filters that are costly for the database are limited"""
+
+    def setUp(self):
+        self._saved_registry = dict(headless_registry._models)
+        headless_registry.register(ExposureOwner)
+        headless_registry.register(ExposurePost)
+        self.filter_backend = LookupFilter()
+
+    def tearDown(self):
+        headless_registry._models = self._saved_registry
+
+    def filter(self, query):
+        view = Mock(action="list", queryset=ExposurePost.objects.none())
+        request = Mock(query_params=QueryDict(query))
+        return self.filter_backend.filter_queryset(request, ExposurePost.objects.all(), view)
+
+    def test_regex_lookups_disallowed(self):
+        for query in ("title__regex=^(a+)+$", "~title__iregex=a", "owner__name__iregex=a", "title__lower__regex=a"):
+            with self.subTest(query=query):
+                with self.assertRaises(ParseError) as cm:
+                    self.filter(query)
+                self.assertIn("lookup is not allowed", str(cm.exception.detail))
+
+    def test_disallowed_lookups_setting(self):
+        with override_settings(HEADLESS={"FILTER_DISALLOWED_LOOKUPS": ["contains"]}):
+            self.filter("title__regex=a")
+            with self.assertRaises(ParseError):
+                self.filter("title__contains=a")
+
+    def test_distinct_only_across_to_many_relations(self):
+        self.assertFalse(self.filter("title=a&owner__name=b&hidden=1").query.distinct)
+        self.assertFalse(self.filter("~editors__name=a").query.distinct)
+        self.assertTrue(self.filter("editors__name=a").query.distinct)
+        self.assertTrue(self.filter("editors__in=1,2").query.distinct)
+
+    def test_crosses_to_many(self):
+        self.assertTrue(self.filter_backend.crosses_to_many(ExposurePost, "editors__name__icontains"))
+        self.assertFalse(self.filter_backend.crosses_to_many(ExposurePost, "owner__name__icontains"))
+        self.assertFalse(self.filter_backend.crosses_to_many(ExposurePost, "title__in"))
