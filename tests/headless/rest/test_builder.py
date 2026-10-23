@@ -43,21 +43,30 @@ class BuilderSingletonModel(models.Model):
         app_label = "test"
 
 
-class RestBuilderTests(SimpleTestCase):
-    """Tests for the RestBuilder class"""
+class IsolatedBuildMixin:
+    """
+    Run each test on an empty registry, router and list of singleton routes,
+    and restore them afterwards, so other test modules are unaffected.
+    """
 
     def setUp(self):
-        """Set up test environment"""
-        # Clear any existing registrations
-        headless_registry._registry = {}
+        super().setUp()
+        self._saved_state = (dict(headless_registry._models), list(rest_router.registry), list(singleton_urls))
+        headless_registry._models = {}
         rest_router.registry = []
         singleton_urls.clear()
 
     def tearDown(self):
-        """Clean up after tests"""
-        headless_registry._models = {}
-        rest_router.registry = []
-        singleton_urls.clear()
+        models_, registry, singletons = self._saved_state
+        headless_registry._models = models_
+        rest_router.registry = registry
+        # headless.rest.urls holds a reference to this list: update it in place
+        singleton_urls[:] = singletons
+        super().tearDown()
+
+
+class RestBuilderTests(IsolatedBuildMixin, SimpleTestCase):
+    """Tests for the RestBuilder class"""
 
     def test_initialization(self):
         """Test that RestBuilder initializes correctly"""
@@ -341,18 +350,8 @@ class BuilderOptionsSingleton(models.Model):
         app_label = "builder_options"
 
 
-class RestBuilderOptionsTests(SimpleTestCase):
+class RestBuilderOptionsTests(IsolatedBuildMixin, SimpleTestCase):
     """Tests for the fields, exclude, read_only and permission options"""
-
-    def setUp(self):
-        headless_registry._models = {}
-        rest_router.registry = []
-        singleton_urls.clear()
-
-    def tearDown(self):
-        headless_registry._models = {}
-        rest_router.registry = []
-        singleton_urls.clear()
 
     def test_read_only_viewset(self):
         """Test that read_only models get a viewset without write actions"""
@@ -481,18 +480,8 @@ class CustomSearchFilter(SearchFilter):
     """Custom filter backend to verify subclasses are left untouched"""
 
 
-class BuilderDrfOverrideTests(SimpleTestCase):
+class BuilderDrfOverrideTests(IsolatedBuildMixin, SimpleTestCase):
     """Tests for the DRF-level HEADLESS setting overrides"""
-
-    def setUp(self):
-        headless_registry._models = {}
-        rest_router.registry = []
-        singleton_urls.clear()
-
-    def tearDown(self):
-        headless_registry._models = {}
-        rest_router.registry = []
-        singleton_urls.clear()
 
     def get_view_set(self):
         config = {
