@@ -30,6 +30,17 @@ REST_FRAMEWORK = {
 }
 ```
 
+## Exposed fields
+
+Only fields the API serializes can be filtered. A field left out with `fields` or `exclude` answers `400 Bad Request`, the same as a field that does not exist, so its values cannot be guessed through lookups such as `__startswith`.
+
+Lookups can follow a relation to another exposed model and filter on its serialized fields. A relation to a model that is not exposed can only be filtered by primary key:
+
+```http
+GET /api/blog.article?category__name__icontains=tutorials
+GET /api/blog.article?category__in=2,3
+```
+
 ## Exclusions
 
 Start a parameter with `~` to exclude the matches instead:

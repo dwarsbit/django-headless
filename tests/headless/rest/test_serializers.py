@@ -356,3 +356,112 @@ class TestFlexibleSerializer:
         assert isinstance(expandable_fields, dict)
         # Should include the relation field
         assert "relation" in expandable_fields, f"Should include {field_type.__name__} as expandable"
+
+
+class TestFlexibleSerializerExposure:
+    """Hidden fields stay hidden, also through properties and expansion"""
+
+    def test_expanded_relation_honors_related_exclude(self):
+        class Owner(models.Model):
+            name = models.CharField(max_length=100)
+            token = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = "test_exposure"
+
+        class Post(models.Model):
+            title = models.CharField(max_length=100)
+            owner = models.ForeignKey(Owner, on_delete=models.CASCADE)
+
+            class Meta:
+                app_label = "test_exposure"
+
+        headless_registry.register(Owner, exclude=["token"])
+
+        class PostSerializer(FlexibleSerializer):
+            class Meta:
+                model = Post
+                fields = "__all__"
+
+        owner_serializer_class = PostSerializer()._expandable_fields["owner"][0]
+        assert owner_serializer_class.Meta.exclude == ["token"]
+
+        post = Post(id=1, title="Hello", owner=Owner(id=2, name="Leon", token="s3cr3t"))
+        data = PostSerializer(post, expand=["owner"]).data
+        assert data["owner"] == {"id": 2, "name": "Leon"}
+
+    def test_expanded_relation_honors_related_fields(self):
+        class Writer(models.Model):
+            name = models.CharField(max_length=100)
+            email = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = "test_exposure"
+
+        class Story(models.Model):
+            writer = models.ForeignKey(Writer, on_delete=models.CASCADE)
+
+            class Meta:
+                app_label = "test_exposure"
+
+        headless_registry.register(Writer, fields=["name"])
+
+        class StorySerializer(FlexibleSerializer):
+            class Meta:
+                model = Story
+                fields = "__all__"
+
+        assert StorySerializer()._expandable_fields["writer"][0].Meta.fields == ["name"]
+
+    def test_hidden_relation_not_expandable(self):
+        class Editor(models.Model):
+            name = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = "test_exposure"
+
+        class Issue(models.Model):
+            title = models.CharField(max_length=100)
+            editor = models.ForeignKey(Editor, on_delete=models.CASCADE)
+
+            class Meta:
+                app_label = "test_exposure"
+
+        headless_registry.register(Editor)
+
+        class ExcludeSerializer(FlexibleSerializer):
+            class Meta:
+                model = Issue
+                exclude = ["editor"]
+
+        class FieldsSerializer(FlexibleSerializer):
+            class Meta:
+                model = Issue
+                fields = ["title"]
+
+        assert "editor" not in ExcludeSerializer()._expandable_fields
+        assert "editor" not in FieldsSerializer()._expandable_fields
+
+    def test_properties_honor_fields_option(self):
+        class Page(models.Model):
+            title = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = "test_exposure"
+
+            @property
+            def slug(self):
+                return self.title.lower()
+
+            @property
+            def internal_note(self):
+                return "secret"
+
+        class PageSerializer(FlexibleSerializer):
+            class Meta:
+                model = Page
+                fields = ["title", "slug"]
+
+        fields = PageSerializer().get_fields()
+        assert set(fields) == {"title", "slug"}
+        assert isinstance(fields["slug"], serializers.ReadOnlyField)

@@ -58,7 +58,7 @@ class HeadlessRegistry:
             raise ImproperlyConfigured("The fields and exclude options cannot be combined.")
 
         if not search_fields:
-            search_fields = self._get_default_search_fields(model_class)
+            search_fields = self._get_default_search_fields(model_class, fields, exclude)
 
         self._validate_search_fields(model_class, search_fields)
         self._validate_field_names(model_class, fields, "fields")
@@ -97,12 +97,53 @@ class HeadlessRegistry:
     def __len__(self):
         return len(self._models)
 
-    def _get_default_search_fields(self, model: Type[models.Model]) -> List[str]:
+    def get_exposed_fields(self, model: Type[models.Model]) -> Optional[set[str]]:
         """
-        Returns a list of field names that are searchable (i.e. CharField).
+        Get the names of the fields of a registered model that are exposed
+        through the API, honoring its fields and exclude options. These are
+        the fields that may be filtered on. Reverse relations are only
+        included when the related model is registered as well. The primary
+        key is always included.
+
+        Must be called after the app registry is ready.
 
         Args:
             model: A Django model class
+
+        Returns:
+            The exposed field names, or None if the model is not registered.
+        """
+        config = self._models.get(model._meta.label_lower)
+
+        if config is None:
+            return None
+
+        if config["fields"] is not None:
+            return {*config["fields"], model._meta.pk.name}
+
+        names = set()
+        for field in model._meta.get_fields():
+            is_reverse = field.auto_created and not field.concrete
+            if is_reverse and not (field.related_model and field.related_model._meta.label_lower in self._models):
+                continue
+            names.add(field.name)
+
+        return (names - set(config["exclude"] or [])) | {model._meta.pk.name}
+
+    def _get_default_search_fields(
+        self,
+        model: Type[models.Model],
+        fields: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+    ) -> List[str]:
+        """
+        Returns a list of field names that are searchable (i.e. CharField).
+        Fields hidden by the fields or exclude options are never searchable.
+
+        Args:
+            model: A Django model class
+            fields: The fields option of the model, if any
+            exclude: The exclude option of the model, if any
 
         Returns:
             List of field names that are CharField or TextField instances
@@ -110,6 +151,10 @@ class HeadlessRegistry:
         searchable_fields = []
 
         for field in model._meta.fields:
+            if fields is not None and field.name not in fields:
+                continue
+            if exclude is not None and field.name in exclude:
+                continue
             if isinstance(field, models.CharField) and not getattr(field, "choices", None):
                 searchable_fields.append(field.name)
 
@@ -176,6 +221,10 @@ class HeadlessRegistry:
             return
 
         field_names = self._get_field_names(model)
+
+        if option == "fields":
+            # Model properties can be listed in fields as read-only fields
+            field_names |= {name for name in dir(model) if isinstance(getattr(model, name, None), property)}
 
         invalid = [name for name in names if not isinstance(name, str) or name not in field_names]
 

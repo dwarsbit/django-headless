@@ -330,6 +330,17 @@ class EndToEndApiTests(TransactionTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("secret", response.data)
 
+    def test_excluded_fields_cannot_be_probed(self):
+        """Test that excluded fields cannot be filtered or searched on"""
+        ApiKey.objects.create(name="frontend", secret="hunter2")
+
+        for query in ("secret__startswith=hun", "~secret=hunter2"):
+            response = self.client.get(f"/e2e_blog.apikey?{query}")
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.data["detail"], "Field 'secret' does not exist")
+
+        self.assertEqual(headless_registry.get_model("e2e_blog.apikey")["search_fields"], ["name"])
+
     def test_api_root_lists_generated_routes(self):
         """Test that the API root lists the generated routes"""
         response = self.client.get("/")

@@ -2,9 +2,12 @@ from unittest.mock import Mock
 
 from django.db import models
 from django.test import TestCase
+from rest_framework import serializers
 from rest_framework.exceptions import ParseError
+from rest_framework.generics import GenericAPIView
 from rest_framework.request import QueryDict
 
+from headless.registry import headless_registry
 from headless.rest.filters import LookupFilter
 
 
@@ -356,3 +359,100 @@ class LookupFilterTests(TestCase):
 
         self.assertIn("Invalid filter parameters", str(context.exception.detail))
         self.assertIn("bogus", str(context.exception.detail))
+
+
+class ExposureOwner(models.Model):
+    name = models.CharField(max_length=100)
+    token = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        app_label = "test_app"
+
+
+class ExposureHidden(models.Model):
+    secret = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "test_app"
+
+
+class ExposurePost(models.Model):
+    title = models.CharField(max_length=100)
+    body = models.TextField()
+    owner = models.ForeignKey(ExposureOwner, null=True, on_delete=models.CASCADE)
+    hidden = models.ForeignKey(ExposureHidden, null=True, on_delete=models.CASCADE)
+
+    class Meta:
+        app_label = "test_app"
+
+
+class LookupFilterExposureTests(TestCase):
+    """Only fields exposed through the API can be filtered on"""
+
+    def setUp(self):
+        self._saved_registry = dict(headless_registry._models)
+        headless_registry.register(ExposureOwner, exclude=["token"])
+        headless_registry.register(ExposurePost)
+        self.filter_backend = LookupFilter()
+
+    def tearDown(self):
+        headless_registry._models = self._saved_registry
+
+    def get_filter_kwargs(self, model_class, query):
+        return self.filter_backend.get_filter_kwargs(model_class=model_class, query_params=QueryDict(query))
+
+    def assertRejected(self, model_class, query, field_name):
+        with self.assertRaises(ParseError) as cm:
+            self.get_filter_kwargs(model_class, query)
+        self.assertEqual(str(cm.exception.detail), f"Field '{field_name}' does not exist")
+
+    def test_excluded_field_rejected(self):
+        self.assertRejected(ExposureOwner, "token__startswith=s", "token")
+
+    def test_excluded_field_rejected_in_exclusion(self):
+        self.assertRejected(ExposureOwner, "~token=s", "token")
+
+    def test_fields_option_restricts_filtering(self):
+        headless_registry.register(ExposurePost, fields=["title", "owner"])
+        self.assertRejected(ExposurePost, "body__contains=x", "body")
+        filter_kwargs, _ = self.get_filter_kwargs(ExposurePost, "title=x&id=1")
+        self.assertEqual(filter_kwargs, {"title": "x", "id": 1})
+
+    def test_traversal_into_excluded_field_rejected(self):
+        self.assertRejected(ExposurePost, "owner__token__startswith=s", "owner__token")
+
+    def test_traversal_into_unexposed_model_rejected(self):
+        self.assertRejected(ExposurePost, "hidden__secret=s", "hidden__secret")
+
+    def test_relation_to_unexposed_model_filterable_by_pk(self):
+        filter_kwargs, _ = self.get_filter_kwargs(ExposurePost, "hidden=1&hidden__in=1,2")
+        self.assertEqual(filter_kwargs, {"hidden": "1", "hidden__in": ["1", "2"]})
+
+    def test_traversal_into_exposed_field(self):
+        filter_kwargs, exclude_kwargs = self.get_filter_kwargs(ExposurePost, "owner__name__icontains=leon&~owner__id=2")
+        self.assertEqual(filter_kwargs, {"owner__name__icontains": "leon"})
+        self.assertEqual(exclude_kwargs, {"owner__id": 2})
+
+    def test_traversal_casts_with_target_field(self):
+        filter_kwargs, _ = self.get_filter_kwargs(ExposurePost, "owner__is_active=true")
+        self.assertEqual(filter_kwargs, {"owner__is_active": True})
+
+    def test_filter_queryset_rejects_hidden_field(self):
+        view = Mock(action="list", queryset=ExposureOwner.objects.none())
+        request = Mock(query_params=QueryDict("token=s"))
+        with self.assertRaises(ParseError):
+            self.filter_backend.filter_queryset(request, ExposureOwner.objects.none(), view)
+
+    def test_unexposed_model_uses_view_serializer_fields(self):
+        """Custom views on unexposed models only filter on serializer fields"""
+
+        class HiddenSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = ExposureHidden
+                fields = ["id"]
+
+        view = GenericAPIView(serializer_class=HiddenSerializer, queryset=ExposureHidden.objects.none())
+        view.request, view.format_kwarg = None, None
+        filterable_fields = self.filter_backend.get_filterable_fields(ExposureHidden, view)
+        self.assertEqual(filterable_fields, {"id"})

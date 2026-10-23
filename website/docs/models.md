@@ -63,7 +63,9 @@ class Article(models.Model):
     internal_notes = models.TextField(blank=True)
 ```
 
-Excluded fields are never serialized and are ignored on create and update.
+Excluded fields are never serialized and are ignored on create and update. They cannot be filtered, searched or expanded either.
+
+`fields` can also name model properties, which are serialized as read-only fields.
 
 ## Read-only models
 
@@ -153,7 +155,7 @@ class Article(models.Model):
     category = models.ForeignKey("blog.Category", on_delete=models.PROTECT, related_name="articles")
 ```
 
-Without `search_fields`, every `CharField` without choices is searched. DRF's lookup prefixes (`^`, `=`, `@`, `$`) and relations (`category__name`) are supported. Search with the `search` query parameter:
+Without `search_fields`, every serialized `CharField` without choices is searched. DRF's lookup prefixes (`^`, `=`, `@`, `$`) and relations (`category__name`) are supported. Search with the `search` query parameter:
 
 ```http
 GET /api/blog.article?search=django
