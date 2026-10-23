@@ -78,4 +78,4 @@ When `HEADLESS["DEFAULT_AUTHENTICATION_CLASSES"]` is not set, the generated rout
 ## Related pages
 
 - [Permissions](./permissions.md)
-- [Settings reference](./settings.md#auth_secret_key-and-auth_secret_key_header)
+- [Settings reference](./settings.md#auth_secret_key-auth_read_only_secret_key-and-auth_secret_key_header)

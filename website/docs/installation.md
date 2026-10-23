@@ -57,7 +57,7 @@ This page sets up Django Headless in an existing Django project and exposes a fi
    ]
    ```
 
-:::note Authentication required
+:::note Staff users only
 Generated routes answer `403 Forbidden` to everyone but staff users, because `HEADLESS["DEFAULT_PERMISSION_CLASSES"]` defaults to `IsAdminUser`. For a public API, set it to `AllowAny`; see [Permissions](./permissions.md).
 :::
 

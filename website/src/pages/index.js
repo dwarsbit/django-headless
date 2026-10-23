@@ -47,7 +47,7 @@ const features = [
   },
   {
     title: 'Protected by default',
-    text: 'Generated routes require authentication until you open them up. Secret key authentication and read-only models are included.',
+    text: 'Generated routes only answer staff users until you open them up. Secret key authentication, with a read-only key for the frontend, and read-only models are included.',
   },
 ];
 
