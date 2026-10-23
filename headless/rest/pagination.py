@@ -17,7 +17,7 @@ class PageNumberPagination(BasePageNumberPagination):
                     "count": self.page.paginator.count,
                     "pages": self.page.paginator.num_pages,
                     "current": self.page.number,
-                    "limit": self.page_size,
+                    "limit": self.page.paginator.per_page,
                     "links": {
                         "self": absolute_uri,
                         "next": self.get_next_link(),
