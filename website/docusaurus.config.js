@@ -37,6 +37,11 @@ const config = {
             to: 'docs/intro',
           },
           {
+            href: 'https://dwarsbit.github.io/django-content-studio/',
+            label: 'Django Content Studio',
+            position: 'right',
+          },
+          {
             href: 'https://github.com/dwarsbit/django-headless',
             label: 'GitHub',
             position: 'right',
@@ -66,6 +71,7 @@ const config = {
               { label: 'GitHub', href: 'https://github.com/dwarsbit/django-headless' },
               { label: 'PyPI', href: 'https://pypi.org/project/django-headless/' },
               { label: 'Changelog', href: 'https://github.com/dwarsbit/django-headless/blob/main/CHANGELOG.md' },
+              { label: 'Django Content Studio', href: 'https://dwarsbit.github.io/django-content-studio/' },
             ],
           },
         ],
