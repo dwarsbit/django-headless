@@ -7,10 +7,13 @@ from unittest.mock import Mock
 import pytest
 from django.contrib.auth.models import User
 from django.test import RequestFactory
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from rest_framework.test import APIRequestFactory
+from rest_framework.views import APIView
 
-from headless.rest.authentication import SecretKeyAuthentication
+from headless.rest.authentication import SecretKey, SecretKeyAuthentication
 from headless.settings import headless_settings
 
 
@@ -18,11 +21,12 @@ class TestSecretKeyAuthentication:
     """Test suite for SecretKeyAuthentication"""
 
     def test_initialization_without_secret_key(self, monkeypatch):
-        """Test that authentication raises ValueError when AUTH_SECRET_KEY is not configured"""
-        # Temporarily set AUTH_SECRET_KEY to None
+        """Test that authentication raises ValueError when no secret key is configured"""
+        # Temporarily set both secret keys to None
         monkeypatch.setattr(headless_settings, "AUTH_SECRET_KEY", None)
+        monkeypatch.setattr(headless_settings, "AUTH_READ_ONLY_SECRET_KEY", None)
 
-        with pytest.raises(ValueError, match="HEADLESS.AUTH_SECRET_KEY must be configured"):
+        with pytest.raises(ValueError, match="AUTH_READ_ONLY_SECRET_KEY must be configured"):
             SecretKeyAuthentication()
 
     def test_initialization_with_secret_key(self, monkeypatch):
@@ -63,10 +67,10 @@ class TestSecretKeyAuthentication:
         factory = RequestFactory()
         request = factory.get("/test/", HTTP_X_API_KEY=secret_key)
 
-        # Should return (User(is_staff=True), None)
+        # Should return (User(is_staff=True), SecretKey(read_only=False))
         user, auth_token = auth.authenticate(request)
         assert isinstance(user, User)
-        assert auth_token is None
+        assert auth_token == SecretKey(read_only=False)
         # The key passes the default IsAdminUser permission of generated routes
         assert user.is_staff
         assert IsAdminUser().has_permission(Mock(user=user), None)
@@ -149,7 +153,7 @@ class TestSecretKeyAuthentication:
         # Should authenticate successfully
         user, auth_token = auth.authenticate(request)
         assert isinstance(user, User)
-        assert auth_token is None
+        assert auth_token == SecretKey(read_only=False)
 
     def test_empty_header_value(self, monkeypatch):
         """Test authentication with empty header value"""
@@ -207,4 +211,77 @@ class TestSecretKeyAuthentication:
         # Should authenticate successfully regardless of HTTP method
         user, auth_token = auth.authenticate(request)
         assert isinstance(user, User)
-        assert auth_token is None
+        assert auth_token == SecretKey(read_only=False)
+
+
+class TestReadOnlySecretKey:
+    """The read-only secret key only grants safe methods"""
+
+    @pytest.fixture(autouse=True)
+    def keys(self, monkeypatch):
+        monkeypatch.setattr(headless_settings, "AUTH_SECRET_KEY", "full-key")
+        monkeypatch.setattr(headless_settings, "AUTH_READ_ONLY_SECRET_KEY", "read-key")
+        monkeypatch.setattr(headless_settings, "AUTH_SECRET_KEY_HEADER", "X-Secret-Key")
+
+    @pytest.mark.parametrize("http_method", ["get", "head", "options"])
+    def test_read_only_key_allows_safe_methods(self, http_method):
+        request = getattr(RequestFactory(), http_method)("/test/", HTTP_X_SECRET_KEY="read-key")
+        user, auth_token = SecretKeyAuthentication().authenticate(request)
+        assert user.is_staff
+        assert auth_token == SecretKey(read_only=True)
+
+    @pytest.mark.parametrize("http_method", ["post", "put", "patch", "delete"])
+    def test_read_only_key_denies_unsafe_methods(self, http_method):
+        request = getattr(RequestFactory(), http_method)("/test/", HTTP_X_SECRET_KEY="read-key")
+        with pytest.raises(PermissionDenied):
+            SecretKeyAuthentication().authenticate(request)
+
+    @pytest.mark.parametrize("http_method", ["get", "post", "put", "patch", "delete"])
+    def test_full_access_key_allows_all_methods(self, http_method):
+        request = getattr(RequestFactory(), http_method)("/test/", HTTP_X_SECRET_KEY="full-key")
+        _, auth_token = SecretKeyAuthentication().authenticate(request)
+        assert auth_token == SecretKey(read_only=False)
+
+    def test_only_read_only_key_configured(self, monkeypatch):
+        monkeypatch.setattr(headless_settings, "AUTH_SECRET_KEY", None)
+        auth = SecretKeyAuthentication()
+
+        _, auth_token = auth.authenticate(RequestFactory().get("/test/", HTTP_X_SECRET_KEY="read-key"))
+        assert auth_token == SecretKey(read_only=True)
+
+        with pytest.raises(AuthenticationFailed):
+            auth.authenticate(RequestFactory().get("/test/", HTTP_X_SECRET_KEY="full-key"))
+
+    def test_identical_keys_rejected(self, monkeypatch):
+        monkeypatch.setattr(headless_settings, "AUTH_READ_ONLY_SECRET_KEY", "full-key")
+        with pytest.raises(ValueError, match="must be different"):
+            SecretKeyAuthentication()
+
+    def test_non_ascii_header_fails_authentication(self):
+        request = RequestFactory().get("/test/", HTTP_X_SECRET_KEY="clé")
+        with pytest.raises(AuthenticationFailed):
+            SecretKeyAuthentication().authenticate(request)
+
+    def test_view_with_admin_permission(self):
+        """The read-only key is enforced on a view, whatever its permissions"""
+
+        class ContentView(APIView):
+            authentication_classes = [SecretKeyAuthentication]
+            permission_classes = [IsAdminUser]
+
+            def get(self, request):
+                return Response({"read_only": request.auth.read_only})
+
+            def post(self, request):
+                return Response(status=201)
+
+        view = ContentView.as_view()
+        factory = APIRequestFactory()
+
+        response = view(factory.get("/", HTTP_X_SECRET_KEY="read-key"))
+        assert response.status_code == 200
+        assert response.data == {"read_only": True}
+
+        assert view(factory.post("/", HTTP_X_SECRET_KEY="read-key")).status_code == 403
+        assert view(factory.post("/", HTTP_X_SECRET_KEY="full-key")).status_code == 201
+        assert view(factory.post("/", HTTP_X_SECRET_KEY="wrong-key")).status_code == 401

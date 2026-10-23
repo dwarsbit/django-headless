@@ -11,6 +11,7 @@ All Django Headless settings live in the `HEADLESS` dictionary in your Django se
 HEADLESS = {
     "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
+    "AUTH_READ_ONLY_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
     "DEFAULT_RENDERER_CLASSES": None,
     "DEFAULT_PARSER_CLASSES": None,
@@ -80,9 +81,9 @@ All these settings take dotted paths and classes.
 
 `SEARCH_PARAM` and `ORDERING_PARAM` apply to DRF's `SearchFilter` and `OrderingFilter` when they are in `DEFAULT_FILTER_BACKENDS`. Subclasses of those filters and other filter backends keep their own parameter names.
 
-## `AUTH_SECRET_KEY` and `AUTH_SECRET_KEY_HEADER`
+## `AUTH_SECRET_KEY`, `AUTH_READ_ONLY_SECRET_KEY` and `AUTH_SECRET_KEY_HEADER`
 
-The key and the header name for [`SecretKeyAuthentication`](./authentication.md). The header defaults to `X-Secret-Key`.
+The full access key, the [read-only key](./authentication.md#read-only-key) and the header name for [`SecretKeyAuthentication`](./authentication.md). The header defaults to `X-Secret-Key`.
 
 ## `DEFAULT_SERIALIZER_CLASS`
 
