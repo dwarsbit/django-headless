@@ -5,12 +5,16 @@ Tests for the SingletonViewSet class
 from unittest.mock import patch
 
 from django.db import connection, models
-from django.test import SimpleTestCase, TransactionTestCase
+from django.test import SimpleTestCase, TransactionTestCase, override_settings
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
+from rest_framework.request import Request
 from rest_framework.test import APIRequestFactory
+from rest_framework.viewsets import ModelViewSet
 
-from headless.rest.viewsets import SingletonViewSet
+from headless.registry import headless_registry
+from headless.rest.serializers import FlexibleSerializer
+from headless.rest.viewsets import ExpandPrefetchMixin, SingletonViewSet
 
 
 class SingletonConfig(models.Model):
@@ -236,3 +240,75 @@ class SingletonViewSetIntegrationTests(TransactionTestCase):
 
         with self.assertRaises(NotFound):
             viewset.get_object()
+
+
+class PrefetchCategory(models.Model):
+    name = models.CharField(max_length=100)
+    parent = models.ForeignKey("self", null=True, on_delete=models.CASCADE)
+
+    class Meta:
+        app_label = "headless_tests"
+
+
+class PrefetchArticle(models.Model):
+    title = models.CharField(max_length=100)
+    category = models.ForeignKey(PrefetchCategory, on_delete=models.CASCADE, related_name="articles")
+
+    class Meta:
+        app_label = "headless_tests"
+
+
+class PrefetchArticleSerializer(FlexibleSerializer):
+    class Meta:
+        model = PrefetchArticle
+        fields = "__all__"
+
+
+class ExpandPrefetchMixinTests(SimpleTestCase):
+    """Expanded relations are prefetched instead of queried per object"""
+
+    def setUp(self):
+        self._saved_registry = dict(headless_registry._models)
+        headless_registry.register(PrefetchCategory)
+        headless_registry.register(PrefetchArticle)
+
+    def tearDown(self):
+        headless_registry._models = self._saved_registry
+
+    def get_prefetch_lookups(self, query, serializer_class=PrefetchArticleSerializer):
+        class ArticleViewSet(ExpandPrefetchMixin, ModelViewSet):
+            queryset = PrefetchArticle.objects.all()
+
+        ArticleViewSet.serializer_class = serializer_class
+        viewset = ArticleViewSet()
+        viewset.request = Request(APIRequestFactory().get(f"/?{query}"))
+        viewset.format_kwarg = None
+        return viewset.get_queryset()._prefetch_related_lookups
+
+    def test_expanded_relation_prefetched(self):
+        self.assertEqual(self.get_prefetch_lookups("expand=category"), ("category",))
+
+    def test_nested_expansion_prefetched(self):
+        # Expanded objects only expand further with FlexibleSerializer as the default serializer
+        with override_settings(HEADLESS={"DEFAULT_SERIALIZER_CLASS": "headless.rest.serializers.FlexibleSerializer"}):
+            self.assertEqual(self.get_prefetch_lookups("expand=category.parent"), ("category__parent",))
+
+        self.assertEqual(self.get_prefetch_lookups("expand=category.parent"), ("category",))
+
+    def test_wildcard_expansion_prefetched(self):
+        self.assertEqual(self.get_prefetch_lookups("expand=*"), ("category",))
+
+    def test_unknown_names_ignored(self):
+        self.assertEqual(self.get_prefetch_lookups("expand=bogus,category"), ("category",))
+        self.assertEqual(self.get_prefetch_lookups("expand=category.bogus"), ("category",))
+
+    def test_no_expansion(self):
+        self.assertEqual(self.get_prefetch_lookups("title=a"), ())
+
+    def test_serializer_without_expandable_fields(self):
+        class PlainSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = PrefetchArticle
+                fields = "__all__"
+
+        self.assertEqual(self.get_prefetch_lookups("expand=category", PlainSerializer), ())

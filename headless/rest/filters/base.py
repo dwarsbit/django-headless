@@ -49,7 +49,12 @@ class LookupFilter(BaseFilterBackend):
                 query_params=request.query_params,
                 filterable_fields=self.get_filterable_fields(model_class, view),
             )
-            return queryset.filter(**filter_kwargs).exclude(**exclude_kwargs).distinct()
+            queryset = queryset.filter(**filter_kwargs).exclude(**exclude_kwargs)
+            # Filtering across a to-many relation can repeat rows; only then
+            # is the (costly) distinct needed. Exclusions never repeat rows.
+            if any(self.crosses_to_many(model_class, path) for path in filter_kwargs):
+                queryset = queryset.distinct()
+            return queryset
         except ParseError:
             # ParseErrors already carry a descriptive detail; pass them through.
             raise
@@ -117,10 +122,33 @@ class LookupFilter(BaseFilterBackend):
             field = next_field
             index += 1
 
+        # The remaining parts are lookups and transforms.
+        for part in parts[index:]:
+            if part in headless_settings.FILTER_DISALLOWED_LOOKUPS:
+                raise ParseError(detail=f"The '{part}' lookup is not allowed")
+
         # The last part of a path is considered its lookup, but it's not required.
         lookup = parts[-1] if index < len(parts) and parts[-1] in field.get_lookups() else None
 
         return field, lookup
+
+    def crosses_to_many(self, model_class, path):
+        """
+        Check whether a (validated) filter path traverses a to-many relation,
+        such as a many-to-many field or a reverse foreign key.
+        """
+        model = model_class
+        for part in path.split("__"):
+            try:
+                field = model._meta.get_field(part)
+            except FieldDoesNotExist:
+                return False
+            if field.many_to_many or field.one_to_many:
+                return True
+            if not field.is_relation or field.related_model is None:
+                return False
+            model = field.related_model
+        return False
 
     def get_filter_kwargs(self, model_class, query_params, filterable_fields=None):
         filter_kwargs = {}

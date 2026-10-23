@@ -5,7 +5,10 @@ Tests for FlexibleSerializer
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
+from django.test import override_settings
 from rest_framework import serializers
+from rest_framework.request import Request
+from rest_framework.test import APIRequestFactory
 
 from headless.registry import headless_registry
 from headless.rest.serializers import FlexibleSerializer
@@ -465,3 +468,45 @@ class TestFlexibleSerializerExposure:
         fields = PageSerializer().get_fields()
         assert set(fields) == {"title", "slug"}
         assert isinstance(fields["slug"], serializers.ReadOnlyField)
+
+
+class DepthSection(models.Model):
+    name = models.CharField(max_length=100)
+    parent = models.ForeignKey("self", null=True, on_delete=models.CASCADE)
+
+    class Meta:
+        app_label = "test_depth"
+
+
+class TestExpansionDepth:
+    """Relations can only be expanded up to HEADLESS["MAX_EXPANSION_DEPTH"]"""
+
+    @pytest.fixture
+    def serializer_class(self):
+        headless_registry.register(DepthSection)
+
+        class SectionSerializer(FlexibleSerializer):
+            class Meta:
+                model = DepthSection
+                fields = "__all__"
+
+        return SectionSerializer
+
+    def serialize(self, serializer_class, expand):
+        request = Request(APIRequestFactory().get("/", {"expand": expand}))
+        return serializer_class(context={"request": request})
+
+    def test_expansion_within_depth(self, serializer_class):
+        self.serialize(serializer_class, "parent.parent")
+
+    def test_expansion_beyond_depth_rejected(self, serializer_class):
+        with pytest.raises(serializers.ValidationError):
+            self.serialize(serializer_class, "parent.parent.parent")
+
+    def test_depth_setting(self, serializer_class):
+        with override_settings(HEADLESS={"MAX_EXPANSION_DEPTH": 1}):
+            with pytest.raises(serializers.ValidationError):
+                self.serialize(serializer_class, "parent.parent")
+
+        with override_settings(HEADLESS={"MAX_EXPANSION_DEPTH": None}):
+            self.serialize(serializer_class, "parent.parent.parent")

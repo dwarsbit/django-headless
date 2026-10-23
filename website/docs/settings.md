@@ -20,6 +20,8 @@ HEADLESS = {
     "DEFAULT_FILTER_BACKENDS": ["headless.rest.filters.LookupFilter"],
     "DEFAULT_PAGINATION_CLASS": None,
     "PAGE_SIZE": None,
+    "MAX_PAGE_SIZE": 100,
+    "MAX_EXPANSION_DEPTH": 2,
     "SEARCH_PARAM": None,
     "ORDERING_PARAM": None,
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
@@ -27,6 +29,7 @@ HEADLESS = {
     "FILTER_TRUE_VALUES": ["true", "1", "on"],
     "FILTER_FALSE_VALUES": ["false", "0", "off"],
     "FILTER_NULL_VALUES": ["null", "none", "empty"],
+    "FILTER_DISALLOWED_LOOKUPS": ["regex", "iregex"],
     "NON_FILTER_FIELDS": [
         "search",
         "limit",
@@ -81,6 +84,16 @@ All these settings take dotted paths and classes.
 
 `SEARCH_PARAM` and `ORDERING_PARAM` apply to DRF's `SearchFilter` and `OrderingFilter` when they are in `DEFAULT_FILTER_BACKENDS`. Subclasses of those filters and other filter backends keep their own parameter names.
 
+## `MAX_PAGE_SIZE`
+
+The largest page size a client can request on the generated routes, with `?limit=` for `PageNumberPagination` and `LimitOffsetPagination`. Larger values are lowered to it. The default is `100`; `None` removes the maximum, which lets a single request return a whole table.
+
+It replaces the maximum of the pagination class (`max_page_size`, or `max_limit` for `LimitOffsetPagination`) on the generated routes. See [Pagination](./pagination.md#page-size).
+
+## `MAX_EXPANSION_DEPTH`
+
+The deepest relation path a client can [expand](./serializers.md#expanding-relations) with `FlexibleSerializer`, counted in relations: `?expand=category` has depth 1, `?expand=category.articles` depth 2. Deeper paths answer `400 Bad Request`. The default is `2`; `None` allows any depth. The `MAXIMUM_EXPANSION_DEPTH` setting of drf-flex-fields takes precedence when set.
+
 ## `AUTH_SECRET_KEY`, `AUTH_READ_ONLY_SECRET_KEY` and `AUTH_SECRET_KEY_HEADER`
 
 The full access key, the [read-only key](./authentication.md#read-only-key) and the header name for [`SecretKeyAuthentication`](./authentication.md). The header defaults to `X-Secret-Key`.
@@ -95,6 +108,7 @@ These settings configure [`LookupFilter`](./filtering.md):
 
 - **`FILTER_EXCLUSION_SYMBOL`**: the prefix that turns a filter into an exclusion.
 - **`FILTER_TRUE_VALUES`, `FILTER_FALSE_VALUES`, `FILTER_NULL_VALUES`**: the values read as `True`, `False` and `None`.
+- **`FILTER_DISALLOWED_LOOKUPS`**: lookups that cannot be used in filters. The default, `["regex", "iregex"]`, blocks regular expressions; see [Filtering](./filtering.md#disallowed-lookups).
 - **`NON_FILTER_FIELDS`**: query parameters that are never read as filters. Add the parameters of your own filter backends and pagination here.
 
 ## Related pages

@@ -11,7 +11,74 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 
+class ExpandPrefetchMixin:
+    """
+    Prefetch the relations requested with ?expand=, so that expanding a
+    relation costs one query per relation instead of one per object.
+    Only applies to serializers with expandable fields (FlexibleSerializer).
+    """
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        request = getattr(self, "request", None)
+
+        # Only DRF requests carry query_params
+        if getattr(request, "query_params", None) is None:
+            return queryset
+
+        prefetch_paths = self.get_expand_prefetch_paths(request)
+        return queryset.prefetch_related(*prefetch_paths) if prefetch_paths else queryset
+
+    def get_expand_prefetch_paths(self, request):
+        """
+        Return the ORM paths (e.g. "category__articles") of the relations
+        requested with ?expand=. Only paths of expandable relations are
+        returned; anything else is left to the serializer to ignore.
+        """
+        from rest_flex_fields import EXPAND_PARAM, WILDCARD_VALUES
+
+        values = request.query_params.getlist(EXPAND_PARAM) or request.query_params.getlist(f"{EXPAND_PARAM}[]")
+        if len(values) == 1:
+            values = values[0].split(",")
+
+        serializer_class = self.get_serializer_class()
+        paths = []
+
+        for value in values:
+            names = value.split(".")
+            if names[0] in (WILDCARD_VALUES or []):
+                names = None
+            paths.extend(self._resolve_prefetch_paths(serializer_class, names))
+
+        return list(dict.fromkeys(paths))
+
+    def _resolve_prefetch_paths(self, serializer_class, names, prefix=""):
+        """
+        Resolve an expand path (a list of names, or None for all expandable
+        relations at this level) against the expandable fields of the
+        serializer class, level by level.
+        """
+        expandable_fields = getattr(serializer_class(), "_expandable_fields", None)
+        if not expandable_fields:
+            return []
+
+        if names is None:
+            return [f"{prefix}{name}" for name in expandable_fields]
+
+        name, rest = names[0], names[1:]
+        if name not in expandable_fields:
+            return []
+
+        path = f"{prefix}{name}"
+        if not rest:
+            return [path]
+
+        nested_paths = self._resolve_prefetch_paths(expandable_fields[name][0], rest, f"{path}__")
+        return nested_paths or [path]
+
+
 class SingletonViewSet(
+    ExpandPrefetchMixin,
     GenericViewSet,
     CreateModelMixin,
     UpdateModelMixin,

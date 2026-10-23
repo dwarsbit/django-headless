@@ -51,6 +51,21 @@ A list route answers with a `pagination` object and the items in `data`:
 
 `links.next` and `links.previous` are complete URLs, so the frontend can page through a list without building URLs itself. On the first and last page, the missing link is `null`.
 
+## Page size
+
+A client can request up to `HEADLESS["MAX_PAGE_SIZE"]` items per page with `limit`; larger values are lowered to it. The default maximum is `100`. Without a maximum, one request can return a whole table and keep the database and the server busy.
+
+```python
+# mysite/settings.py
+HEADLESS = {
+    "DEFAULT_PAGINATION_CLASS": "headless.rest.pagination.PageNumberPagination",
+    "PAGE_SIZE": 25,
+    "MAX_PAGE_SIZE": 50,
+}
+```
+
+On your own views, `PageNumberPagination` uses a maximum of `100`. Change it with a subclass that sets `max_page_size`.
+
 ## Ordering
 
 Generated list routes are ordered by primary key, so a page holds the same items on every request.

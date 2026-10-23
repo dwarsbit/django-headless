@@ -73,6 +73,17 @@ Repeating the parameter works as well: `?id__in=1&id__in=2`.
 
 Boolean and null values are case-insensitive. Change the recognized values with the `FILTER_*` settings.
 
+## Disallowed lookups
+
+The `regex` and `iregex` lookups are disallowed and answer `400 Bad Request`. A costly regular expression can keep the database busy for a long time, and an invalid one fails in the database. Use `contains`, `startswith` or `endswith` instead, or change the list with `HEADLESS["FILTER_DISALLOWED_LOOKUPS"]`:
+
+```python
+# mysite/settings.py
+HEADLESS = {
+    "FILTER_DISALLOWED_LOOKUPS": ["regex", "iregex", "search"],
+}
+```
+
 ## Errors
 
 An unknown field, an unsupported lookup or a value that cannot be cast answers `400 Bad Request` with the reason:

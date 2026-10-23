@@ -5,7 +5,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.settings import api_settings
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from ..viewsets import LookupFieldsMixin, SingletonViewSet
+from ..viewsets import ExpandPrefetchMixin, LookupFieldsMixin, SingletonViewSet
 from ...registry import ModelConfig
 from ...settings import headless_settings
 from ...utils import get_authentication_classes, get_permission_classes
@@ -52,7 +52,7 @@ def get_view_set(
 
     elif read_only:
 
-        class ViewSet(ReadOnlyModelViewSet):
+        class ViewSet(ExpandPrefetchMixin, ReadOnlyModelViewSet):
             # Deterministic ordering, so paginated lists are stable
             queryset = model_class.objects.all().order_by("pk")
             serializer_class = serializer
@@ -61,7 +61,7 @@ def get_view_set(
 
     else:
 
-        class ViewSet(ModelViewSet):
+        class ViewSet(ExpandPrefetchMixin, ModelViewSet):
             # Deterministic ordering, so paginated lists are stable
             queryset = model_class.objects.all().order_by("pk")
             serializer_class = serializer
@@ -125,14 +125,18 @@ def apply_drf_overrides(viewset: Type[Any]) -> None:
     viewset.permission_classes = get_permission_classes()
 
     pagination_class = headless_settings.DEFAULT_PAGINATION_CLASS
-    page_size = headless_settings.PAGE_SIZE
-    if pagination_class is not None or page_size is not None:
-        # PAGE_SIZE lives on the pagination class, not the viewset, so
-        # it requires a subclass of the effective pagination class.
-        base_class = pagination_class if pagination_class is not None else api_settings.DEFAULT_PAGINATION_CLASS
-        if base_class is not None:
-            attrs = {"page_size": page_size} if page_size is not None else {}
-            viewset.pagination_class = type("HeadlessPagination", (base_class,), attrs)
+    base_class = pagination_class if pagination_class is not None else api_settings.DEFAULT_PAGINATION_CLASS
+    if base_class is not None:
+        # PAGE_SIZE and MAX_PAGE_SIZE live on the pagination class, not the
+        # viewset, so they require a subclass of the effective pagination class.
+        attrs = {}
+        if headless_settings.PAGE_SIZE is not None:
+            attrs["page_size"] = headless_settings.PAGE_SIZE
+        # max_page_size caps page number and cursor pagination, max_limit
+        # caps limit/offset pagination. None removes the cap.
+        attrs["max_page_size"] = headless_settings.MAX_PAGE_SIZE
+        attrs["max_limit"] = headless_settings.MAX_PAGE_SIZE
+        viewset.pagination_class = type("HeadlessPagination", (base_class,), attrs)
 
     if headless_settings.DEFAULT_FILTER_BACKENDS is not None:
         viewset.filter_backends = list(headless_settings.DEFAULT_FILTER_BACKENDS)
