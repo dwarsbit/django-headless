@@ -153,10 +153,10 @@ def is_auth_configured() -> bool:
 
 
 def is_secret_key_auth_configured() -> bool:
-    """Check if SecretKeyAuthentication is configured"""
+    """Check if a secret key (full access or read-only) is configured for SecretKeyAuthentication"""
     from headless.settings import headless_settings
 
-    return bool(headless_settings.AUTH_SECRET_KEY)
+    return bool(headless_settings.AUTH_SECRET_KEY or headless_settings.AUTH_READ_ONLY_SECRET_KEY)
 
 
 def is_secret_key_auth_used() -> bool:

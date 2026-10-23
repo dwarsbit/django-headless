@@ -64,7 +64,14 @@ class DjangoHeadlessConfig(AppConfig):
                 )
 
                 if not is_secret_key_auth_configured():
-                    log("  [yellow]• HEADLESS.AUTH_SECRET_KEY is not configured![/yellow]")
+                    log(
+                        "  [yellow]• Neither HEADLESS.AUTH_SECRET_KEY nor HEADLESS.AUTH_READ_ONLY_SECRET_KEY is configured![/yellow]"
+                    )
+                else:
+                    if headless_settings.AUTH_SECRET_KEY:
+                        log("  [cyan]•[/cyan] Full access key configured")
+                    if headless_settings.AUTH_READ_ONLY_SECRET_KEY:
+                        log("  [cyan]•[/cyan] Read-only key configured")
         else:
             log(
                 ":lock:  [yellow]No authentication classes: every request to the generated routes is anonymous.[/yellow]"

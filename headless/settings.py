@@ -23,6 +23,8 @@ DEFAULTS = {
     # True always shows it, False never does.
     "BOOT_LOG": None,
     "AUTH_SECRET_KEY": None,
+    # A second secret key that only grants safe (read) methods.
+    "AUTH_READ_ONLY_SECRET_KEY": None,
     "AUTH_SECRET_KEY_HEADER": "X-Secret-Key",
     # DRF-level settings for the generated routes. When set, they override
     # the value from REST_FRAMEWORK for the generated routes only. The

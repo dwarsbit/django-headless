@@ -430,6 +430,29 @@ class BootLogAuthTests(SimpleTestCase):
             output = self.boot()
         self.assertIn("Using secret key authentication", output)
 
+    def test_secret_keys_reported(self, _):
+        with override_settings(
+            HEADLESS={
+                "BOOT_LOG": True,
+                "AUTH_READ_ONLY_SECRET_KEY": "read-key",
+                "DEFAULT_AUTHENTICATION_CLASSES": ["headless.rest.authentication.SecretKeyAuthentication"],
+            },
+        ):
+            output = self.boot()
+        self.assertIn("Read-only key configured", output)
+        self.assertNotIn("Full access key configured", output)
+        self.assertNotIn("is configured!", output)
+
+    def test_missing_secret_keys_reported(self, _):
+        with override_settings(
+            HEADLESS={
+                "BOOT_LOG": True,
+                "DEFAULT_AUTHENTICATION_CLASSES": ["headless.rest.authentication.SecretKeyAuthentication"],
+            },
+        ):
+            output = self.boot()
+        self.assertIn("Neither HEADLESS.AUTH_SECRET_KEY nor HEADLESS.AUTH_READ_ONLY_SECRET_KEY is configured!", output)
+
     def test_headless_auth_overrides_rest_framework_auth(self, _):
         with override_settings(
             HEADLESS={

@@ -30,15 +30,34 @@ To let a client authenticate with a shared secret key:
 
 Read the key from an environment variable rather than writing it in `settings.py`. Change the header name with `HEADLESS["AUTH_SECRET_KEY_HEADER"]`.
 
-A request with a wrong key answers `401 Unauthorized`. A request without the header is passed on to the next authentication class, so you can combine `SecretKeyAuthentication` with session or token authentication.
+A request with a wrong key, or a key with characters outside ASCII, answers `401 Unauthorized`. A request without the header is passed on to the next authentication class, so you can combine `SecretKeyAuthentication` with session or token authentication.
 
 To use `SecretKeyAuthentication` on your own views as well, add it to `REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]` instead.
 
 :::warning Set a key
-Without `AUTH_SECRET_KEY`, every request to a route that uses `SecretKeyAuthentication` fails with an error. The boot log warns about a missing key; set it before deploying.
+Without `AUTH_SECRET_KEY` or `AUTH_READ_ONLY_SECRET_KEY`, every request to a route that uses `SecretKeyAuthentication` fails with an error. The boot log warns about a missing key; set one before deploying.
 :::
 
 A request authenticated with the secret key is not tied to a user account. It counts as a staff user, so it passes the default `IsAdminUser` permission and can read and change content on the generated routes.
+
+### Read-only key
+
+A frontend that only reads content does not need a key that can change it. Give it a read-only key with `HEADLESS["AUTH_READ_ONLY_SECRET_KEY"]`. This key allows `GET`, `HEAD` and `OPTIONS` requests; other methods answer `403 Forbidden`.
+
+```python
+# mysite/settings.py
+HEADLESS = {
+    "AUTH_SECRET_KEY": "your-secret-key",
+    "AUTH_READ_ONLY_SECRET_KEY": "your-read-only-key",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "headless.rest.authentication.SecretKeyAuthentication",
+    ],
+}
+```
+
+Both keys are sent in the same header. Set either key or both; they must be different. `SecretKeyAuthentication` enforces the read-only restriction itself, so it holds on every view that uses it, whatever the permission classes.
+
+In your own permission classes, `request.auth.read_only` tells whether a request used the read-only key.
 
 ## Other authentication classes
 

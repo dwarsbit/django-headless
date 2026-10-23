@@ -14,6 +14,9 @@
 - ⚠️ Regular authenticated users get `403` on generated routes by default; set `DEFAULT_PERMISSION_CLASSES` to `IsAuthenticated` to restore the previous behavior
 - 🔑 `SecretKeyAuthentication` authenticates as a staff user, so the secret key keeps working with the new default
 - 💬 The boot log reports the authentication and permission classes the generated routes actually use, including DRF's defaults
+- 🔑 New `HEADLESS.AUTH_READ_ONLY_SECRET_KEY`: a second secret key that only allows `GET`, `HEAD` and `OPTIONS`, so a frontend no longer needs a key that can write
+- 🔑 `request.auth` is a `SecretKey` (with `read_only`) for requests authenticated by `SecretKeyAuthentication`, instead of `None`
+- 🐛 A secret key header with non-ASCII characters is rejected with `401` instead of crashing with a `500`
 
 ## v1.0.0-rc.9
 
