@@ -114,14 +114,12 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
                         continue
 
                     is_many = field.many_to_many or field.one_to_many
-                    name = field.name
 
-                    if is_many:
-                        # Use direct attribute access with fallbacks for better performance
-                        # ManyToMany fields might not have related_name or accessor_name
-                        related_name = getattr(field, "related_name", None)
-                        accessor_name = getattr(field, "accessor_name", None)
-                        name = related_name or accessor_name or field.name
+                    # Expand a relation by the attribute it has on an instance.
+                    # For reverse relations that is the accessor name (related_name,
+                    # or e.g. comment_set), not field.name, which is the query name.
+                    is_reverse = field.auto_created and not field.concrete
+                    name = field.get_accessor_name() if is_reverse else field.name
 
                     # Do not expand relations hidden by the fields or exclude options
                     if not self._is_field_allowed(name):
