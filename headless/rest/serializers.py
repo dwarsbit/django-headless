@@ -88,7 +88,7 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
         # Validate that model has _meta attribute
         if not hasattr(model, "_meta"):
             raise ImproperlyConfigured(
-                f"Model {model.__class__.__name__} is missing _meta attribute. "
+                f"Model {getattr(model, '__name__', repr(model))} is missing _meta attribute. "
                 f"This typically indicates the model is not a proper Django model."
             )
 
@@ -147,12 +147,12 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
                     # Log the error but continue with other fields
                     log(
                         f"[yellow]Warning: Failed to process relational field {getattr(field, 'name', 'unknown')} "
-                        f"on model {model.__class__.__name__}: {str(e)}[/yellow]"
+                        f"on model {model.__name__}: {str(e)}[/yellow]"
                     )
                     continue
 
         except AttributeError as e:
-            raise ImproperlyConfigured(f"Failed to get fields from model {model.__class__.__name__}: {str(e)}") from e
+            raise ImproperlyConfigured(f"Failed to get fields from model {model.__name__}: {str(e)}") from e
 
         # Cache the result to avoid recomputation
         self._expandable_fields_cache = expandable_fields
