@@ -1,6 +1,7 @@
 from django.db import IntegrityError, models, transaction
 from rest_framework import status
 from rest_framework.exceptions import NotFound
+from rest_framework.generics import get_object_or_404
 from rest_framework.mixins import (
     CreateModelMixin,
     UpdateModelMixin,
@@ -124,3 +125,41 @@ class SingletonViewSet(
         with connection.cursor() as cursor:
             for sql in sql_list:
                 cursor.execute(sql)
+
+
+class LookupFieldsMixin:
+    """
+    Adds retrieve routes by unique fields (by_<field>/<value>) to a model
+    view set. These routes are retrieves by another key: view.action is
+    "retrieve" for them, so action-based permissions, serializers and
+    throttles apply as they do to the detail route. view.lookup_by holds
+    the field the request looks up by.
+    """
+
+    # Maps the lookup action names to the field they look up by
+    lookup_actions = {}
+    # The field the current request looks up by; None on other routes
+    lookup_by = None
+
+    def initialize_request(self, request, *args, **kwargs):
+        request = super().initialize_request(request, *args, **kwargs)
+
+        # The action is resolved here, before permissions are checked
+        lookup_by = self.lookup_actions.get(self.action)
+        if lookup_by is not None:
+            self.action = "retrieve"
+            self.lookup_by = lookup_by
+
+        return request
+
+    def retrieve_by_lookup(self, request, value):
+        """
+        Retrieve a single object by the lookup field, mirroring retrieve.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        # DRF's get_object_or_404 also returns 404 for values that cannot
+        # be cast to the field's type (e.g. a malformed UUID).
+        instance = get_object_or_404(queryset, **{self.lookup_by: value})
+        self.check_object_permissions(request, instance)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

@@ -2,12 +2,10 @@ from typing import Type, Dict, Any
 
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.generics import get_object_or_404
-from rest_framework.response import Response
 from rest_framework.settings import api_settings
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from ..viewsets import SingletonViewSet
+from ..viewsets import LookupFieldsMixin, SingletonViewSet
 from ...registry import ModelConfig
 from ...settings import headless_settings
 from .serializer import get_serializer
@@ -69,8 +67,12 @@ def get_view_set(
             search_fields = model_config["search_fields"]
             ordering = ["pk"]
 
-    for field_name in model_config.get("lookup_fields") or []:
-        setattr(ViewSet, f"by_{field_name}", _make_lookup_action(field_name))
+    lookup_fields = model_config.get("lookup_fields") or []
+    if lookup_fields:
+        attrs = {"lookup_actions": {f"by_{field_name}": field_name for field_name in lookup_fields}}
+        for field_name in lookup_fields:
+            attrs[f"by_{field_name}"] = _make_lookup_action(field_name)
+        ViewSet = type("ViewSet", (LookupFieldsMixin, ViewSet), attrs)
 
     # Apply any DRF-level HEADLESS overrides to the generated route.
     apply_drf_overrides(ViewSet)
@@ -82,18 +84,11 @@ def get_view_set(
 def _make_lookup_action(field_name: str):
     """
     Create a GET-only route that retrieves a single object by a unique
-    field, at <model>/by_<field>/<value>. It mirrors the retrieve action:
-    filter backends and object permissions apply the same way.
+    field, at <model>/by_<field>/<value>.
     """
 
     def retrieve_by(self, request, value=None):
-        queryset = self.filter_queryset(self.get_queryset())
-        # DRF's get_object_or_404 also returns 404 for values that cannot
-        # be cast to the field's type (e.g. a malformed UUID).
-        instance = get_object_or_404(queryset, **{field_name: value})
-        self.check_object_permissions(request, instance)
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+        return self.retrieve_by_lookup(request, value)
 
     retrieve_by.__name__ = f"by_{field_name}"
 

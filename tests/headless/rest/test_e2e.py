@@ -11,6 +11,7 @@ import uuid
 from django.db import connection, models
 from django.test import TransactionTestCase, override_settings
 from django.urls import clear_url_caches
+from rest_framework.permissions import BasePermission
 from rest_framework.test import APIClient, APIRequestFactory
 
 import headless.rest.urls as headless_urls
@@ -82,6 +83,16 @@ class Page(models.Model):
 
     class Meta:
         app_label = "e2e_blog"
+
+
+class DenyRetrieve(BasePermission):
+    """Denies retrieves, recording the action and lookup field it saw."""
+
+    seen = []
+
+    def has_permission(self, request, view):
+        self.seen.append((view.action, getattr(view, "lookup_by", None)))
+        return view.action != "retrieve"
 
 
 E2E_REGISTRY_PREFIXES = (
@@ -400,3 +411,24 @@ class EndToEndApiTests(TransactionTestCase):
         response = view_set.as_view({"get": "by_slug"})(factory.get(query), value="about-us")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, expected)
+
+    def test_lookup_field_routes_act_as_retrieve(self):
+        """Test that lookup routes have the retrieve action, so action-based permissions cover them"""
+        page = Page.objects.create(slug="about-us", title="About")
+
+        with override_settings(HEADLESS={"DEFAULT_PERMISSION_CLASSES": [DenyRetrieve]}):
+            view_set = get_view_set(headless_registry.get_model("e2e_blog.page"), {}, {})
+
+        factory = APIRequestFactory()
+        DenyRetrieve.seen.clear()
+
+        response = view_set.as_view({"get": "by_slug"})(factory.get("/"), value="about-us")
+        self.assertEqual(response.status_code, 403)
+
+        response = view_set.as_view({"get": "retrieve"})(factory.get("/"), pk=page.id)
+        self.assertEqual(response.status_code, 403)
+
+        response = view_set.as_view({"get": "list"})(factory.get("/"))
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(DenyRetrieve.seen, [("retrieve", "slug"), ("retrieve", None), ("list", None)])
