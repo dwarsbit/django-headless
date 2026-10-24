@@ -15,7 +15,7 @@ from rest_framework.settings import api_settings
 
 from ..registry import headless_registry
 from ..settings import headless_settings
-from ..utils import get_authentication_classes, get_permission_classes
+from .utils import get_authentication_classes, get_permission_classes
 from .routers import rest_router, singleton_urls
 
 # The minimum length and number of unique characters of a secret key
