@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: ci
+    runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.check.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Check versions and changelog
+        id: check
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          pip install packaging
+          python - <<'PY'
+          import os, re, sys, tomllib
+          from packaging.version import Version
+
+          tag = os.environ["TAG"]
+          tag_version = Version(tag.removeprefix("v"))
+          with open("pyproject.toml", "rb") as f:
+              pyproject_version = Version(tomllib.load(f)["project"]["version"])
+          init = open("headless/__init__.py").read()
+          init_version = Version(re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', init).group(1))
+
+          if not tag_version == pyproject_version == init_version:
+              sys.exit(
+                  f"Version mismatch: tag {tag}, pyproject.toml {pyproject_version}, "
+                  f"headless/__init__.py {init_version}"
+              )
+
+          # Release notes: the CHANGELOG.md section headed with the tag
+          notes, found = [], False
+          for line in open("CHANGELOG.md"):
+              if line.startswith("## "):
+                  if found:
+                      break
+                  found = line[3:].strip() == tag
+                  continue
+              if found:
+                  notes.append(line)
+          if not found:
+              sys.exit(f"CHANGELOG.md has no '## {tag}' section")
+          open("release-notes.md", "w").write("".join(notes).strip() + "\n")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"prerelease={str(tag_version.is_prerelease).lower()}\n")
+          PY
+
+      - name: Build package
+        run: poetry build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/django-headless/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: [build, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --title "$TAG" \
+            --notes-file release-notes.md --prerelease="$PRERELEASE"

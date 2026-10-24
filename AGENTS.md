@@ -53,7 +53,8 @@ website/                    # Docusaurus docs site (djangoheadless.org); pages i
 STYLE.md                    # Writing style guide for README, docs website and CHANGELOG
 scripts/
   test_wrapper.py           # Dev commands: test, test-verbose, test-cov, build, publish
-.github/workflows/          # ci.yml (tests, black, docs build), docs-deploy.yml (Pages deploy on main)
+.github/workflows/          # ci.yml (tests, black, docs build), docs-deploy.yml (Pages deploy on main),
+                            #   release.yml (PyPI publish and GitHub release on v* tags)
 ```
 
 ## How it works (architecture)
@@ -99,5 +100,7 @@ Run tests before considering any change done. New behavior needs tests in `tests
 
 1. Bump the version in **both** `pyproject.toml` and `headless/__init__.py` (`__version__`) — they must stay in sync.
 2. Add an entry to `CHANGELOG.md` describing user-facing changes (rename an `Unreleased` heading to the version).
-3. Run `poetry run python scripts/test_wrapper.py build` (tests run first; it aborts on failure).
-4. Publish with `poetry run python scripts/test_wrapper.py publish`, then tag the release (e.g. `v1.0.0-rc.2`) and push the tag.
+3. Merge to `main`, then tag the release (e.g. `v1.0.0-rc.2`) and push the tag.
+4. The `Release` workflow (`.github/workflows/release.yml`) runs CI, checks that the tag matches both versions and has a `## <tag>` section in `CHANGELOG.md`, builds, publishes to PyPI (trusted publishing, `pypi` environment) and creates a GitHub release with that section as notes. Pre-release tags (`rc`, `a`, `b`) become pre-releases.
+
+`scripts/test_wrapper.py build` / `publish` remain available for a manual release.
