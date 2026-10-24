@@ -68,6 +68,12 @@ class HeadlessRegistry:
         if fields is not None and exclude is not None:
             raise ImproperlyConfigured("The fields and exclude options cannot be combined.")
 
+        if fields is not None and not fields:
+            raise ImproperlyConfigured(
+                f"Invalid fields for model {model_class._meta.label}: the list is empty. "
+                "List the fields the API may serialize, or leave out the fields option to serialize all fields."
+            )
+
         if not search_fields:
             search_fields = self._get_default_search_fields(model_class, fields, exclude)
 
@@ -162,8 +168,10 @@ class HeadlessRegistry:
         exclude: Optional[List[str]] = None,
     ) -> List[str]:
         """
-        Returns a list of field names that are searchable (i.e. CharField).
-        Fields hidden by the fields or exclude options are never searchable.
+        Returns the names of the fields that are searchable by default: the
+        CharFields (including subclasses such as SlugField and EmailField)
+        without choices. TextFields are not included. Fields hidden by the
+        fields or exclude options are never searchable.
 
         Args:
             model: A Django model class
@@ -171,7 +179,7 @@ class HeadlessRegistry:
             exclude: The exclude option of the model, if any
 
         Returns:
-            List of field names that are CharField or TextField instances
+            List of names of CharFields without choices
         """
         searchable_fields = []
 
@@ -287,6 +295,10 @@ class HeadlessRegistry:
         """
         Validate that the lookup fields are unique, concrete fields on the model
         other than the primary key (which already has its own detail route).
+
+        A lookup field may be hidden by the fields or exclude options. This is
+        intended: a hidden unique field, such as a token in a secret link, can
+        then serve as the key to its object without the API serializing it.
 
         Args:
             model: A Django model class

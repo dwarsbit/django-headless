@@ -5,15 +5,20 @@ description = "Automagically create a REST API for your Django models"
 authors = [
     { name = "Leon van der Grient", email = "leon@dwarsbit.nl" }
 ]
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.12"
-homepage = "https://github.com/dwarsbit/django-headless"
+dependencies = [
+    "Django>=5.2,<7.0",
+    "djangorestframework>=3.18,<4.0",
+    "drf-flex-fields>=1.0,<2.0",
+    "rich>=14",
+]
 keywords = ["django", "rest", "api", "headless", "cms"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -26,14 +31,15 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+[project.urls]
+Homepage = "https://djangoheadless.org"
+Documentation = "https://djangoheadless.org/docs/intro"
+Source = "https://github.com/dwarsbit/django-headless"
+Issues = "https://github.com/dwarsbit/django-headless/issues"
+Changelog = "https://github.com/dwarsbit/django-headless/blob/main/CHANGELOG.md"
+
 [tool.poetry]
 packages = [{include = "headless"}]
-
-[tool.poetry.dependencies]
-Django = ">=5.2,<7.0"
-djangorestframework = ">=3.18,<4.0"
-"drf-flex-fields" = ">=1.0,<2.0"
-"rich" = ">=14"
 
 [tool.poetry.group.dev.dependencies]
 black = "26.3.1"
@@ -43,16 +49,6 @@ djangorestframework-stubs = "3.16.8"
 pytest = "9.0.2"
 "pytest-django" = "4.12.0"
 pytest-cov = "^7.1.0"
-
-[tool.poetry.scripts]
-# Testing scripts
-test = "scripts.test_wrapper:main_test"
-test-verbose = "scripts.test_wrapper:main_test_verbose"
-test-cov = "scripts.test_wrapper:main_test_cov"
-
-# Quality gate scripts - run tests before critical operations
-build = "scripts.test_wrapper:main_build"
-publish = "scripts.test_wrapper:main_publish"
 
 [tool.black]
 line-length = 120

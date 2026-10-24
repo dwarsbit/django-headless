@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 """
-Wrapper script for pytest to handle command line arguments properly.
+Development commands: running the tests, and building and publishing the
+package with the tests as a quality gate.
 
-This script provides test running functionality and a safe publish command
-that runs tests before publishing to ensure quality.
+Run a command with Poetry, e.g. poetry run python scripts/test_wrapper.py test.
+The commands are not Poetry scripts: those are installed as console scripts
+with the package, and this module is not part of it.
 """
 
 import subprocess
@@ -49,7 +51,7 @@ def main_build():
 
     # Continue with poetry build
     try:
-        result = subprocess.run(["poetry", "build"] + sys.argv[1:], check=False)
+        result = subprocess.run(["poetry", "build"] + sys.argv[2:], check=False)
         sys.exit(result.returncode)
     except FileNotFoundError:
         print("❌ Poetry command not found. Make sure poetry is installed and in PATH.")
@@ -74,7 +76,7 @@ def main_publish():
 
     # Continue with poetry publish
     try:
-        result = subprocess.run(["poetry", "publish"] + sys.argv[1:], check=False)
+        result = subprocess.run(["poetry", "publish"] + sys.argv[2:], check=False)
         sys.exit(result.returncode)
     except FileNotFoundError:
         print("❌ Poetry command not found. Make sure poetry is installed and in PATH.")
@@ -84,6 +86,18 @@ def main_publish():
         sys.exit(1)
 
 
+COMMANDS = {
+    "test": main_test,
+    "test-verbose": main_test_verbose,
+    "test-cov": main_test_cov,
+    "build": main_build,
+    "publish": main_publish,
+}
+
+
 if __name__ == "__main__":
-    # For direct execution
-    sys.exit(main(sys.argv[1:]))
+    command = sys.argv[1] if len(sys.argv) > 1 else None
+    if command not in COMMANDS:
+        print(f"Usage: python {sys.argv[0]} {{{','.join(COMMANDS)}}} [poetry arguments]")
+        sys.exit(2)
+    COMMANDS[command]()

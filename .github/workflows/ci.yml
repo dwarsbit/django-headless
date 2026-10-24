@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
         django-version: ["5.2", "6.0", "6.1"]
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
         run: poetry run pip install "Django~=${{ matrix.django-version }}.0"
 
       - name: Run tests
-        run: poetry run test
+        run: poetry run python scripts/test_wrapper.py test
 
   lint:
     runs-on: ubuntu-latest

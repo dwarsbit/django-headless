@@ -93,7 +93,7 @@ To contribute a change:
 1. Fork the repository.
 2. Create a branch: `git checkout -b fix-boolean-casting`.
 3. Make the change and add tests for it.
-4. Run the test suite: `poetry run test`.
+4. Run the test suite: `poetry run python scripts/test_wrapper.py test`.
 5. Commit and push the branch.
 6. Open a pull request.
 
@@ -103,7 +103,7 @@ Set up a development environment with Poetry:
 git clone https://github.com/dwarsbit/django-headless.git
 cd django-headless
 poetry install
-poetry run test
+poetry run python scripts/test_wrapper.py test
 ```
 
 Writing for the README or the documentation follows [STYLE.md](STYLE.md).

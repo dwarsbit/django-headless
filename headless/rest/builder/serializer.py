@@ -57,7 +57,9 @@ def get_meta_attrs(
         A dictionary of Meta attributes
     """
     meta_attrs = {"model": model_class}
-    if fields:
+    # An empty fields list is rejected by the registry; never let it fall
+    # through to "__all__"
+    if fields is not None:
         meta_attrs["fields"] = fields
     elif exclude:
         # DRF does not allow setting both fields and exclude

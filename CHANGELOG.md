@@ -2,6 +2,9 @@
 
 ## Unreleased (v1.0.0)
 
+- 🛡️ `@expose()` raises `ImproperlyConfigured` for an empty `fields` list. It serialized every field of the model instead of none, without the warnings for credentials and user models
+- 🐛 Installing `django-headless` no longer adds the commands `test`, `test-verbose`, `test-cov`, `build` and `publish`. They were the project's own development commands and failed outside its repository
+- 🎁 The PyPI page links to the documentation, source code, issues and changelog, and lists Django Headless as stable. Python 3.14 is tested
 - 🐛 `@expose()` rejects a string for `search_fields`, `fields` and `exclude` with a clear message, such as `expected a list of field names, got 'title'. Did you mean ["title"]?`, instead of reporting every character as an unknown field
 - ⚠️ Add `headless.rest` to `INSTALLED_APPS`, after `headless`: it builds the REST routes. The installation instructions only listed `headless`, which keeps track of the exposed models, so following them gave an API without routes. The system check `headless.W010` warns when models are exposed and `headless.rest` is not installed
 - 🎁 The system checks `headless.W008` and `headless.W009` warn when a model is exposed more than once with different options, and when an exposed model has no routes because it was exposed after the routes were built

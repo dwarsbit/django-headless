@@ -10,7 +10,7 @@ The primary use case is running Django as the backend of a JAMstack setup: Djang
 
 ## Tech stack
 
-- Python >= 3.12, Django >= 5.2 (< 7.0), DRF >= 3.18 (< 4.0); CI tests Python 3.12/3.13 against Django 5.2, 6.0 and 6.1. The minimum Django version is the oldest one that still receives security updates; DRF 3.18 is the first release supporting Django 6.1
+- Python >= 3.12, Django >= 5.2 (< 7.0), DRF >= 3.18 (< 4.0); CI tests Python 3.12/3.13/3.14 against Django 5.2, 6.0 and 6.1. The minimum Django version is the oldest one that still receives security updates; DRF 3.18 is the first release supporting Django 6.1
 - `drf-flex-fields` (expandable/sparse fields), `rich` (boot-time console output)
 - Packaging: Poetry (`poetry-core` build backend)
 - Formatting: black, line length 120, target py312
@@ -52,7 +52,7 @@ tests/                      # pytest suite (mirrors package layout)
 website/                    # Docusaurus docs site (djangoheadless.org); pages in website/docs/
 STYLE.md                    # Writing style guide for README, docs website and CHANGELOG
 scripts/
-  test_wrapper.py           # Poetry entry points: test, test-verbose, test-cov, build, publish
+  test_wrapper.py           # Dev commands: test, test-verbose, test-cov, build, publish
 .github/workflows/          # ci.yml (tests, black, docs build), docs-deploy.yml (Pages deploy on main)
 ```
 
@@ -70,16 +70,16 @@ Note: the boot log is shown in server mode only (or as forced by `HEADLESS.BOOT_
 
 ## Commands
 
-Use the Poetry scripts (they are the documented standard; `build` and `publish` run tests first as quality gates):
+Use the dev commands in `scripts/test_wrapper.py` (they are the documented standard; `build` and `publish` run tests first as quality gates). They are deliberately not Poetry scripts: those would be installed as console scripts with the package.
 
 ```bash
-poetry run test                       # pytest
-poetry run test-verbose               # pytest -v
-poetry run test-cov                   # pytest --cov=headless --cov-report=term
-poetry run black --check headless tests  # formatting check, as in CI
-poetry run build                      # tests, then poetry build
-poetry run publish                    # tests, then poetry publish
-cd website && npm ci && npm run build # docs site build (fails on broken links)
+poetry run python scripts/test_wrapper.py test          # pytest
+poetry run python scripts/test_wrapper.py test-verbose  # pytest -v
+poetry run python scripts/test_wrapper.py test-cov      # pytest --cov=headless --cov-report=term
+poetry run black --check headless tests                 # formatting check, as in CI
+poetry run python scripts/test_wrapper.py build         # tests, then poetry build
+poetry run python scripts/test_wrapper.py publish       # tests, then poetry publish
+cd website && npm ci && npm run build                   # docs site build (fails on broken links)
 ```
 
 Run tests before considering any change done. New behavior needs tests in `tests/headless/...` mirroring the existing style; route behavior is best covered end to end in `tests/headless/rest/test_e2e.py`.
@@ -99,5 +99,5 @@ Run tests before considering any change done. New behavior needs tests in `tests
 
 1. Bump the version in **both** `pyproject.toml` and `headless/__init__.py` (`__version__`) — they must stay in sync.
 2. Add an entry to `CHANGELOG.md` describing user-facing changes (rename an `Unreleased` heading to the version).
-3. Run `poetry run build` (tests run first; it aborts on failure).
-4. Publish with `poetry run publish`, then tag the release (e.g. `v1.0.0-rc.2`) and push the tag.
+3. Run `poetry run python scripts/test_wrapper.py build` (tests run first; it aborts on failure).
+4. Publish with `poetry run python scripts/test_wrapper.py publish`, then tag the release (e.g. `v1.0.0-rc.2`) and push the tag.

@@ -19,6 +19,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from headless.registry import headless_registry
 from headless.rest.builder import RestBuilder
+from headless.rest.builder.serializer import get_serializer
 from headless.rest.filters import LookupFilter
 from headless.rest.pagination import PageNumberPagination
 from headless.rest.routers import rest_router, singleton_urls
@@ -395,6 +396,12 @@ class RestBuilderOptionsTests(IsolatedBuildMixin, SimpleTestCase):
         self.assertFalse(hasattr(viewset, "create"))
         self.assertFalse(hasattr(viewset, "update"))
         self.assertFalse(hasattr(viewset, "destroy"))
+
+    def test_serializer_with_empty_fields_serializes_no_fields(self):
+        """Test that an empty fields list never falls back to all fields"""
+        serializer = get_serializer(BuilderOptionsModel, {}, fields=[])
+
+        self.assertEqual(list(serializer().fields), [])
 
     def test_regular_viewset_allows_writes(self):
         """Test that regular models keep their write actions"""

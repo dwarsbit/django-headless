@@ -399,6 +399,18 @@ class RegistryTests(SimpleTestCase):
         with self.assertRaises(ImproperlyConfigured):
             self.registry.register(RegistryTestModel, exclude=["bogus"])
 
+    def test_empty_fields_rejected(self):
+        # An empty fields list would otherwise serialize every field
+        for fields in ([], ()):
+            with self.subTest(fields=fields):
+                with self.assertRaisesMessage(ImproperlyConfigured, "the list is empty"):
+                    self.registry.register(RegistryTestModel, fields=fields)
+
+    def test_empty_exclude_accepted(self):
+        self.registry.register(RegistryTestModel, exclude=[])
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["exclude"], [])
+
     def test_register_while_models_not_ready(self):
         # @expose runs at model definition time, while apps.populate() is
         # still importing models. Collecting reverse relations then raises
@@ -438,6 +450,13 @@ class RegistryTests(SimpleTestCase):
     def test_lookup_fields_rejected_on_singletons(self):
         with self.assertRaises(ImproperlyConfigured):
             self.registry.register(RegistryLookupModel, singleton=True, lookup_fields=["slug"])
+
+    def test_hidden_lookup_fields_accepted(self):
+        # A hidden unique field, such as the token of a secret link, can be
+        # the key to its object without being serialized
+        self.registry.register(RegistryLookupModel, exclude=["slug"], lookup_fields=["slug"])
+        cfg = self.registry.get_model("registry_tests.registrylookupmodel")
+        self.assertEqual(cfg["lookup_fields"], ["slug"])
 
     def test_string_instead_of_list_rejected(self):
         for option in ("search_fields", "fields", "exclude"):
