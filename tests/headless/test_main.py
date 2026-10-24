@@ -439,6 +439,27 @@ class RegistryTests(SimpleTestCase):
         with self.assertRaises(ImproperlyConfigured):
             self.registry.register(RegistryLookupModel, singleton=True, lookup_fields=["slug"])
 
+    def test_string_instead_of_list_rejected(self):
+        for option in ("search_fields", "fields", "exclude"):
+            with self.subTest(option=option):
+                with self.assertRaisesMessage(
+                    ImproperlyConfigured,
+                    f"Invalid {option} for model registry_tests.RegistryTestModel: expected a list of field names, "
+                    """got 'title'. Did you mean ["title"]?""",
+                ):
+                    self.registry.register(RegistryTestModel, **{option: "title"})
+
+    def test_other_non_list_values_rejected(self):
+        for value in ({"title"}, 1, {"title": True}):
+            with self.subTest(value=value):
+                with self.assertRaisesMessage(ImproperlyConfigured, "expected a list of field names"):
+                    self.registry.register(RegistryTestModel, fields=value)
+
+    def test_tuples_accepted(self):
+        self.registry.register(RegistryTestModel, fields=("title",), search_fields=("title",))
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["fields"], ("title",))
+
     def test_property_names_allowed_in_fields(self):
         class RegistryPropertyModel(models.Model):
             title = models.CharField(max_length=100)

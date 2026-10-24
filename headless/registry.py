@@ -57,6 +57,14 @@ class HeadlessRegistry:
                 "Make sure the decorator is placed below models.Model."
             )
 
+        for option, value in (
+            ("search_fields", search_fields),
+            ("fields", fields),
+            ("exclude", exclude),
+            ("lookup_fields", lookup_fields),
+        ):
+            self._validate_list_option(model_class, value, option)
+
         if fields is not None and exclude is not None:
             raise ImproperlyConfigured("The fields and exclude options cannot be combined.")
 
@@ -251,6 +259,30 @@ class HeadlessRegistry:
                 f"The {option} option takes names of fields on the model."
             )
 
+    def _validate_list_option(self, model: Type[models.Model], value, option: str):
+        """
+        Validate that an option that takes field names is a list or tuple.
+        A string is iterable too, so without this check every character
+        would be validated as a field name.
+
+        Args:
+            model: A Django model class
+            value: The value of the option, or None
+            option: The name of the option (for error messages)
+
+        Raises:
+            ImproperlyConfigured: If the value is not None, a list or a tuple
+        """
+        if value is None or isinstance(value, (list, tuple)):
+            return
+
+        message = f"Invalid {option} for model {model._meta.label}: expected a list of field names, got {value!r}."
+        if isinstance(value, str):
+            # A common cause is a missing comma in a one-element tuple: ("title")
+            message += f' Did you mean ["{value}"]?'
+
+        raise ImproperlyConfigured(message)
+
     def _validate_lookup_fields(self, model: Type[models.Model], lookup_fields: Optional[List[str]]):
         """
         Validate that the lookup fields are unique, concrete fields on the model
@@ -265,12 +297,6 @@ class HeadlessRegistry:
         """
         if not lookup_fields:
             return
-
-        if isinstance(lookup_fields, str):
-            raise ImproperlyConfigured(
-                f"Invalid lookup_fields for model {model._meta.label}: expected a list of field names, "
-                f"got {lookup_fields!r}."
-            )
 
         fields = {field.name: field for field in model._meta.fields}
 

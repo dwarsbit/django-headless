@@ -182,6 +182,7 @@ The message does not name the constraint, so the database's details stay interna
 `@expose()` and `expose_model()` raise `ImproperlyConfigured` when the model is defined if:
 
 - it decorates something that is not a Django model;
+- `search_fields`, `fields`, `exclude` or `lookup_fields` is not a list or tuple, such as `fields=("title")`, which is a string because the comma is missing;
 - `search_fields`, `fields` or `exclude` name a field the model does not have;
 - `fields` and `exclude` are combined;
 - `lookup_fields` is not a list of unique fields of the model, names the primary key or is set on a singleton.
