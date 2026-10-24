@@ -24,11 +24,13 @@ headless/                    # The package itself
   __init__.py               # Public API: expose(), expose_model(), __version__
   registry.py               # HeadlessRegistry: model -> ModelConfig; validates all @expose() options
   settings.py               # HEADLESS-namespaced settings object (headless_settings), DRF-style
-  apps.py                   # AppConfig.ready(): registers the registry/settings checks, boot log (version check, exposed models, auth status)
+  apps.py                   # AppConfig.ready(): registers the registry/settings checks, boot log (version check, exposed models)
   checks.py                 # System checks of the registry and settings (W005-W008, W010), documented in website/docs/checks.md
-  utils.py                  # log(), is_runserver(), is_boot_log_enabled(), auth-config helpers, version check
+  utils.py                  # log(), is_runserver(), is_boot_log_enabled(), version check
   rest/
-    apps.py                 # AppConfig.ready(): registers the REST checks and runs RestBuilder (always; only its log is tied to the boot log)
+    apps.py                 # AppConfig.ready(): registers the REST checks, logs the REST part of the boot log
+                            #   (authentication and permission classes), runs RestBuilder (always; only its log is tied to the boot log)
+    utils.py                # Effective authentication/permission classes of the generated routes, secret key helpers
     checks.py               # System checks of the REST routes (E001, E002, W001-W004, W009)
     builder/                # Dynamic API construction
       base.py               # RestBuilder: iterates registry, registers routes

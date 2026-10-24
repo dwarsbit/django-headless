@@ -2,7 +2,7 @@ import json
 import os
 import re
 import sys
-from typing import List, Optional
+from typing import Optional
 from urllib.request import urlopen
 
 from rich.console import Console
@@ -110,96 +110,6 @@ def is_boot_log_enabled() -> bool:
 
 def flatten(xss):
     return [x for xs in xss for x in xs]
-
-
-def configured_auth_classes() -> List[str] | None:
-    """Return the authentication class configured in REST_FRAMEWORK"""
-    from django.conf import settings
-
-    if not hasattr(settings, "REST_FRAMEWORK"):
-        return None
-
-    auth_classes = settings.REST_FRAMEWORK.get("DEFAULT_AUTHENTICATION_CLASSES", [])
-
-    if not auth_classes:
-        return None
-
-    auth_class_paths = []
-
-    for auth_class in auth_classes:
-        try:
-            if hasattr(auth_class, "__module__") and hasattr(auth_class, "__name__"):
-                full_path = auth_class.__module__ + "." + auth_class.__name__
-                auth_class_paths.append(full_path)
-            else:
-                auth_class_paths.append(auth_class)
-        except:
-            pass
-
-    return auth_class_paths
-
-
-def get_authentication_classes() -> list:
-    """
-    Return the authentication classes the generated routes actually use:
-    HEADLESS.DEFAULT_AUTHENTICATION_CLASSES when set, otherwise DRF's
-    resolved DEFAULT_AUTHENTICATION_CLASSES (including DRF's own defaults
-    when REST_FRAMEWORK does not set them).
-    """
-    from rest_framework.settings import api_settings
-    from headless.settings import headless_settings
-
-    auth_classes = headless_settings.DEFAULT_AUTHENTICATION_CLASSES
-    if auth_classes is None:
-        auth_classes = api_settings.DEFAULT_AUTHENTICATION_CLASSES
-
-    return list(auth_classes)
-
-
-def get_permission_classes() -> list:
-    """
-    Return the permission classes the generated routes actually use:
-    HEADLESS.DEFAULT_PERMISSION_CLASSES when set, otherwise DRF's resolved
-    DEFAULT_PERMISSION_CLASSES.
-    """
-    from rest_framework.settings import api_settings
-    from headless.settings import headless_settings
-
-    permission_classes = headless_settings.DEFAULT_PERMISSION_CLASSES
-    if permission_classes is None:
-        permission_classes = api_settings.DEFAULT_PERMISSION_CLASSES
-
-    return list(permission_classes)
-
-
-def class_path(cls) -> str:
-    """Return the dotted import path of a class."""
-    return f"{cls.__module__}.{cls.__qualname__}"
-
-
-def is_auth_configured() -> bool:
-    """Check if at least one authentication class is configured in REST_FRAMEWORK"""
-
-    auth_classes = configured_auth_classes()
-
-    return bool(auth_classes)
-
-
-def is_secret_key_auth_configured() -> bool:
-    """Check if a secret key (full access or read-only) is configured for SecretKeyAuthentication"""
-    from headless.settings import headless_settings
-
-    return bool(headless_settings.AUTH_SECRET_KEY or headless_settings.AUTH_READ_ONLY_SECRET_KEY)
-
-
-def is_secret_key_auth_used() -> bool:
-    """Check if the generated routes use SecretKeyAuthentication (or a subclass)"""
-    from headless.rest.authentication import SecretKeyAuthentication
-
-    return any(
-        isinstance(auth_class, type) and issubclass(auth_class, SecretKeyAuthentication)
-        for auth_class in get_authentication_classes()
-    )
 
 
 def normalize_version(version: str) -> str:

@@ -8,7 +8,7 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from ..viewsets import ConstraintErrorMixin, ExpandPrefetchMixin, LookupFieldsMixin, SingletonViewSet
 from ...registry import ModelConfig
 from ...settings import headless_settings
-from ...utils import get_authentication_classes, get_permission_classes
+from ..utils import get_authentication_classes, get_permission_classes
 from .serializer import get_serializer
 
 
