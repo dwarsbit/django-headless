@@ -2,6 +2,7 @@
 
 ## Unreleased (v1.0.0)
 
+- 🐛 `@expose()` rejects a string for `search_fields`, `fields` and `exclude` with a clear message, such as `expected a list of field names, got 'title'. Did you mean ["title"]?`, instead of reporting every character as an unknown field
 - ⚠️ Add `headless.rest` to `INSTALLED_APPS`, after `headless`: it builds the REST routes. The installation instructions only listed `headless`, which keeps track of the exposed models, so following them gave an API without routes. The system check `headless.W010` warns when models are exposed and `headless.rest` is not installed
 - 🎁 The system checks `headless.W008` and `headless.W009` warn when a model is exposed more than once with different options, and when an exposed model has no routes because it was exposed after the routes were built
 - 🛡️ The system checks `headless.W006` and `headless.W007` warn when an exposed model serializes a field that looks like a credential (such as `password_hash` or `api_token`) without naming it in `fields`, and when a user model is exposed without a `fields` list
