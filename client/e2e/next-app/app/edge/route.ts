@@ -1,4 +1,4 @@
-import { api } from "../../lib/api";
+import { api } from "../../api";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";

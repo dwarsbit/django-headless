@@ -1,4 +1,4 @@
-import { api } from "../lib/api";
+import { api } from "../api";
 
 // Rendered once, at build time
 export const dynamic = "force-static";
