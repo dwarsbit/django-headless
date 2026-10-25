@@ -63,6 +63,14 @@ class DocArticle(models.Model):
     def shout(self):
         return self.title.upper()
 
+    @property
+    def word_count(self) -> int:
+        return len(self.title.split())
+
+    @property
+    def first_tag(self) -> str | None:
+        return None
+
 
 @expose(lookup_fields=["slug", "uid"])
 class DocPage(models.Model):
@@ -218,8 +226,10 @@ class SchemaTests(SimpleTestCase):
         article = self.schema["components"]["schemas"]["HeadlessRestDocArticle"]
         self.assertEqual(article["properties"]["views"]["type"], "integer")
         self.assertEqual(article["properties"]["tags"]["items"]["type"], "integer")
-        # Model properties are read only fields
-        self.assertTrue(article["properties"]["shout"]["readOnly"])
+        # Model properties are read only fields, typed after their return annotation
+        self.assertEqual(article["properties"]["shout"], {"readOnly": True})
+        self.assertEqual(article["properties"]["word_count"], {"type": "integer", "readOnly": True})
+        self.assertEqual(article["properties"]["first_tag"], {"type": "string", "nullable": True, "readOnly": True})
 
     def test_tags_and_descriptions(self):
         list_operation = self.operation("/headless_rest.docarticle", "get")
@@ -413,6 +423,25 @@ class SchemaHelpersTests(SimpleTestCase):
     def test_schema_name(self):
         self.assertEqual(get_schema_name(DocArticle), "HeadlessRestDocArticle")
 
+    def test_type_schemas(self):
+        import datetime
+        import decimal
+        from typing import Optional
+
+        from headless.rest.schema import get_type_schema
+
+        self.assertEqual(get_type_schema(bool), {"type": "boolean"})
+        self.assertEqual(get_type_schema(int), {"type": "integer"})
+        self.assertEqual(get_type_schema(decimal.Decimal), {"type": "number"})
+        self.assertEqual(get_type_schema(datetime.datetime), {"type": "string", "format": "date-time"})
+        self.assertEqual(get_type_schema(datetime.date), {"type": "string", "format": "date"})
+        self.assertEqual(get_type_schema(Optional[int]), {"type": "integer", "nullable": True})
+        self.assertEqual(get_type_schema(list[str]), {"type": "array", "items": {"type": "string"}})
+        self.assertEqual(get_type_schema(dict[str, int]), {"type": "object"})
+        # Unknown types and unions allow any value
+        self.assertEqual(get_type_schema(int | str), {})
+        self.assertEqual(get_type_schema(None), {})
+
     def test_field_schemas(self):
         self.assertEqual(get_field_schema(models.TextField()), {"type": "string"})
         self.assertEqual(get_field_schema(models.DecimalField(max_digits=5, decimal_places=2)), {"type": "number"})
@@ -447,6 +476,26 @@ class SchemaViewTests(SimpleTestCase):
         # The default permission class requires a staff user
         response = self.get(DEFAULT_PERMISSION_CLASSES=["rest_framework.permissions.IsAdminUser"])
         self.assertIn(response.status_code, (401, 403))
+
+    def test_read_only_secret_key_shows_the_read_operations(self):
+        with override_settings(
+            HEADLESS={
+                **HEADLESS_SETTINGS,
+                "AUTH_SECRET_KEY": "full-key",
+                "AUTH_READ_ONLY_SECRET_KEY": "read-only-key",
+                "DEFAULT_AUTHENTICATION_CLASSES": ["headless.rest.authentication.SecretKeyAuthentication"],
+            }
+        ):
+            view = get_schema_view()
+            paths = {}
+            for key in ("read-only-key", "full-key"):
+                response = view(APIRequestFactory().get("/schema", HTTP_X_SECRET_KEY=key))
+                response.render()
+                paths[key] = json.loads(response.content)["paths"]
+
+        self.assertEqual(sorted(paths["read-only-key"]["/headless_rest.docarticle"]), ["get"])
+        self.assertEqual(sorted(paths["read-only-key"]["/headless_rest.docsettings"]), ["get"])
+        self.assertEqual(sorted(paths["full-key"]["/headless_rest.docarticle"]), ["get", "post"])
 
     def test_shows_the_operations_the_requester_may_perform(self):
         from unittest.mock import patch

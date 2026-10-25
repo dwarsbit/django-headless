@@ -39,7 +39,7 @@ The default format is JSON. Add `?format=openapi` for YAML, which needs PyYAML. 
 The schema covers the generated routes only, not the other views of your project. For each route it lists:
 
 - **Operations** with unique IDs such as `listBlogArticles` and `retrieveBlogArticle`, a description and a tag per model.
-- **Components** named after the model, such as `BlogArticle` for `blog.Article`, with the types of its fields. Model properties are read-only fields.
+- **Components** named after the model, such as `BlogArticle` for `blog.Article`, with the types of its fields. Model properties are read-only fields, typed after their return annotation, such as `def word_count(self) -> int`; a property without one allows any value.
 - **Pagination**: the `page` and `limit` query parameters, and the `pagination` and `data` envelope of the [list response](./pagination.md#the-envelope).
 - **Filters**: a query parameter for each filterable field of a list route, typed from the model field, with the choices of a field that has them. [Lookups](./filtering.md) such as `views__gte` and exclusions with `~` apply to every one of them and are mentioned in each description.
 - **Expansion**: the `expand`, `fields` and `omit` query parameters of [`FlexibleSerializer`](./serializers.md), with the names of the expandable relations.
@@ -48,7 +48,7 @@ The schema covers the generated routes only, not the other views of your project
 
 ## Access to the schema
 
-The schema route requires what the generated routes require, which is a staff user by default; see [Permissions](./permissions.md). It lists the operations the requester may perform: with `IsAuthenticatedOrReadOnly`, an anonymous request sees the read operations and not the write operations.
+The schema route requires what the generated routes require, which is a staff user by default; see [Permissions](./permissions.md). It lists the operations the requester may perform: with `IsAuthenticatedOrReadOnly`, an anonymous request sees the read operations and not the write operations, and so does a request with the read-only secret key.
 
 Authenticate the request for the schema like any other request, for example with the `X-Secret-Key` header when you generate types in a build step.
 

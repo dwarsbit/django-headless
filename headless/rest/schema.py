@@ -9,11 +9,19 @@ schema as a file with Django REST Framework's generateschema command:
     python manage.py generateschema --generator_class headless.rest.schema.SchemaGenerator
 """
 
+import datetime
+import decimal
+import types
+import typing
+import uuid
+
 from django.conf import settings
 from django.db import models
 from rest_flex_fields import EXPAND_PARAM, FIELDS_PARAM, OMIT_PARAM
 from rest_flex_fields.serializers import FlexFieldsSerializerMixin
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication, TokenAuthentication
+from rest_framework.fields import ReadOnlyField
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.renderers import JSONOpenAPIRenderer, OpenAPIRenderer
 from rest_framework.schemas import get_schema_view as get_drf_schema_view
 from rest_framework.schemas import openapi
@@ -84,12 +92,76 @@ def get_field_schema(field) -> dict:
     return schema
 
 
+def get_annotation_schema(function) -> dict:
+    """
+    Return the schema of the return annotation of a function, such as the
+    getter of a model property. Without a known annotation, the schema
+    allows any value.
+    """
+    try:
+        annotation = typing.get_type_hints(function).get("return")
+    except Exception:
+        return {}
+
+    return get_type_schema(annotation)
+
+
+def get_type_schema(annotation) -> dict:
+    """Return the schema of a type annotation, or an empty schema for an unknown type."""
+    origin = typing.get_origin(annotation)
+
+    if origin in (typing.Union, types.UnionType):
+        arguments = [argument for argument in typing.get_args(annotation) if argument is not type(None)]
+        schema = get_type_schema(arguments[0]) if len(arguments) == 1 else {}
+        if len(arguments) < len(typing.get_args(annotation)):
+            schema = {**schema, "nullable": True}
+        return schema
+
+    if origin in (list, tuple, set, frozenset):
+        arguments = typing.get_args(annotation)
+        return {"type": "array", "items": get_type_schema(arguments[0]) if arguments else {}}
+
+    if origin is dict or annotation is dict:
+        return {"type": "object"}
+
+    if annotation in (list, tuple, set, frozenset):
+        return {"type": "array", "items": {}}
+
+    # bool is an int, and datetime a date, so they come first
+    for annotation_type, schema in (
+        (bool, {"type": "boolean"}),
+        (int, {"type": "integer"}),
+        (float, {"type": "number"}),
+        # The JSON renderer writes a decimal as a number
+        (decimal.Decimal, {"type": "number"}),
+        (str, {"type": "string"}),
+        (datetime.datetime, {"type": "string", "format": "date-time"}),
+        (datetime.date, {"type": "string", "format": "date"}),
+        (datetime.time, {"type": "string", "format": "time"}),
+        (uuid.UUID, {"type": "string", "format": "uuid"}),
+    ):
+        if isinstance(annotation, type) and issubclass(annotation, annotation_type):
+            return dict(schema)
+
+    return {}
+
+
 class HeadlessAutoSchema(AutoSchema):
     """
     Describes the generated routes: unique names for the models, a
     description per operation, the filters of LookupFilter, the
     parameters of FlexibleSerializer and the lookup routes.
     """
+
+    def map_field(self, field):
+        # A model property of FlexibleSerializer has the type of its return annotation
+        if type(field) is ReadOnlyField:
+            model = getattr(getattr(getattr(field, "parent", None), "Meta", None), "model", None)
+            attribute = getattr(model, field.source, None) if model is not None else None
+            if isinstance(attribute, property):
+                return get_annotation_schema(attribute.fget)
+
+        return super().map_field(field)
 
     def get_model(self):
         return getattr(getattr(self.view, "queryset", None), "model", None)
@@ -278,8 +350,17 @@ class SchemaGenerator(openapi.SchemaGenerator):
         )
 
     def has_view_permissions(self, path, method, view):
+        from .authentication import SecretKey
+
         # Only the generated routes are part of the schema
         if getattr(view, "headless_model", None) is None:
+            return False
+
+        # The read-only secret key is checked when a request is authenticated,
+        # which the requests of the other methods are not: they reuse the
+        # authentication of the request for the schema.
+        auth = getattr(getattr(view, "request", None), "auth", None)
+        if isinstance(auth, SecretKey) and auth.read_only and method.upper() not in SAFE_METHODS:
             return False
 
         return super().has_view_permissions(path, method, view)
