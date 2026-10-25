@@ -23,7 +23,7 @@ Read the documentation at [djangoheadless.org/docs/client](https://djangoheadles
 2. Enable the schema of the API with `HEADLESS["SCHEMA"]`, and generate the types:
 
    ```bash
-   npx @django-headless/client generate --url https://example.org/api/schema --out src/headless.ts
+   npx headless generate --url https://example.org/api/schema --out src/headless.ts
    ```
 
    The command reads the secret key of the schema route from the `DJANGO_HEADLESS_SECRET_KEY` environment variable.

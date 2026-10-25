@@ -43,7 +43,7 @@ The client types the routes from the OpenAPI schema of the API. To generate the 
 2. Generate the types into a file of the frontend:
 
    ```bash
-   npx @django-headless/client generate --url https://example.org/api/schema --out src/headless.ts
+   npx headless generate --url https://example.org/api/schema --out src/headless.ts
    ```
 
    The command reads the secret key of the schema route from the `DJANGO_HEADLESS_SECRET_KEY` environment variable, or from `--secret-key`. Send other headers with `--header "Authorization: Token your-token"`.
@@ -64,10 +64,10 @@ The client types the routes from the OpenAPI schema of the API. To generate the 
 Without a schema route, generate the types from a schema file of `generateschema`; see [Generating a file](./schema.md#generating-a-file):
 
 ```bash
-npx @django-headless/client generate --file openapi.json --out src/headless.ts
+npx headless generate --file openapi.json --out src/headless.ts
 ```
 
-The file has an interface per model, such as `BlogArticle` for `blog.Article`, and a `BlogArticleInput` for the body of a create or update request. Run the command again when the exposed models change, for example in the build step of the frontend. With the package installed, the command is `headless`, for example in the scripts of `package.json`:
+The file has an interface per model, such as `BlogArticle` for `blog.Article`, and a `BlogArticleInput` for the body of a create or update request. Run the command again when the exposed models change, for example in a script of the frontend:
 
 ```json
 {
