@@ -131,6 +131,8 @@ class LookupFilter(BaseFilterBackend):
                         f"or start the name with `{self.EXCLUDE_SYMBOL}` to exclude matches."
                     ),
                     "schema": get_field_schema(field),
+                    # Marks the parameter as a filter, for typed clients
+                    "x-filter": True,
                 }
             )
 

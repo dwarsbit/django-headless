@@ -4,7 +4,9 @@ exposed test models, and the schema route.
 """
 
 import json
+import os
 import uuid
+from pathlib import Path
 
 from django.db import models
 from django.test import SimpleTestCase, override_settings
@@ -52,6 +54,7 @@ class DocArticle(models.Model):
     created = models.DateTimeField(null=True)
     day = models.DateField(null=True)
     tags = models.ManyToManyField(DocTag)
+    category = models.ForeignKey("DocCategory", null=True, on_delete=models.SET_NULL)
 
     class Meta:
         app_label = "headless_rest"
@@ -270,6 +273,8 @@ class SchemaTests(SimpleTestCase):
         self.assertEqual(parameters["status"]["schema"], {"type": "string", "enum": ["draft", "live"]})
         # A relation filters by the primary key of the related object
         self.assertEqual(parameters["tags"]["schema"], {"type": "integer"})
+        self.assertTrue(parameters["views"]["x-filter"])
+        self.assertNotIn("x-filter", parameters["page"])
         self.assertIn("`views__in`", parameters["views"]["description"])
         self.assertIn("`~`", parameters["views"]["description"])
 
@@ -286,10 +291,27 @@ class SchemaTests(SimpleTestCase):
             self.assertEqual(parameters["expand"]["schema"], {"type": "array", "items": {"type": "string"}})
             self.assertFalse(parameters["expand"]["explode"])
 
-        self.assertIn("Expandable: `tags`.", self.parameters("/headless_rest.docarticle")["expand"]["description"])
+        self.assertIn(
+            "Expandable: `category`, `tags`.", self.parameters("/headless_rest.docarticle")["expand"]["description"]
+        )
         # Only reads take them
         post = {parameter["name"] for parameter in self.operation("/headless_rest.docarticle", "post")["parameters"]}
         self.assertNotIn("expand", post)
+
+    def test_expandable_components(self):
+        self.assertEqual(
+            self.parameters("/headless_rest.docarticle")["expand"]["x-expandable"],
+            {
+                "tags": {"component": "HeadlessRestDocTag", "many": True},
+                "category": {"component": "HeadlessRestDocCategory", "many": False},
+            },
+        )
+        # Reverse relations expand by their accessor name
+        self.assertEqual(
+            self.parameters("/headless_rest.doctag/{id}")["expand"]["x-expandable"],
+            {"docarticle_set": {"component": "HeadlessRestDocArticle", "many": True}},
+        )
+        self.assertEqual(self.parameters("/headless_rest.docnote")["expand"]["x-expandable"], {})
 
     def test_no_expansion_parameters_for_a_plain_serializer(self):
         from django.urls import path
@@ -317,6 +339,11 @@ class SchemaTests(SimpleTestCase):
             operation["responses"]["200"]["content"]["application/json"]["schema"],
             {"$ref": "#/components/schemas/HeadlessRestDocPage"},
         )
+
+    def test_primary_key_parameter_has_the_type_of_the_primary_key(self):
+        parameter = self.parameters("/headless_rest.docarticle/{id}")["id"]
+        self.assertEqual(parameter["in"], "path")
+        self.assertEqual(parameter["schema"], {"type": "integer"})
 
     def test_singleton_responses_are_single_objects(self):
         schema = self.operation("/headless_rest.docsettings", "get")["responses"]["200"]["content"]["application/json"]
@@ -451,3 +478,35 @@ class SchemaRouteTests(SimpleTestCase):
 
         # The routes themselves are not changed by building them again
         self.assertNotIn("headless-schema", self.names())
+
+
+# The schema of the test models that the tests of the TypeScript client read
+CLIENT_SCHEMA_FIXTURE = Path(__file__).resolve().parents[3] / "client" / "test" / "fixtures" / "schema.json"
+
+
+class ClientSchemaFixtureTests(SimpleTestCase):
+    def test_client_schema_fixture_is_up_to_date(self):
+        """
+        Run with UPDATE_CLIENT_SCHEMA=1 to write the fixture after changing
+        the schema or the test models.
+        """
+        schema = json.loads(
+            json.dumps(
+                generate_schema(
+                    SCHEMA_TITLE="Test API",
+                    DEFAULT_AUTHENTICATION_CLASSES=["headless.rest.authentication.SecretKeyAuthentication"],
+                )
+            )
+        )
+
+        if os.environ.get("UPDATE_CLIENT_SCHEMA"):
+            CLIENT_SCHEMA_FIXTURE.write_text(json.dumps(schema, indent=2) + "\n")
+
+        if not CLIENT_SCHEMA_FIXTURE.exists():
+            self.skipTest("The client is not part of this checkout")
+
+        self.assertEqual(
+            json.loads(CLIENT_SCHEMA_FIXTURE.read_text()),
+            schema,
+            "The schema fixture of the client is out of date: run the tests with UPDATE_CLIENT_SCHEMA=1",
+        )

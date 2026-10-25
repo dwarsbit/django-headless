@@ -167,7 +167,15 @@ class HeadlessAutoSchema(AutoSchema):
 
         lookup_field = self.get_lookup_field()
         model = self.get_model()
-        if lookup_field is not None and model is not None:
+        if model is None:
+            return parameters
+
+        for parameter in parameters:
+            # The primary key in a detail route has the type of the primary key field
+            if lookup_field is None and parameter["name"] == "id":
+                parameter["schema"] = get_field_schema(model._meta.pk)
+
+        if lookup_field is not None:
             for parameter in parameters:
                 if parameter["name"] == "value":
                     parameter["description"] = f"The `{lookup_field}` of the {model._meta.verbose_name}."
@@ -194,7 +202,8 @@ class HeadlessAutoSchema(AutoSchema):
         if not isinstance(serializer, FlexFieldsSerializerMixin):
             return []
 
-        expandable = ", ".join(f"`{name}`" for name in getattr(serializer, "_expandable_fields", {}))
+        expandable_fields = getattr(serializer, "_expandable_fields", {})
+        expandable = ", ".join(f"`{name}`" for name in expandable_fields)
         expand_description = (
             "Relations to include as objects instead of primary keys, separated by commas. "
             "Use a dot to expand deeper, such as `category.parent`, or `*` for all relations."
@@ -202,11 +211,32 @@ class HeadlessAutoSchema(AutoSchema):
         if expandable:
             expand_description += f" Expandable: {expandable}."
 
+        expand_parameter = self._get_list_parameter(EXPAND_PARAM, expand_description)
+        # The component of each expandable relation, for typed clients
+        expand_parameter["x-expandable"] = self.get_expandable_components(expandable_fields)
+
         return [
-            self._get_list_parameter(EXPAND_PARAM, expand_description),
+            expand_parameter,
             self._get_list_parameter(FIELDS_PARAM, "Fields to include, separated by commas. Others are left out."),
             self._get_list_parameter(OMIT_PARAM, "Fields to leave out, separated by commas."),
         ]
+
+    @staticmethod
+    def get_expandable_components(expandable_fields):
+        """
+        Map each expandable relation to the component of the model it points
+        to, and whether it expands to a list of objects.
+        """
+        components = {}
+
+        for name, value in expandable_fields.items():
+            # drf-flex-fields takes a serializer class, or a tuple of the class and its options
+            serializer_class, options = value if isinstance(value, tuple) else (value, {})
+            model = getattr(getattr(serializer_class, "Meta", None), "model", None)
+            if model is not None:
+                components[name] = {"component": get_schema_name(model), "many": bool(options.get("many"))}
+
+        return components
 
     @staticmethod
     def _get_list_parameter(name, description):
