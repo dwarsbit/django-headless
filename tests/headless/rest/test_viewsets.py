@@ -2,6 +2,7 @@
 Tests for the SingletonViewSet class
 """
 
+from contextlib import contextmanager
 from unittest.mock import patch
 
 from django.db import connection, models
@@ -14,7 +15,7 @@ from rest_framework.viewsets import ModelViewSet
 
 from headless.registry import headless_registry
 from headless.rest.serializers import FlexibleSerializer
-from headless.rest.viewsets import ExpandPrefetchMixin, SingletonViewSet
+from headless.rest.viewsets import RelatedLoadingMixin, SingletonViewSet
 
 
 class SingletonConfig(models.Model):
@@ -242,9 +243,17 @@ class SingletonViewSetIntegrationTests(TransactionTestCase):
             viewset.get_object()
 
 
+class PrefetchTag(models.Model):
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "headless_tests"
+
+
 class PrefetchCategory(models.Model):
     name = models.CharField(max_length=100)
     parent = models.ForeignKey("self", null=True, on_delete=models.CASCADE)
+    tags = models.ManyToManyField(PrefetchTag)
 
     class Meta:
         app_label = "headless_tests"
@@ -264,46 +273,100 @@ class PrefetchArticleSerializer(FlexibleSerializer):
         fields = "__all__"
 
 
-class ExpandPrefetchMixinTests(SimpleTestCase):
-    """Expanded relations are prefetched instead of queried per object"""
+class PrefetchCategorySerializer(FlexibleSerializer):
+    class Meta:
+        model = PrefetchCategory
+        fields = "__all__"
+
+
+class RelatedLoadingMixinTests(SimpleTestCase):
+    """Relations are joined or prefetched instead of queried per object"""
 
     def setUp(self):
         self._saved_registry = dict(headless_registry._models)
+        headless_registry.register(PrefetchTag)
         headless_registry.register(PrefetchCategory)
         headless_registry.register(PrefetchArticle)
 
     def tearDown(self):
         headless_registry._models = self._saved_registry
 
-    def get_prefetch_lookups(self, query, serializer_class=PrefetchArticleSerializer):
-        class ArticleViewSet(ExpandPrefetchMixin, ModelViewSet):
-            queryset = PrefetchArticle.objects.all()
+    def get_queryset(self, query, serializer_class=PrefetchArticleSerializer, method="get"):
+        model = serializer_class.Meta.model
 
-        ArticleViewSet.serializer_class = serializer_class
-        viewset = ArticleViewSet()
-        viewset.request = Request(APIRequestFactory().get(f"/?{query}"))
+        class ModelViewSetUnderTest(RelatedLoadingMixin, ModelViewSet):
+            queryset = model.objects.all()
+
+        ModelViewSetUnderTest.serializer_class = serializer_class
+        viewset = ModelViewSetUnderTest()
+        viewset.request = Request(getattr(APIRequestFactory(), method)(f"/?{query}"))
         viewset.format_kwarg = None
-        return viewset.get_queryset()._prefetch_related_lookups
+        return viewset.get_queryset()
 
-    def test_expanded_relation_prefetched(self):
-        self.assertEqual(self.get_prefetch_lookups("expand=category"), ("category",))
+    def get_prefetch_lookups(self, query, serializer_class=PrefetchArticleSerializer):
+        return self.get_queryset(query, serializer_class)._prefetch_related_lookups
 
-    def test_nested_expansion_prefetched(self):
+    def get_select_related(self, query, serializer_class=PrefetchArticleSerializer):
+        select_related = self.get_queryset(query, serializer_class).query.select_related
+        return select_related if select_related is False else _flatten_select_related(select_related)
+
+    def test_expanded_foreign_key_joined(self):
+        self.assertEqual(self.get_select_related("expand=category"), ["category"])
+        # The tags of the joined category are prefetched
+        self.assertEqual(self.get_prefetch_lookups("expand=category"), ("category__tags",))
+
+    @contextmanager
+    def reverse_relations(self):
+        # Models of an app that is not installed get no reverse relations
+        # from get_fields; provide the reverse foreign key explicitly.
+        reverse = PrefetchArticle._meta.get_field("category").remote_field
+        fields = (*PrefetchCategory._meta.get_fields(), reverse)
+        with patch.object(PrefetchCategory._meta, "get_fields", return_value=fields):
+            yield
+
+    def test_expanded_to_many_relation_prefetched(self):
+        with self.reverse_relations():
+            self.assertEqual(self.get_select_related("expand=articles", PrefetchCategorySerializer), False)
+            self.assertEqual(
+                self.get_prefetch_lookups("expand=articles", PrefetchCategorySerializer),
+                ("tags", "articles"),
+            )
+
+    def test_nested_expansion(self):
         # Expanded objects only expand further with FlexibleSerializer as the default serializer
         with override_settings(HEADLESS={"DEFAULT_SERIALIZER_CLASS": "headless.rest.serializers.FlexibleSerializer"}):
-            self.assertEqual(self.get_prefetch_lookups("expand=category.parent"), ("category__parent",))
+            self.assertEqual(self.get_select_related("expand=category.parent"), ["category", "category__parent"])
+            # Nothing past a to-many relation can be joined
+            with self.reverse_relations():
+                self.assertEqual(self.get_select_related("expand=articles.category", PrefetchCategorySerializer), False)
+                self.assertEqual(
+                    self.get_prefetch_lookups("expand=articles.category", PrefetchCategorySerializer),
+                    ("tags", "articles", "articles__category", "articles__category__tags"),
+                )
 
-        self.assertEqual(self.get_prefetch_lookups("expand=category.parent"), ("category",))
+        self.assertEqual(self.get_select_related("expand=category.parent"), ["category"])
 
-    def test_wildcard_expansion_prefetched(self):
-        self.assertEqual(self.get_prefetch_lookups("expand=*"), ("category",))
+    def test_wildcard_expansion(self):
+        self.assertEqual(self.get_select_related("expand=*"), ["category"])
 
     def test_unknown_names_ignored(self):
-        self.assertEqual(self.get_prefetch_lookups("expand=bogus,category"), ("category",))
-        self.assertEqual(self.get_prefetch_lookups("expand=category.bogus"), ("category",))
+        self.assertEqual(self.get_select_related("expand=bogus,category"), ["category"])
+        self.assertEqual(self.get_select_related("expand=category.bogus"), ["category"])
 
     def test_no_expansion(self):
+        self.assertEqual(self.get_select_related("title=a"), False)
         self.assertEqual(self.get_prefetch_lookups("title=a"), ())
+
+    def test_many_to_many_prefetched_without_expansion(self):
+        self.assertEqual(self.get_prefetch_lookups("", PrefetchCategorySerializer), ("tags",))
+
+    def test_writes_are_left_alone(self):
+        queryset = self.get_queryset("expand=category", method="patch")
+        self.assertIs(queryset.query.select_related, False)
+        self.assertEqual(queryset._prefetch_related_lookups, ())
+
+        queryset = self.get_queryset("", PrefetchCategorySerializer, method="put")
+        self.assertEqual(queryset._prefetch_related_lookups, ())
 
     def test_serializer_without_expandable_fields(self):
         class PlainSerializer(serializers.ModelSerializer):
@@ -311,4 +374,22 @@ class ExpandPrefetchMixinTests(SimpleTestCase):
                 model = PrefetchArticle
                 fields = "__all__"
 
+        self.assertEqual(self.get_select_related("expand=category", PlainSerializer), False)
         self.assertEqual(self.get_prefetch_lookups("expand=category", PlainSerializer), ())
+
+    def test_write_only_and_hidden_fields_not_prefetched(self):
+        class HiddenTagsSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = PrefetchCategory
+                exclude = ["tags"]
+
+        self.assertEqual(self.get_prefetch_lookups("", HiddenTagsSerializer), ())
+
+
+def _flatten_select_related(tree, prefix=""):
+    """Turn Django's nested select_related dict into a list of paths."""
+    paths = []
+    for name, children in tree.items():
+        paths.append(f"{prefix}{name}")
+        paths.extend(_flatten_select_related(children, f"{prefix}{name}__"))
+    return paths

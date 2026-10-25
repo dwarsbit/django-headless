@@ -5,9 +5,10 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.settings import api_settings
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from ..viewsets import ConstraintErrorMixin, ExpandPrefetchMixin, LookupFieldsMixin, SingletonViewSet
+from ..viewsets import ConstraintErrorMixin, RelatedLoadingMixin, LookupFieldsMixin, SingletonViewSet
 from ...registry import ModelConfig
 from ...settings import headless_settings
+from ..schema import HeadlessAutoSchema, uses_default_schema_class
 from ..utils import get_authentication_classes, get_permission_classes
 from .serializer import get_serializer
 
@@ -52,7 +53,7 @@ def get_view_set(
 
     elif read_only:
 
-        class ViewSet(ExpandPrefetchMixin, ReadOnlyModelViewSet):
+        class ViewSet(RelatedLoadingMixin, ReadOnlyModelViewSet):
             # Deterministic ordering, so paginated lists are stable
             queryset = model_class.objects.all().order_by("pk")
             serializer_class = serializer
@@ -61,7 +62,7 @@ def get_view_set(
 
     else:
 
-        class ViewSet(ConstraintErrorMixin, ExpandPrefetchMixin, ModelViewSet):
+        class ViewSet(ConstraintErrorMixin, RelatedLoadingMixin, ModelViewSet):
             # Deterministic ordering, so paginated lists are stable
             queryset = model_class.objects.all().order_by("pk")
             serializer_class = serializer
@@ -74,6 +75,13 @@ def get_view_set(
         for field_name in lookup_fields:
             attrs[f"by_{field_name}"] = _make_lookup_action(field_name)
         ViewSet = type("ViewSet", (LookupFieldsMixin, ViewSet), attrs)
+
+    # Mark the route as generated: it is part of the OpenAPI schema of the
+    # generated routes, which a project's other views are not.
+    ViewSet.headless_model = model_class
+    # A project that configures its own schema class keeps it
+    if uses_default_schema_class():
+        ViewSet.schema = HeadlessAutoSchema()
 
     # Apply any DRF-level HEADLESS overrides to the generated route.
     apply_drf_overrides(ViewSet)
