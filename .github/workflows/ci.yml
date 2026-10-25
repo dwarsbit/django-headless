@@ -93,3 +93,30 @@ jobs:
       - name: Build package
         working-directory: client
         run: npm run build
+
+  client-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Install Python dependencies
+        run: poetry install --no-interaction
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Run end-to-end tests, with the Next.js app
+        working-directory: client
+        run: poetry run npm run e2e:next

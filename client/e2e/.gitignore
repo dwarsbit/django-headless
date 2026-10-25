@@ -1,0 +1,7 @@
+generated/
+next-app/node_modules/
+next-app/.next/
+next-app/headless.ts
+next-app/next-env.d.ts
+django/db.sqlite3
+__pycache__/

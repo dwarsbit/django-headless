@@ -50,7 +50,9 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/cli.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "e2e": "npm run build && node e2e/run.mjs",
+    "e2e:next": "npm run build && node e2e/run.mjs --next"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

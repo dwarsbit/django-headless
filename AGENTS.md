@@ -57,12 +57,14 @@ client/                     # The django-headless npm package: TypeScript client
   src/cli.ts                # `django-headless generate` command
   test/                     # vitest tests; types.test.ts is checked by `npm run typecheck`
   test/fixtures/            # schema.json (written by tests/headless/rest/test_schema.py) and models.ts (snapshot)
+  e2e/                      # run.mjs starts the Django project in e2e/django, generates types from its schema
+                            #   route and runs e2e/*.e2e.test.ts; --next also builds e2e/next-app with the packed package
 website/                    # Docusaurus docs site (djangoheadless.org); pages in website/docs/
 STYLE.md                    # Writing style guide for README, docs website and CHANGELOG
 scripts/
   test_wrapper.py           # Dev commands: test, test-verbose, test-cov, build, publish
-.github/workflows/          # ci.yml (tests, black, docs build), docs-deploy.yml (Pages deploy on main),
-                            #   release.yml (PyPI publish and GitHub release on v* tags)
+.github/workflows/          # ci.yml (tests, black, docs build, client tests and e2e), docs-deploy.yml (Pages deploy on main),
+                            #   release.yml (PyPI and npm publish and GitHub release on v* tags)
 ```
 
 ## How it works (architecture)
@@ -94,6 +96,7 @@ cd website && npm ci && npm run build                   # docs site build (fails
 cd client && npm ci && npm test && npm run typecheck    # TypeScript client tests and type tests
 UPDATE_CLIENT_SCHEMA=1 poetry run python scripts/test_wrapper.py test  # rewrite client/test/fixtures/schema.json
 cd client && npx vitest run -u                          # rewrite the generated types snapshot
+cd client && poetry run npm run e2e:next           # client e2e tests against e2e/django (+ e2e/next-app)
 ```
 
 Run tests before considering any change done. New behavior needs tests in `tests/headless/...` mirroring the existing style; route behavior is best covered end to end in `tests/headless/rest/test_e2e.py`.
@@ -117,3 +120,5 @@ Run tests before considering any change done. New behavior needs tests in `tests
 4. The `Release` workflow (`.github/workflows/release.yml`) runs CI, checks that the tag matches the three versions and has a `## <tag>` section in `CHANGELOG.md`, builds, publishes to PyPI (trusted publishing, `pypi` environment) and npm (trusted publishing, `npm` environment; pre-releases get the `next` dist-tag) and creates a GitHub release with that section as notes. Pre-release tags (`rc`, `a`, `b`) become pre-releases.
 
 `scripts/test_wrapper.py build` / `publish` remain available for a manual release.
+
+npm trusted publishing is configured per package on npmjs.com (`django-headless` → Settings → Trusted publishing: repository `dwarsbit/django-headless`, workflow `release.yml`, environment `npm`). The package must exist before it can be configured, so the first npm release is published by hand from `client/` (`npm login`, then `npm publish --access public`).
