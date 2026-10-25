@@ -7,6 +7,8 @@
 - 🎁 Add the system check `headless.E003`, for an enabled schema without its packages.
 - 🎁 Add the `django-headless` npm package, a TypeScript client for the API. `DjangoRestClient` requests the routes of models and singletons, with filters, exclusions, search, ordering, pagination, `expand`, `fields` and `omit`. `npx django-headless generate` generates the types of the exposed models from the OpenAPI schema, including the types of expanded relations.
 - 🎁 Add the `x-filter` and `x-expandable` extensions to the OpenAPI schema, and type the primary key of detail routes after the primary key field.
+- 🎁 Type model properties in the OpenAPI schema after their return annotation, instead of as strings.
+- 🐛 Fix the write operations in the OpenAPI schema for a request with the read-only secret key.
 - 🐛 Fix a query per object for many-to-many fields on list routes. Many-to-many fields are now prefetched with or without `?expand=`, including in expanded objects.
 - 🎁 Load expanded foreign keys and one-to-one relations together with the object instead of with a second query.
 

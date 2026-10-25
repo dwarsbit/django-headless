@@ -14,7 +14,9 @@ export interface HeadlessRestDocArticle {
   day: string | null;
   category: number | null;
   tags: number[];
-  shout: string;
+  first_tag: string | null;
+  shout: unknown;
+  word_count: number;
 }
 
 export interface HeadlessRestDocArticleInput {

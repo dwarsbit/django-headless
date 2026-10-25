@@ -2380,8 +2380,16 @@
               "type": "integer"
             }
           },
-          "shout": {
+          "first_tag": {
             "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "shout": {
+            "readOnly": true
+          },
+          "word_count": {
+            "type": "integer",
             "readOnly": true
           }
         },
