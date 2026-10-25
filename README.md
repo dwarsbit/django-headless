@@ -16,6 +16,8 @@ Read the documentation at [djangoheadless.org](https://djangoheadless.org).
 - **Filtering**: every lookup a field supports, from the query string.
 - **Lookup routes**: fetch an object by a unique field such as a slug, at `/api/blog.article/by_slug/<value>`.
 - **Pagination**: a stable, paginated list envelope with ready-to-fetch links.
+- **OpenAPI schema**: describe the routes, filters and fields for typed clients.
+- **Predictable queries**: relations load with a fixed number of queries, however long the list.
 - **Protected by default**: generated routes only answer staff users until you open them up.
 
 ## Quick start

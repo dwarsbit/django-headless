@@ -60,6 +60,24 @@ def check_routes(app_configs=None, **kwargs):
     ]
 
 
+@checks.register()
+def check_schema_packages(app_configs=None, **kwargs):
+    """E003: the schema route is enabled, but the packages that generate the schema are not installed."""
+    from .schema import is_schema_available
+
+    if not headless_settings.SCHEMA or is_schema_available():
+        return []
+
+    return [
+        checks.Error(
+            'HEADLESS["SCHEMA"] is enabled, but the packages that generate the OpenAPI schema '
+            "(uritemplate and inflection) are not installed, so the schema route fails.",
+            hint='Install them with: pip install "django-headless[schema]"',
+            id="headless.E003",
+        )
+    ]
+
+
 @checks.register(checks.Tags.security)
 def check_secret_keys(app_configs=None, **kwargs):
     """

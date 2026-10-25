@@ -27,3 +27,37 @@ class PageNumberPagination(BasePageNumberPagination):
                 "data": data,
             }
         )
+
+    def get_paginated_response_schema(self, schema):
+        """
+        The OpenAPI schema of the envelope, with schema (an array of the
+        objects) as the schema of data.
+        """
+        nullable_uri = {"type": "string", "format": "uri", "nullable": True}
+
+        return {
+            "type": "object",
+            "required": ["pagination", "data"],
+            "properties": {
+                "pagination": {
+                    "type": "object",
+                    "required": ["count", "pages", "current", "limit", "links"],
+                    "properties": {
+                        "count": {"type": "integer", "description": "The number of objects in all pages."},
+                        "pages": {"type": "integer", "description": "The number of pages."},
+                        "current": {"type": "integer", "description": "The number of the current page."},
+                        "limit": {"type": "integer", "description": "The number of objects per page."},
+                        "links": {
+                            "type": "object",
+                            "required": ["self", "next", "previous"],
+                            "properties": {
+                                "self": {"type": "string", "format": "uri"},
+                                "next": nullable_uri,
+                                "previous": nullable_uri,
+                            },
+                        },
+                    },
+                },
+                "data": schema,
+            },
+        }

@@ -2,6 +2,8 @@
 Tests for the system checks of the REST routes
 """
 
+from unittest.mock import patch
+
 from django.core import checks
 from django.db import models
 from django.test import SimpleTestCase, override_settings
@@ -13,6 +15,7 @@ from headless.rest.checks import (
     check_pagination,
     check_public_writes,
     check_routes,
+    check_schema_packages,
     check_secret_key_strength,
     check_secret_keys,
 )
@@ -65,6 +68,21 @@ class RegistryIsolationMixin:
         # headless.rest.urls holds a reference to this list: update it in place
         singleton_urls[:] = singletons
         super().tearDown()
+
+
+class SchemaPackagesCheckTests(SimpleTestCase):
+    def test_schema_disabled(self):
+        with patch("headless.rest.schema.is_schema_available", return_value=False):
+            self.assertEqual(check_schema_packages(), [])
+
+    def test_schema_enabled_with_the_packages(self):
+        with override_settings(HEADLESS={"SCHEMA": True}):
+            self.assertEqual(check_schema_packages(), [])
+
+    def test_schema_enabled_without_the_packages(self):
+        with override_settings(HEADLESS={"SCHEMA": True}):
+            with patch("headless.rest.schema.is_schema_available", return_value=False):
+                self.assertEqual(ids(check_schema_packages()), ["headless.E003"])
 
 
 class RoutesCheckTests(RegistryIsolationMixin, SimpleTestCase):
