@@ -118,6 +118,7 @@ cd client
 npm ci
 npm test
 npm run typecheck
+poetry run npm run e2e:next  # against a Django project and a Next.js app
 ```
 
 Writing for the README or the documentation follows [STYLE.md](STYLE.md).
