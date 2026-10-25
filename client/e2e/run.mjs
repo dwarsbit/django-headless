@@ -117,7 +117,7 @@ async function testNext(workDir) {
   // The package is ESM only; Node.js 22 loads it with require() as well
   await run(
     "node",
-    ["-e", 'const { DjangoRestClient } = require("django-headless"); new DjangoRestClient({ baseUrl: "/api" });'],
+    ["-e", 'const { DjangoRestClient } = require("@django-headless/client"); new DjangoRestClient({ baseUrl: "/api" });'],
     { cwd: nextDir },
   );
   await run("node", [join(clientDir, "dist", "cli.js"), "generate", "--url", `${apiUrl}/schema`, "--out", "headless.ts"], {

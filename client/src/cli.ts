@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 
 import { generate, type OpenAPIDocument } from "./generate.js";
 
-const USAGE = `Usage: django-headless generate (--url <schema url> | --file <schema.json>) [options]
+const USAGE = `Usage: headless generate (--url <schema url> | --file <schema.json>) [options]
 
 Generate TypeScript types of the exposed models from the OpenAPI schema of Django Headless.
 
@@ -93,6 +93,6 @@ function countModels(source: string): number {
 }
 
 main(process.argv.slice(2)).catch((error: unknown) => {
-  process.stderr.write(`django-headless: ${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(`headless: ${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
 });

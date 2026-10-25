@@ -1,4 +1,4 @@
-import { DjangoRestClient } from "django-headless";
+import { DjangoRestClient } from "@django-headless/client";
 
 import type { Models } from "./headless";
 

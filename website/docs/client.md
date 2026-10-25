@@ -4,14 +4,14 @@ sidebar_position: 11
 
 # 🔌 TypeScript client
 
-The `django-headless` npm package is a client for the API, written in TypeScript. It requests the generated routes from the frontend or a static site build, and generates the types of your exposed models from the [OpenAPI schema](./schema.md), so a typo in a field, filter or relation fails the type check instead of the request.
+The `@django-headless/client` npm package is a client for the API, written in TypeScript. It requests the generated routes from the frontend or a static site build, and generates the types of your exposed models from the [OpenAPI schema](./schema.md), so a typo in a field, filter or relation fails the type check instead of the request.
 
 The client uses the global `fetch` and has no dependencies. It runs in Node.js 18 and later, in browsers and in edge runtimes.
 
 ## Installation
 
 ```bash
-npm install django-headless
+npm install @django-headless/client
 ```
 
 ## Requesting the API
@@ -20,7 +20,7 @@ Create a client with the URL the API is included at, and request the routes of a
 
 ```ts
 // src/api.ts
-import { DjangoRestClient } from "django-headless";
+import { DjangoRestClient } from "@django-headless/client";
 
 export const api = new DjangoRestClient({
     baseUrl: "https://example.org/api",
@@ -43,7 +43,7 @@ The client types the routes from the OpenAPI schema of the API. To generate the 
 2. Generate the types into a file of the frontend:
 
    ```bash
-   npx django-headless generate --url https://example.org/api/schema --out src/headless.ts
+   npx @django-headless/client generate --url https://example.org/api/schema --out src/headless.ts
    ```
 
    The command reads the secret key of the schema route from the `DJANGO_HEADLESS_SECRET_KEY` environment variable, or from `--secret-key`. Send other headers with `--header "Authorization: Token your-token"`.
@@ -52,7 +52,7 @@ The client types the routes from the OpenAPI schema of the API. To generate the 
 
    ```ts
    // src/api.ts
-   import { DjangoRestClient } from "django-headless";
+   import { DjangoRestClient } from "@django-headless/client";
    import type { Models } from "./headless";
 
    export const api = new DjangoRestClient<Models>({
@@ -64,10 +64,18 @@ The client types the routes from the OpenAPI schema of the API. To generate the 
 Without a schema route, generate the types from a schema file of `generateschema`; see [Generating a file](./schema.md#generating-a-file):
 
 ```bash
-npx django-headless generate --file openapi.json --out src/headless.ts
+npx @django-headless/client generate --file openapi.json --out src/headless.ts
 ```
 
-The file has an interface per model, such as `BlogArticle` for `blog.Article`, and a `BlogArticleInput` for the body of a create or update request. Run the command again when the exposed models change, for example in the build step of the frontend.
+The file has an interface per model, such as `BlogArticle` for `blog.Article`, and a `BlogArticleInput` for the body of a create or update request. Run the command again when the exposed models change, for example in the build step of the frontend. With the package installed, the command is `headless`, for example in the scripts of `package.json`:
+
+```json
+{
+    "scripts": {
+        "generate": "headless generate --url https://example.org/api/schema --out src/headless.ts"
+    }
+}
+```
 
 The schema lists the operations the requester may perform. Generate the types with a key that may write, or the client types every model as read only.
 
@@ -180,7 +188,7 @@ const { data } = await api.model("blog.article").list({ filters: { published: tr
 A response with an error status throws a `DjangoRestError`, with the status and the parsed body:
 
 ```ts
-import { DjangoRestError } from "django-headless";
+import { DjangoRestError } from "@django-headless/client";
 
 try {
     await api.model("blog.article").retrieveBy("slug", "missing");

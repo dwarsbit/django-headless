@@ -1,4 +1,4 @@
-# django-headless
+# @django-headless/client
 
 A TypeScript client for the API of [Django Headless](https://djangoheadless.org), which generates a REST API for your Django models. Request the generated routes from the frontend or a static site build, with types generated from the OpenAPI schema of the API.
 
@@ -32,7 +32,7 @@ Read the documentation at [djangoheadless.org/docs/client](https://djangoheadles
 
    ```ts
    // src/api.ts
-   import { DjangoRestClient } from "django-headless";
+   import { DjangoRestClient } from "@django-headless/client";
    import type { Models } from "./headless";
 
    const api = new DjangoRestClient<Models>({

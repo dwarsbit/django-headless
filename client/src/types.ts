@@ -14,7 +14,7 @@ export interface ExpandableRelation {
 }
 
 /**
- * Describes one exposed model. `django-headless generate` writes these from
+ * Describes one exposed model. `headless generate` writes these from
  * the OpenAPI schema; write one by hand with `ModelDefinition<Item, ...>`.
  */
 export interface ModelDefinitionShape {

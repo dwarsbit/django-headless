@@ -16,7 +16,7 @@ The primary use case is running Django as the backend of a JAMstack setup: Djang
 - Formatting: black, line length 120, target py312
 - Tests: pytest + pytest-django (`pytest.ini` points at `tests.headless.test_settings`)
 - Docs site: Docusaurus (Node 22) in `website/`, deployed to djangoheadless.org
-- TypeScript client: `client/`, npm package `django-headless` (TypeScript 5.9, ESM only, built with `tsc`, tested with vitest; no runtime dependencies)
+- TypeScript client: `client/`, npm package `@django-headless/client` (TypeScript 5.9, ESM only, built with `tsc`, tested with vitest; no runtime dependencies)
 
 ## Repository layout
 
@@ -50,11 +50,11 @@ tests/                      # pytest suite (mirrors package layout)
   headless/test_settings.py # Django settings module used by pytest-django
   headless/test_main.py     # Registry, settings, utils and boot log tests
   headless/rest/            # Builder, viewsets, serializers, filters, pagination, auth and e2e tests
-client/                     # The django-headless npm package: TypeScript client and type generator
+client/                     # The @django-headless/client npm package: TypeScript client and type generator
   src/client.ts             # DjangoRestClient, ModelResource, SingletonResource
   src/types.ts              # Model map types; typed filters, expand, fields and omit
   src/generate.ts           # generate(): TypeScript types of the models from the OpenAPI schema
-  src/cli.ts                # `django-headless generate` command
+  src/cli.ts                # `headless generate` command
   test/                     # vitest tests; types.test.ts is checked by `npm run typecheck`
   test/fixtures/            # schema.json (written by tests/headless/rest/test_schema.py) and models.ts (snapshot)
   e2e/                      # run.mjs starts the Django project in e2e/django, generates types from its schema
@@ -121,4 +121,4 @@ Run tests before considering any change done. New behavior needs tests in `tests
 
 `scripts/test_wrapper.py build` / `publish` remain available for a manual release.
 
-npm trusted publishing is configured per package on npmjs.com (`django-headless` → Settings → Trusted publishing: repository `dwarsbit/django-headless`, workflow `release.yml`, environment `npm`). The package must exist before it can be configured, so the first npm release is published by hand from `client/` (`npm login`, then `npm publish --access public`).
+npm trusted publishing is configured per package on npmjs.com (`@django-headless/client` → Settings → Trusted publishing: repository `dwarsbit/django-headless`, workflow `release.yml`, environment `npm`). The package must exist before it can be configured, so the first npm release is published by hand from `client/` (`npm login`, then `npm publish --access public`).

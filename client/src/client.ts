@@ -48,7 +48,7 @@ export interface RawRequestOptions extends RequestOptions {
  * A client for the generated routes of Django Headless.
  *
  * ```ts
- * import { DjangoRestClient } from "django-headless";
+ * import { DjangoRestClient } from "@django-headless/client";
  * import type { Models } from "./headless";
  *
  * const api = new DjangoRestClient<Models>({ baseUrl: "https://example.org/api" });

@@ -17,7 +17,7 @@ Read the documentation at [djangoheadless.org](https://djangoheadless.org).
 - **Lookup routes**: fetch an object by a unique field such as a slug, at `/api/blog.article/by_slug/<value>`.
 - **Pagination**: a stable, paginated list envelope with ready-to-fetch links.
 - **OpenAPI schema**: describe the routes, filters and fields for typed clients.
-- **TypeScript client**: request the API from the frontend with types generated from the schema, with the `django-headless` npm package.
+- **TypeScript client**: request the API from the frontend with types generated from the schema, with the `@django-headless/client` npm package.
 - **Predictable queries**: relations load with a fixed number of queries, however long the list.
 - **Protected by default**: generated routes only answer staff users until you open them up.
 
@@ -87,7 +87,7 @@ Generated routes answer `403 Forbidden` to everyone but staff users, so an expos
 - [Serializers](https://djangoheadless.org/docs/serializers): expanding relations and model properties
 - [Permissions](https://djangoheadless.org/docs/permissions): defaults and overrides for generated routes
 - [OpenAPI schema](https://djangoheadless.org/docs/schema): the schema of the generated routes
-- [TypeScript client](https://djangoheadless.org/docs/client): the `django-headless` npm package
+- [TypeScript client](https://djangoheadless.org/docs/client): the `@django-headless/client` npm package
 - [Settings reference](https://djangoheadless.org/docs/settings): every `HEADLESS` setting
 - [System checks](https://djangoheadless.org/docs/checks): the checks for risky or broken settings
 
