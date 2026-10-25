@@ -102,6 +102,40 @@ class LookupFilter(BaseFilterBackend):
             # unexpected. Don't pass internal error messages to the client.
             raise ParseError(detail="Invalid filter parameters.")
 
+    def get_schema_operation_parameters(self, view):
+        """
+        Describe the filters of a list route in the OpenAPI schema: the
+        exact filter of each filterable field. Lookups and exclusion apply
+        to every one of them.
+        """
+        from ..schema import get_field_schema
+
+        if getattr(view, "action", None) != "list":
+            return []
+
+        model_class = view.queryset.model
+        filterable_fields = self.get_filterable_fields(model_class, view)
+        parameters = []
+
+        for field in model_class._meta.get_fields():
+            if field.name not in filterable_fields:
+                continue
+
+            parameters.append(
+                {
+                    "name": field.name,
+                    "in": "query",
+                    "required": False,
+                    "description": (
+                        f"Filter on `{field.name}`. Add a lookup, such as `{field.name}__in`, "
+                        f"or start the name with `{self.EXCLUDE_SYMBOL}` to exclude matches."
+                    ),
+                    "schema": get_field_schema(field),
+                }
+            )
+
+        return parameters
+
     def get_non_filter_fields(self, view=None):
         """
         Return the query parameters that are never read as filters: those

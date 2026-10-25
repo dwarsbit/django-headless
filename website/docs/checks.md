@@ -1,5 +1,5 @@
 ---
-sidebar_position: 11
+sidebar_position: 12
 ---
 
 # 🩺 System checks
@@ -16,6 +16,7 @@ An error stops `runserver` and other management commands until you fix it. A war
 | --------------- | ------- | ------------------------ | ------------------------------------------------------- |
 | `headless.E001` | Error   | Always                   | `SecretKeyAuthentication` is used without a secret key. |
 | `headless.E002` | Error   | Always                   | The full access key and the read-only key are the same. |
+| `headless.E003` | Error   | Always                   | The schema is enabled, but its packages are missing.    |
 | `headless.W001` | Warning | With `--deploy`          | A secret key is weak.                                   |
 | `headless.W002` | Warning | Always                   | Anyone can change the content of exposed models.        |
 | `headless.W003` | Warning | With `--deploy`          | No authentication classes are configured.               |
@@ -34,6 +35,14 @@ An error stops `runserver` and other management commands until you fix it. A war
 ## `headless.E002`
 
 `AUTH_SECRET_KEY` and `AUTH_READ_ONLY_SECRET_KEY` have the same value, so the API cannot tell a full access request from a read-only one, and every request with the key fails. Use a different value for each key.
+
+## `headless.E003`
+
+`HEADLESS["SCHEMA"]` is enabled, but the `uritemplate` or `inflection` package that generates the [OpenAPI schema](./schema.md) is not installed, so the schema route fails. Install them with the `schema` extra:
+
+```bash
+pip install "django-headless[schema]"
+```
 
 ## `headless.W001`
 

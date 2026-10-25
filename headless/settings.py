@@ -49,6 +49,12 @@ DEFAULTS = {
     # FlexibleSerializer. None allows any depth.
     "MAX_EXPANSION_DEPTH": 2,
     "SEARCH_PARAM": None,
+    # Whether the generated routes get an OpenAPI schema route (<prefix>/schema).
+    # It needs the uritemplate and inflection packages, and PyYAML for YAML.
+    "SCHEMA": False,
+    "SCHEMA_TITLE": "API",
+    "SCHEMA_DESCRIPTION": "",
+    "SCHEMA_VERSION": "1.0.0",
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "FILTER_EXCLUSION_SYMBOL": "~",
     "FILTER_TRUE_VALUES": ["true", "1", "on"],

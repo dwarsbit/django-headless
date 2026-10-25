@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 ---
 
 # ⚙️ Settings reference
@@ -25,6 +25,10 @@ HEADLESS = {
     "MAX_EXPANSION_DEPTH": 2,
     "SEARCH_PARAM": None,
     "ORDERING_PARAM": None,
+    "SCHEMA": False,
+    "SCHEMA_TITLE": "API",
+    "SCHEMA_DESCRIPTION": "",
+    "SCHEMA_VERSION": "1.0.0",
     "DEFAULT_SERIALIZER_CLASS": "rest_framework.serializers.ModelSerializer",
     "FILTER_EXCLUSION_SYMBOL": "~",
     "FILTER_TRUE_VALUES": ["true", "1", "on"],
@@ -108,6 +112,10 @@ The full access key, the [read-only key](./authentication.md#read-only-key) and 
 ## `DEFAULT_SERIALIZER_CLASS`
 
 The base class for the serializers of exposed models. Set it to `headless.rest.serializers.FlexibleSerializer` to [expand relations and serialize model properties](./serializers.md).
+
+## Schema settings
+
+`SCHEMA` adds an [OpenAPI schema](./schema.md) route next to the generated routes; it is `False` by default. `SCHEMA_TITLE`, `SCHEMA_DESCRIPTION` and `SCHEMA_VERSION` fill the `info` of the schema.
 
 ## Filter settings
 

@@ -31,6 +31,13 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+[project.optional-dependencies]
+schema = [
+    "uritemplate>=4",
+    "inflection>=0.5",
+    "pyyaml>=6",
+]
+
 [project.urls]
 Homepage = "https://djangoheadless.org"
 Documentation = "https://djangoheadless.org/docs/intro"
@@ -49,6 +56,10 @@ djangorestframework-stubs = "3.16.8"
 pytest = "9.0.2"
 "pytest-django" = "4.12.0"
 pytest-cov = "^7.1.0"
+uritemplate = "^4.1"
+inflection = "^0.5"
+pyyaml = "^6.0"
+openapi-spec-validator = { version = "^0.7", python = ">=3.12,<4.0" }
 
 [tool.black]
 line-length = 120
