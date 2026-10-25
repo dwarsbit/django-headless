@@ -1,0 +1,60 @@
+{
+  "name": "django-headless",
+  "version": "1.0.0",
+  "description": "A typed client for the REST API of Django Headless.",
+  "license": "MIT",
+  "author": "Leon van der Grient",
+  "homepage": "https://djangoheadless.org/docs/client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dwarsbit/django-headless.git",
+    "directory": "client"
+  },
+  "bugs": "https://github.com/dwarsbit/django-headless/issues",
+  "keywords": [
+    "django",
+    "django-headless",
+    "headless-cms",
+    "rest",
+    "client",
+    "typescript",
+    "openapi"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./generate": {
+      "types": "./dist/generate.d.ts",
+      "default": "./dist/generate.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "django-headless": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/cli.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

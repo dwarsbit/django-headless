@@ -16,6 +16,7 @@ The primary use case is running Django as the backend of a JAMstack setup: Djang
 - Formatting: black, line length 120, target py312
 - Tests: pytest + pytest-django (`pytest.ini` points at `tests.headless.test_settings`)
 - Docs site: Docusaurus (Node 22) in `website/`, deployed to djangoheadless.org
+- TypeScript client: `client/`, npm package `django-headless` (TypeScript 5.9, ESM only, built with `tsc`, tested with vitest; no runtime dependencies)
 
 ## Repository layout
 
@@ -49,6 +50,13 @@ tests/                      # pytest suite (mirrors package layout)
   headless/test_settings.py # Django settings module used by pytest-django
   headless/test_main.py     # Registry, settings, utils and boot log tests
   headless/rest/            # Builder, viewsets, serializers, filters, pagination, auth and e2e tests
+client/                     # The django-headless npm package: TypeScript client and type generator
+  src/client.ts             # DjangoRestClient, ModelResource, SingletonResource
+  src/types.ts              # Model map types; typed filters, expand, fields and omit
+  src/generate.ts           # generate(): TypeScript types of the models from the OpenAPI schema
+  src/cli.ts                # `django-headless generate` command
+  test/                     # vitest tests; types.test.ts is checked by `npm run typecheck`
+  test/fixtures/            # schema.json (written by tests/headless/rest/test_schema.py) and models.ts (snapshot)
 website/                    # Docusaurus docs site (djangoheadless.org); pages in website/docs/
 STYLE.md                    # Writing style guide for README, docs website and CHANGELOG
 scripts/
@@ -67,6 +75,8 @@ scripts/
 6. The serializer base is `HEADLESS.DEFAULT_SERIALIZER_CLASS`, a plain `ModelSerializer` by default. Setting it to `FlexibleSerializer` enables `?expand=` / `?fields=` / `?omit=` and model properties as read-only fields; relations to other registered models become expandable.
 7. All configuration lives under the `HEADLESS` dict in Django settings (see `DEFAULTS` in `headless/settings.py`). DRF-level settings (renderers, parsers, authentication, permissions, filter backends, pagination, `PAGE_SIZE`, search/ordering params) can be set there to override `REST_FRAMEWORK` for the generated routes only. Defaults are safe: `IsAuthenticated` permissions and the `LookupFilter` backend.
 
+8. The OpenAPI schema (`headless/rest/schema.py`) carries `x-filter` and `x-expandable` extensions that the TypeScript client's generator reads. A schema change usually means regenerating the client fixtures (see Commands); the Python test `test_client_schema_fixture_is_up_to_date` fails until you do.
+
 Note: the boot log is shown in server mode only (or as forced by `HEADLESS.BOOT_LOG`); management commands and plain imports stay silent. Keep that behavior when refactoring.
 
 ## Commands
@@ -81,6 +91,9 @@ poetry run black --check headless tests                 # formatting check, as i
 poetry run python scripts/test_wrapper.py build         # tests, then poetry build
 poetry run python scripts/test_wrapper.py publish       # tests, then poetry publish
 cd website && npm ci && npm run build                   # docs site build (fails on broken links)
+cd client && npm ci && npm test && npm run typecheck    # TypeScript client tests and type tests
+UPDATE_CLIENT_SCHEMA=1 poetry run python scripts/test_wrapper.py test  # rewrite client/test/fixtures/schema.json
+cd client && npx vitest run -u                          # rewrite the generated types snapshot
 ```
 
 Run tests before considering any change done. New behavior needs tests in `tests/headless/...` mirroring the existing style; route behavior is best covered end to end in `tests/headless/rest/test_e2e.py`.
@@ -98,9 +111,9 @@ Run tests before considering any change done. New behavior needs tests in `tests
 
 ## Release flow
 
-1. Bump the version in **both** `pyproject.toml` and `headless/__init__.py` (`__version__`) — they must stay in sync.
+1. Bump the version in `pyproject.toml`, `headless/__init__.py` (`__version__`) and `client/package.json` — they must stay in sync. `client/package.json` takes the version as written in the tag (`1.0.0-rc.2`); run `npm install` in `client/` to update its lockfile.
 2. Add an entry to `CHANGELOG.md` describing user-facing changes (rename an `Unreleased` heading to the version).
 3. Merge to `main`, then tag the release (e.g. `v1.0.0-rc.2`) and push the tag.
-4. The `Release` workflow (`.github/workflows/release.yml`) runs CI, checks that the tag matches both versions and has a `## <tag>` section in `CHANGELOG.md`, builds, publishes to PyPI (trusted publishing, `pypi` environment) and creates a GitHub release with that section as notes. Pre-release tags (`rc`, `a`, `b`) become pre-releases.
+4. The `Release` workflow (`.github/workflows/release.yml`) runs CI, checks that the tag matches the three versions and has a `## <tag>` section in `CHANGELOG.md`, builds, publishes to PyPI (trusted publishing, `pypi` environment) and npm (trusted publishing, `npm` environment; pre-releases get the `next` dist-tag) and creates a GitHub release with that section as notes. Pre-release tags (`rc`, `a`, `b`) become pre-releases.
 
 `scripts/test_wrapper.py build` / `publish` remain available for a manual release.

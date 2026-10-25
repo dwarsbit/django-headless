@@ -1,0 +1,2472 @@
+{
+  "openapi": "3.0.2",
+  "info": {
+    "title": "Test API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/headless_rest.doctag": {
+      "get": {
+        "operationId": "listHeadlessRestDocTags",
+        "description": "List the doc tags.",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "A page number within the paginated result set.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of results to return per page.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "docarticle",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `docarticle`. Add a lookup, such as `docarticle__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `id`. Add a lookup, such as `id__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `name`. Add a lookup, such as `name__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "string"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations. Expandable: `docarticle_set`.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {
+              "docarticle_set": {
+                "component": "HeadlessRestDocArticle",
+                "many": true
+              }
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "pagination",
+                    "data"
+                  ],
+                  "properties": {
+                    "pagination": {
+                      "type": "object",
+                      "required": [
+                        "count",
+                        "pages",
+                        "current",
+                        "limit",
+                        "links"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "description": "The number of objects in all pages."
+                        },
+                        "pages": {
+                          "type": "integer",
+                          "description": "The number of pages."
+                        },
+                        "current": {
+                          "type": "integer",
+                          "description": "The number of the current page."
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "The number of objects per page."
+                        },
+                        "links": {
+                          "type": "object",
+                          "required": [
+                            "self",
+                            "next",
+                            "previous"
+                          ],
+                          "properties": {
+                            "self": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "next": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            },
+                            "previous": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HeadlessRestDocTag"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doctag"
+        ]
+      },
+      "post": {
+        "operationId": "createHeadlessRestDocTag",
+        "description": "Create a doc tag.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocTag"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocTag"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocTag"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocTag"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doctag"
+        ]
+      }
+    },
+    "/headless_rest.doctag/{id}": {
+      "get": {
+        "operationId": "retrieveHeadlessRestDocTag",
+        "description": "Retrieve a doc tag.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc tag.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations. Expandable: `docarticle_set`.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {
+              "docarticle_set": {
+                "component": "HeadlessRestDocArticle",
+                "many": true
+              }
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocTag"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doctag"
+        ]
+      },
+      "put": {
+        "operationId": "updateHeadlessRestDocTag",
+        "description": "Replace a doc tag.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc tag.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocTag"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocTag"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocTag"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocTag"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doctag"
+        ]
+      },
+      "patch": {
+        "operationId": "partialUpdateHeadlessRestDocTag",
+        "description": "Change fields of a doc tag.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc tag.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocTag"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocTag"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocTag"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocTag"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doctag"
+        ]
+      },
+      "delete": {
+        "operationId": "destroyHeadlessRestDocTag",
+        "description": "Delete a doc tag.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc tag.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doctag"
+        ]
+      }
+    },
+    "/headless_rest.docarticle": {
+      "get": {
+        "operationId": "listHeadlessRestDocArticles",
+        "description": "List the doc articles.",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "A page number within the paginated result set.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of results to return per page.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `id`. Add a lookup, such as `id__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "title",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `title`. Add a lookup, such as `title__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "string"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `status`. Add a lookup, such as `status__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "live"
+              ]
+            },
+            "x-filter": true
+          },
+          {
+            "name": "views",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `views`. Add a lookup, such as `views__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "rating",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `rating`. Add a lookup, such as `rating__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "number"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "published",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `published`. Add a lookup, such as `published__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "boolean"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "created",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `created`. Add a lookup, such as `created__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `day`. Add a lookup, such as `day__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `category`. Add a lookup, such as `category__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `tags`. Add a lookup, such as `tags__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations. Expandable: `category`, `tags`.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {
+              "category": {
+                "component": "HeadlessRestDocCategory",
+                "many": false
+              },
+              "tags": {
+                "component": "HeadlessRestDocTag",
+                "many": true
+              }
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "pagination",
+                    "data"
+                  ],
+                  "properties": {
+                    "pagination": {
+                      "type": "object",
+                      "required": [
+                        "count",
+                        "pages",
+                        "current",
+                        "limit",
+                        "links"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "description": "The number of objects in all pages."
+                        },
+                        "pages": {
+                          "type": "integer",
+                          "description": "The number of pages."
+                        },
+                        "current": {
+                          "type": "integer",
+                          "description": "The number of the current page."
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "The number of objects per page."
+                        },
+                        "links": {
+                          "type": "object",
+                          "required": [
+                            "self",
+                            "next",
+                            "previous"
+                          ],
+                          "properties": {
+                            "self": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "next": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            },
+                            "previous": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HeadlessRestDocArticle"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docarticle"
+        ]
+      },
+      "post": {
+        "operationId": "createHeadlessRestDocArticle",
+        "description": "Create a doc article.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocArticle"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocArticle"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocArticle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocArticle"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docarticle"
+        ]
+      }
+    },
+    "/headless_rest.docarticle/{id}": {
+      "get": {
+        "operationId": "retrieveHeadlessRestDocArticle",
+        "description": "Retrieve a doc article.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc article.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations. Expandable: `category`, `tags`.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {
+              "category": {
+                "component": "HeadlessRestDocCategory",
+                "many": false
+              },
+              "tags": {
+                "component": "HeadlessRestDocTag",
+                "many": true
+              }
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocArticle"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docarticle"
+        ]
+      },
+      "put": {
+        "operationId": "updateHeadlessRestDocArticle",
+        "description": "Replace a doc article.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc article.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocArticle"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocArticle"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocArticle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocArticle"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docarticle"
+        ]
+      },
+      "patch": {
+        "operationId": "partialUpdateHeadlessRestDocArticle",
+        "description": "Change fields of a doc article.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc article.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocArticle"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocArticle"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocArticle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocArticle"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docarticle"
+        ]
+      },
+      "delete": {
+        "operationId": "destroyHeadlessRestDocArticle",
+        "description": "Delete a doc article.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc article.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docarticle"
+        ]
+      }
+    },
+    "/headless_rest.docpage": {
+      "get": {
+        "operationId": "listHeadlessRestDocPages",
+        "description": "List the doc pages.",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "A page number within the paginated result set.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of results to return per page.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `id`. Add a lookup, such as `id__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "slug",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `slug`. Add a lookup, such as `slug__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "string"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "uid",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `uid`. Add a lookup, such as `uid__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {}
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "pagination",
+                    "data"
+                  ],
+                  "properties": {
+                    "pagination": {
+                      "type": "object",
+                      "required": [
+                        "count",
+                        "pages",
+                        "current",
+                        "limit",
+                        "links"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "description": "The number of objects in all pages."
+                        },
+                        "pages": {
+                          "type": "integer",
+                          "description": "The number of pages."
+                        },
+                        "current": {
+                          "type": "integer",
+                          "description": "The number of the current page."
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "The number of objects per page."
+                        },
+                        "links": {
+                          "type": "object",
+                          "required": [
+                            "self",
+                            "next",
+                            "previous"
+                          ],
+                          "properties": {
+                            "self": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "next": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            },
+                            "previous": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HeadlessRestDocPage"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docpage"
+        ]
+      },
+      "post": {
+        "operationId": "createHeadlessRestDocPage",
+        "description": "Create a doc page.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocPage"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocPage"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocPage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocPage"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docpage"
+        ]
+      }
+    },
+    "/headless_rest.docpage/by_slug/{value}": {
+      "get": {
+        "operationId": "retrieveHeadlessRestDocPageBySlug",
+        "description": "Retrieve a doc page by its `slug`.",
+        "parameters": [
+          {
+            "name": "value",
+            "in": "path",
+            "required": true,
+            "description": "The `slug` of the doc page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {}
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocPage"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docpage"
+        ]
+      }
+    },
+    "/headless_rest.docpage/by_uid/{value}": {
+      "get": {
+        "operationId": "retrieveHeadlessRestDocPageByUid",
+        "description": "Retrieve a doc page by its `uid`.",
+        "parameters": [
+          {
+            "name": "value",
+            "in": "path",
+            "required": true,
+            "description": "The `uid` of the doc page.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {}
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocPage"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docpage"
+        ]
+      }
+    },
+    "/headless_rest.docpage/{id}": {
+      "get": {
+        "operationId": "retrieveHeadlessRestDocPage",
+        "description": "Retrieve a doc page.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc page.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {}
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocPage"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docpage"
+        ]
+      },
+      "put": {
+        "operationId": "updateHeadlessRestDocPage",
+        "description": "Replace a doc page.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc page.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocPage"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocPage"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocPage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocPage"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docpage"
+        ]
+      },
+      "patch": {
+        "operationId": "partialUpdateHeadlessRestDocPage",
+        "description": "Change fields of a doc page.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc page.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocPage"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocPage"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocPage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocPage"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docpage"
+        ]
+      },
+      "delete": {
+        "operationId": "destroyHeadlessRestDocPage",
+        "description": "Delete a doc page.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc page.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docpage"
+        ]
+      }
+    },
+    "/headless_rest.doccategory": {
+      "get": {
+        "operationId": "listHeadlessRestDocCategories",
+        "description": "List the doc categories.",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "A page number within the paginated result set.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of results to return per page.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "docarticle",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `docarticle`. Add a lookup, such as `docarticle__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `id`. Add a lookup, such as `id__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `name`. Add a lookup, such as `name__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "string"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations. Expandable: `docarticle_set`.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {
+              "docarticle_set": {
+                "component": "HeadlessRestDocArticle",
+                "many": true
+              }
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "pagination",
+                    "data"
+                  ],
+                  "properties": {
+                    "pagination": {
+                      "type": "object",
+                      "required": [
+                        "count",
+                        "pages",
+                        "current",
+                        "limit",
+                        "links"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "description": "The number of objects in all pages."
+                        },
+                        "pages": {
+                          "type": "integer",
+                          "description": "The number of pages."
+                        },
+                        "current": {
+                          "type": "integer",
+                          "description": "The number of the current page."
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "The number of objects per page."
+                        },
+                        "links": {
+                          "type": "object",
+                          "required": [
+                            "self",
+                            "next",
+                            "previous"
+                          ],
+                          "properties": {
+                            "self": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "next": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            },
+                            "previous": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HeadlessRestDocCategory"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doccategory"
+        ]
+      },
+      "post": {
+        "operationId": "createHeadlessRestDocCategory",
+        "description": "Create a doc category.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocCategory"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocCategory"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocCategory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocCategory"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doccategory"
+        ]
+      }
+    },
+    "/headless_rest.doccategory/{id}": {
+      "get": {
+        "operationId": "retrieveHeadlessRestDocCategory",
+        "description": "Retrieve a doc category.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc category.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations. Expandable: `docarticle_set`.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {
+              "docarticle_set": {
+                "component": "HeadlessRestDocArticle",
+                "many": true
+              }
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocCategory"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doccategory"
+        ]
+      },
+      "put": {
+        "operationId": "updateHeadlessRestDocCategory",
+        "description": "Replace a doc category.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc category.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocCategory"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocCategory"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocCategory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocCategory"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doccategory"
+        ]
+      },
+      "patch": {
+        "operationId": "partialUpdateHeadlessRestDocCategory",
+        "description": "Change fields of a doc category.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc category.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocCategory"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocCategory"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocCategory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocCategory"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doccategory"
+        ]
+      },
+      "delete": {
+        "operationId": "destroyHeadlessRestDocCategory",
+        "description": "Delete a doc category.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc category.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.doccategory"
+        ]
+      }
+    },
+    "/headless_rest.docnote": {
+      "get": {
+        "operationId": "listHeadlessRestDocNotes",
+        "description": "List the doc notes.",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "A page number within the paginated result set.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of results to return per page.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `id`. Add a lookup, such as `id__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "integer"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "text",
+            "in": "query",
+            "required": false,
+            "description": "Filter on `text`. Add a lookup, such as `text__in`, or start the name with `~` to exclude matches.",
+            "schema": {
+              "type": "string"
+            },
+            "x-filter": true
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {}
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "pagination",
+                    "data"
+                  ],
+                  "properties": {
+                    "pagination": {
+                      "type": "object",
+                      "required": [
+                        "count",
+                        "pages",
+                        "current",
+                        "limit",
+                        "links"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "description": "The number of objects in all pages."
+                        },
+                        "pages": {
+                          "type": "integer",
+                          "description": "The number of pages."
+                        },
+                        "current": {
+                          "type": "integer",
+                          "description": "The number of the current page."
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "The number of objects per page."
+                        },
+                        "links": {
+                          "type": "object",
+                          "required": [
+                            "self",
+                            "next",
+                            "previous"
+                          ],
+                          "properties": {
+                            "self": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "next": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            },
+                            "previous": {
+                              "type": "string",
+                              "format": "uri",
+                              "nullable": true
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HeadlessRestDocNote"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docnote"
+        ]
+      }
+    },
+    "/headless_rest.docnote/{id}": {
+      "get": {
+        "operationId": "retrieveHeadlessRestDocNote",
+        "description": "Retrieve a doc note.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this doc note.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {}
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocNote"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docnote"
+        ]
+      }
+    },
+    "/headless_rest.docsettings": {
+      "get": {
+        "operationId": "retrieveHeadlessRestDocSettings",
+        "description": "Retrieve the documentation setting.",
+        "parameters": [
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Relations to include as objects instead of primary keys, separated by commas. Use a dot to expand deeper, such as `category.parent`, or `*` for all relations.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "x-expandable": {}
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Fields to include, separated by commas. Others are left out.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "omit",
+            "in": "query",
+            "required": false,
+            "description": "Fields to leave out, separated by commas.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocSettings"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docsettings"
+        ]
+      },
+      "put": {
+        "operationId": "updateHeadlessRestDocSettings",
+        "description": "Replace the documentation setting.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocSettings"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocSettings"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocSettings"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docsettings"
+        ]
+      },
+      "patch": {
+        "operationId": "partialUpdateHeadlessRestDocSettings",
+        "description": "Change fields of the documentation setting.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocSettings"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocSettings"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadlessRestDocSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessRestDocSettings"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "headless_rest.docsettings"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HeadlessRestDocTag": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "HeadlessRestDocArticle": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "live"
+            ],
+            "type": "string"
+          },
+          "views": {
+            "type": "integer",
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775808,
+            "format": "int64"
+          },
+          "rating": {
+            "type": "number",
+            "nullable": true
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "day": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "category": {
+            "type": "integer",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "shout": {
+            "type": "string",
+            "readOnly": true
+          }
+        },
+        "required": [
+          "title",
+          "tags"
+        ]
+      },
+      "HeadlessRestDocPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "uid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "slug"
+        ]
+      },
+      "HeadlessRestDocCategory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "HeadlessRestDocNote": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "HeadlessRestDocSettings": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "site_name": {
+            "type": "string",
+            "maxLength": 100
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "secretKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Secret-Key"
+      }
+    }
+  },
+  "security": [
+    {
+      "secretKey": []
+    }
+  ]
+}

@@ -74,13 +74,30 @@ python manage.py generateschema \
 
 A generated file describes every operation, whatever the permissions of the routes.
 
+## Extensions
+
+The schema adds two [extensions](https://spec.openapis.org/oas/v3.0.3#specification-extensions) for typed clients. Tools that do not know them ignore them.
+
+- **`x-filter`** is `true` on each filter parameter of a list route.
+- **`x-expandable`** on the `expand` parameter maps each expandable relation to the component of its model, and tells whether it expands to a list:
+
+  ```json
+  {
+      "category": { "component": "BlogCategory", "many": false },
+      "review_set": { "component": "BlogReview", "many": true }
+  }
+  ```
+
+The [TypeScript client](./client.md) reads them to type filters and expanded relations.
+
 ## Limitations
 
-- **Expanded relations** are described as primary keys, as they are without `?expand=`. A response with `?expand=` has the related object in their place.
+- **Expanded relations** are described as primary keys, as they are without `?expand=`. A response with `?expand=` has the related object in their place. The [TypeScript client](./client.md) types the expanded objects.
 - **Custom schema classes**: when `REST_FRAMEWORK["DEFAULT_SCHEMA_CLASS"]` is not Django REST Framework's `AutoSchema`, for example with [drf-spectacular](https://drf-spectacular.readthedocs.io/), the generated routes keep your class and the schema route of Django Headless does not describe them. Use the schema view of that package instead.
 
 ## Related pages
 
+- [TypeScript client](./client.md)
 - [Filtering](./filtering.md)
 - [Pagination](./pagination.md)
 - [Settings reference](./settings.md#schema-settings)

@@ -33,7 +33,7 @@ jobs:
         run: |
           pip install packaging
           python - <<'PY'
-          import os, re, sys, tomllib
+          import json, os, re, sys, tomllib
           from packaging.version import Version
 
           tag = os.environ["TAG"]
@@ -48,6 +48,11 @@ jobs:
                   f"Version mismatch: tag {tag}, pyproject.toml {pyproject_version}, "
                   f"headless/__init__.py {init_version}"
               )
+
+          # npm needs the version as written in the tag, such as 1.0.0-rc.2
+          client_version = json.load(open("client/package.json"))["version"]
+          if client_version != tag.removeprefix("v"):
+              sys.exit(f"Version mismatch: tag {tag}, client/package.json {client_version}")
 
           # Release notes: the CHANGELOG.md section headed with the tag
           notes, found = [], False
@@ -96,8 +101,38 @@ jobs:
 
       - uses: pypa/gh-action-pypi-publish@release/v1
 
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/django-headless
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or later
+      - name: Update npm
+        run: npm install -g npm@11
+
+      - name: Install dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Publish package
+        working-directory: client
+        env:
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: npm publish --access public --provenance --tag "$([ "$PRERELEASE" = "true" ] && echo next || echo latest)"
+
   github-release:
-    needs: [build, publish]
+    needs: [build, publish, publish-npm]
     runs-on: ubuntu-latest
     permissions:
       contents: write

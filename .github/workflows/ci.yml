@@ -68,3 +68,28 @@ jobs:
       - name: Build docs site
         working-directory: website
         run: npm run build
+
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Type-check
+        working-directory: client
+        run: npm run typecheck
+
+      - name: Run tests
+        working-directory: client
+        run: npm test
+
+      - name: Build package
+        working-directory: client
+        run: npm run build
