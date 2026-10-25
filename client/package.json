@@ -1,5 +1,5 @@
 {
-  "name": "django-headless",
+  "name": "@django-headless/client",
   "version": "1.0.0",
   "description": "A typed client for the REST API of Django Headless.",
   "license": "MIT",
@@ -35,7 +35,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "django-headless": "./dist/cli.js"
+    "headless": "./dist/cli.js"
   },
   "files": [
     "dist",

@@ -17,13 +17,13 @@ Read the documentation at [djangoheadless.org/docs/client](https://djangoheadles
 1. Install the package:
 
    ```bash
-   npm install django-headless
+   npm install @django-headless/client
    ```
 
 2. Enable the schema of the API with `HEADLESS["SCHEMA"]`, and generate the types:
 
    ```bash
-   npx django-headless generate --url https://example.org/api/schema --out src/headless.ts
+   npx @django-headless/client generate --url https://example.org/api/schema --out src/headless.ts
    ```
 
    The command reads the secret key of the schema route from the `DJANGO_HEADLESS_SECRET_KEY` environment variable.
