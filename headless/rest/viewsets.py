@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import IntegrityError, models, transaction
+from django.db.models.fields.related_descriptors import ReverseManyToOneDescriptor
 from rest_framework import status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import get_object_or_404
@@ -9,7 +11,10 @@ from rest_framework.mixins import (
     UpdateModelMixin,
     RetrieveModelMixin,
 )
+from rest_framework.permissions import SAFE_METHODS
+from rest_framework.relations import ManyRelatedField
 from rest_framework.response import Response
+from rest_framework.serializers import ListSerializer
 from rest_framework.settings import api_settings
 from rest_framework.viewsets import GenericViewSet
 
@@ -47,29 +52,43 @@ class ConstraintErrorMixin:
             super().perform_update(serializer)
 
 
-class ExpandPrefetchMixin:
+class RelatedLoadingMixin:
     """
-    Prefetch the relations requested with ?expand=, so that expanding a
-    relation costs one query per relation instead of one per object.
-    Only applies to serializers with expandable fields (FlexibleSerializer).
+    Load the relations a read request serializes with a fixed number of
+    queries, instead of one query per object:
+
+    - Relations requested with ?expand= are joined (forward foreign keys
+      and one-to-one fields) or prefetched (everything else).
+    - Many-valued relations serialized as primary keys, such as
+      many-to-many fields, are prefetched.
+
+    Only applies to safe (read) requests. Expanding relations requires a
+    serializer with expandable fields (FlexibleSerializer).
     """
 
     def get_queryset(self):
         queryset = super().get_queryset()
         request = getattr(self, "request", None)
 
-        # Only DRF requests carry query_params
-        if getattr(request, "query_params", None) is None:
+        # Only DRF requests carry query_params. Writes are left alone, so
+        # their responses never show relations cached before the change.
+        if getattr(request, "query_params", None) is None or request.method not in SAFE_METHODS:
             return queryset
 
-        prefetch_paths = self.get_expand_prefetch_paths(request)
-        return queryset.prefetch_related(*prefetch_paths) if prefetch_paths else queryset
+        select_paths, prefetch_paths = self.get_related_paths(request)
+        if select_paths:
+            queryset = queryset.select_related(*select_paths)
+        if prefetch_paths:
+            queryset = queryset.prefetch_related(*prefetch_paths)
 
-    def get_expand_prefetch_paths(self, request):
+        return queryset
+
+    def get_related_paths(self, request):
         """
-        Return the ORM paths (e.g. "category__articles") of the relations
-        requested with ?expand=. Only paths of expandable relations are
-        returned; anything else is left to the serializer to ignore.
+        Return the ORM paths (e.g. "category__articles") of the relations to
+        load for a request, as a (select_related, prefetch_related) tuple.
+        Only paths of expandable relations are returned for ?expand=;
+        anything else is left to the serializer to ignore.
         """
         from rest_flex_fields import EXPAND_PARAM, WILDCARD_VALUES
 
@@ -78,44 +97,87 @@ class ExpandPrefetchMixin:
             values = values[0].split(",")
 
         serializer_class = self.get_serializer_class()
-        paths = []
+        expansions = [value.split(".") for value in values if value]
 
-        for value in values:
-            names = value.split(".")
-            if names[0] in (WILDCARD_VALUES or []):
-                names = None
-            paths.extend(self._resolve_prefetch_paths(serializer_class, names))
+        # A wildcard expands every expandable relation of the first level
+        if any(names[0] in (WILDCARD_VALUES or []) for names in expansions):
+            expandable_fields = getattr(serializer_class(), "_expandable_fields", None) or {}
+            expansions = [[name] for name in expandable_fields]
 
-        return list(dict.fromkeys(paths))
+        select_paths, prefetch_paths = [], []
+        self._collect_related_paths(serializer_class, expansions, "", True, select_paths, prefetch_paths)
 
-    def _resolve_prefetch_paths(self, serializer_class, names, prefix=""):
+        return list(dict.fromkeys(select_paths)), list(dict.fromkeys(prefetch_paths))
+
+    def _collect_related_paths(self, serializer_class, expansions, prefix, joinable, select_paths, prefetch_paths):
         """
-        Resolve an expand path (a list of names, or None for all expandable
-        relations at this level) against the expandable fields of the
-        serializer class, level by level.
+        Collect the paths to load for a serializer class, level by level.
+        expansions holds the expand paths (as lists of names) that start at
+        this level. A relation can be joined only when every relation on its
+        path can be: a join cannot go through a many-valued relation.
         """
+        for name in self._get_to_many_names(serializer_class):
+            prefetch_paths.append(f"{prefix}{name}")
+
         expandable_fields = getattr(serializer_class(), "_expandable_fields", None)
         if not expandable_fields:
+            return
+
+        children = {}
+        for names in expansions:
+            children.setdefault(names[0], []).append(names[1:])
+
+        for name, rests in children.items():
+            if name not in expandable_fields:
+                continue
+
+            path = f"{prefix}{name}"
+            can_join = joinable and self._is_joinable(serializer_class, name)
+            (select_paths if can_join else prefetch_paths).append(path)
+
+            nested = [rest for rest in rests if rest]
+            self._collect_related_paths(
+                expandable_fields[name][0], nested, f"{path}__", can_join, select_paths, prefetch_paths
+            )
+
+    @staticmethod
+    def _is_joinable(serializer_class, name):
+        """
+        Check whether a relation can be loaded with a join: a forward foreign
+        key or one-to-one field of the serializer's model.
+        """
+        try:
+            field = serializer_class.Meta.model._meta.get_field(name)
+        except (AttributeError, FieldDoesNotExist):
+            return False
+
+        return field.concrete and (field.many_to_one or field.one_to_one)
+
+    @staticmethod
+    def _get_to_many_names(serializer_class):
+        """
+        Return the names of the many-valued relations (many-to-many fields
+        and reverse foreign keys) that a serializer class reads.
+        """
+        model = getattr(getattr(serializer_class, "Meta", None), "model", None)
+        if model is None:
             return []
 
-        if names is None:
-            return [f"{prefix}{name}" for name in expandable_fields]
+        names = []
+        for field in serializer_class().fields.values():
+            if field.write_only or not isinstance(field, (ManyRelatedField, ListSerializer)):
+                continue
 
-        name, rest = names[0], names[1:]
-        if name not in expandable_fields:
-            return []
+            source_attrs = field.source_attrs
+            if len(source_attrs) == 1 and isinstance(getattr(model, source_attrs[0], None), ReverseManyToOneDescriptor):
+                names.append(source_attrs[0])
 
-        path = f"{prefix}{name}"
-        if not rest:
-            return [path]
-
-        nested_paths = self._resolve_prefetch_paths(expandable_fields[name][0], rest, f"{path}__")
-        return nested_paths or [path]
+        return names
 
 
 class SingletonViewSet(
     ConstraintErrorMixin,
-    ExpandPrefetchMixin,
+    RelatedLoadingMixin,
     GenericViewSet,
     CreateModelMixin,
     UpdateModelMixin,

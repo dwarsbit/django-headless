@@ -70,11 +70,15 @@ GET /api/blog.category/1?expand=articles
 
 Forward relations are expanded by field name (`category`). Reverse relations are expanded by the name they have on an object: their `related_name` (`articles`), or `<model>_set` without one, such as `review_set` for the reviews of an article. Only relations to exposed models can be expanded; other relations stay primary keys.
 
-Expanded relations of a list are loaded with one query per relation, not one per item.
-
 An expanded object is serialized with `HEADLESS["DEFAULT_SERIALIZER_CLASS"]`, so it expands further only when that is `FlexibleSerializer`. Paths are limited to two relations, such as `?expand=category.articles`, and a longer path answers `400 Bad Request`. Change the limit with [`HEADLESS["MAX_EXPANSION_DEPTH"]`](./settings.md#max_expansion_depth).
 
 An expanded object follows the `fields` and `exclude` options of its own model. Relations and properties left out with `fields` or `exclude` are not serialized and cannot be expanded.
+
+## Queries
+
+The number of queries of a route does not grow with the number of objects in a response. An expanded foreign key or one-to-one relation is loaded together with the object, and every other expanded relation takes one query. Many-to-many fields (and reverse relations that are serialized) take one query each as well, whether or not they are expanded, because every object in a list lists the primary keys of its related objects.
+
+A model property that queries the database runs once per object. Keep such properties cheap, or leave them out of the API with `exclude`.
 
 ## Related pages
 
