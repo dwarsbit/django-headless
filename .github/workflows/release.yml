@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: npm
-      url: https://www.npmjs.com/package/django-headless
+      url: https://www.npmjs.com/package/@django-headless/client
     permissions:
       id-token: write
     steps:
