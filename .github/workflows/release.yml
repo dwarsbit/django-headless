@@ -1,78 +1,81 @@
 name: Release
 
+# Releases a new version: sets the version everywhere, builds the
+# package, commits to main and pushes the tag vX.Y.Z, then publishes to
+# PyPI (trusted publishing, environment "pypi") and npm (trusted
+# publishing, environment "npm") and creates the GitHub Release. Pushes
+# use GITHUB_TOKEN, so they do not trigger other workflows: anything a
+# release needs runs as a job here.
+
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (X.Y.Z or X.Y.Z-rc.N, without the v)"
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  ci:
-    uses: ./.github/workflows/ci.yml
-
   build:
-    needs: ci
     runs-on: ubuntu-latest
-    outputs:
-      prerelease: ${{ steps.check.outputs.prerelease }}
+    permissions:
+      contents: write
+      actions: read
+    env:
+      VERSION: ${{ inputs.version }}
     steps:
+      - name: Release from main only
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run this workflow from main (got ${GITHUB_REF})."
+          exit 1
+
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      - name: Validate the version
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]]; then
+            echo "::error::Invalid version '$VERSION': expected X.Y.Z or X.Y.Z-rc.N"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "::error::Tag v$VERSION already exists."
+            exit 1
+          fi
+
+      - name: Require green CI on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          conclusion=$(gh run list --workflow ci.yml --branch main --commit "$sha" \
+            --event push --limit 1 --json status,conclusion \
+            --jq '.[0] | if . == null then "missing" elif .status != "completed" then .status else .conclusion end')
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::CI on $sha is '$conclusion', not 'success'."
+            exit 1
+          fi
+
+      - name: Bump the version
+        run: python scripts/bump_version.py "$VERSION"
+
       - name: Install Poetry
         run: pipx install poetry
 
-      - name: Check versions and changelog
-        id: check
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          pip install packaging
-          python - <<'PY'
-          import json, os, re, sys, tomllib
-          from packaging.version import Version
-
-          tag = os.environ["TAG"]
-          tag_version = Version(tag.removeprefix("v"))
-          with open("pyproject.toml", "rb") as f:
-              pyproject_version = Version(tomllib.load(f)["project"]["version"])
-          init = open("headless/__init__.py").read()
-          init_version = Version(re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', init).group(1))
-
-          if not tag_version == pyproject_version == init_version:
-              sys.exit(
-                  f"Version mismatch: tag {tag}, pyproject.toml {pyproject_version}, "
-                  f"headless/__init__.py {init_version}"
-              )
-
-          # npm needs the version as written in the tag, such as 1.0.0-rc.2
-          client_version = json.load(open("client/package.json"))["version"]
-          if client_version != tag.removeprefix("v"):
-              sys.exit(f"Version mismatch: tag {tag}, client/package.json {client_version}")
-
-          # Release notes: the CHANGELOG.md section headed with the tag
-          notes, found = [], False
-          for line in open("CHANGELOG.md"):
-              if line.startswith("## "):
-                  if found:
-                      break
-                  found = line[3:].strip() == tag
-                  continue
-              if found:
-                  notes.append(line)
-          if not found:
-              sys.exit(f"CHANGELOG.md has no '## {tag}' section")
-          open("release-notes.md", "w").write("".join(notes).strip() + "\n")
-
-          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"prerelease={str(tag_version.is_prerelease).lower()}\n")
-          PY
-
-      - name: Build package
+      - name: Build the package
         run: poetry build
 
       - uses: actions/upload-artifact@v4
@@ -80,12 +83,17 @@ jobs:
           name: dist
           path: dist/
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-notes
-          path: release-notes.md
+      # Pushed before publishing: a PyPI or npm version can never be
+      # reused, so a failed push must not leave a published version behind.
+      - name: Commit, tag and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: release v$VERSION"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push --atomic origin HEAD:main "v$VERSION"
 
-  publish:
+  pypi:
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -101,7 +109,7 @@ jobs:
 
       - uses: pypa/gh-action-pypi-publish@release/v1
 
-  publish-npm:
+  npm:
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -109,8 +117,12 @@ jobs:
       url: https://www.npmjs.com/package/@django-headless/client
     permissions:
       id-token: write
+    env:
+      VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: v${{ inputs.version }}
 
       - uses: actions/setup-node@v4
         with:
@@ -125,32 +137,42 @@ jobs:
         working-directory: client
         run: npm ci
 
-      - name: Publish package
+      # Pre-releases get the "next" dist-tag, so they are not installed by default.
+      - name: Publish the package
         working-directory: client
-        env:
-          PRERELEASE: ${{ needs.build.outputs.prerelease }}
-        run: npm publish --access public --provenance --tag "$([ "$PRERELEASE" = "true" ] && echo next || echo latest)"
+        run: |
+          dist_tag=latest
+          if [[ "$VERSION" == *-* ]]; then dist_tag=next; fi
+          npm publish --access public --provenance --tag "$dist_tag"
 
   github-release:
-    needs: [build, publish, publish-npm]
+    needs: [pypi, npm]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      VERSION: ${{ inputs.version }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ inputs.version }}
+
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-notes
-
-      - name: Create GitHub release
+      - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-          PRERELEASE: ${{ needs.build.outputs.prerelease }}
         run: |
-          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --title "$TAG" \
-            --notes-file release-notes.md --prerelease="$PRERELEASE"
+          # The release notes are the version's section of the changelog.
+          awk -v v="$VERSION" '
+            $0 ~ "^## v?" v "( |$)" { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          flags=()
+          if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "v$VERSION" dist/* \
+            --title "v$VERSION" --notes-file notes.md "${flags[@]}"
