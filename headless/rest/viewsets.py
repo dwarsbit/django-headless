@@ -62,8 +62,9 @@ class RelatedLoadingMixin:
     - Many-valued relations serialized as primary keys, such as
       many-to-many fields, are prefetched.
 
-    Only applies to safe (read) requests. Expanding relations requires a
-    serializer with expandable fields (FlexibleSerializer).
+    Relations left out of the response with ?fields= or ?omit= are not
+    loaded. Only applies to safe (read) requests. Expanding relations
+    requires a serializer with expandable fields (FlexibleSerializer).
     """
 
     def get_queryset(self):
@@ -88,36 +89,66 @@ class RelatedLoadingMixin:
         Return the ORM paths (e.g. "category__articles") of the relations to
         load for a request, as a (select_related, prefetch_related) tuple.
         Only paths of expandable relations are returned for ?expand=;
-        anything else is left to the serializer to ignore.
+        anything else is left to the serializer to ignore. Relations that
+        ?fields= or ?omit= leave out of the response are skipped.
         """
-        from rest_flex_fields import EXPAND_PARAM, WILDCARD_VALUES
-
-        values = request.query_params.getlist(EXPAND_PARAM) or request.query_params.getlist(f"{EXPAND_PARAM}[]")
-        if len(values) == 1:
-            values = values[0].split(",")
+        from rest_flex_fields import EXPAND_PARAM, FIELDS_PARAM, OMIT_PARAM, WILDCARD_VALUES
 
         serializer_class = self.get_serializer_class()
-        expansions = [value.split(".") for value in values if value]
+        expansions = [value.split(".") for value in self._get_list_param(request, EXPAND_PARAM)]
 
         # A wildcard expands every expandable relation of the first level
         if any(names[0] in (WILDCARD_VALUES or []) for names in expansions):
             expandable_fields = getattr(serializer_class(), "_expandable_fields", None) or {}
             expansions = [[name] for name in expandable_fields]
 
+        sparse = self._get_list_param(request, FIELDS_PARAM)
+        omit = self._get_list_param(request, OMIT_PARAM)
+
         select_paths, prefetch_paths = [], []
-        self._collect_related_paths(serializer_class, expansions, "", True, select_paths, prefetch_paths)
+        self._collect_related_paths(serializer_class, expansions, sparse, omit, "", True, select_paths, prefetch_paths)
 
         return list(dict.fromkeys(select_paths)), list(dict.fromkeys(prefetch_paths))
 
-    def _collect_related_paths(self, serializer_class, expansions, prefix, joinable, select_paths, prefetch_paths):
+    @staticmethod
+    def _get_list_param(request, name):
+        """
+        Return the values of a drf-flex-fields query parameter, parsed as
+        drf-flex-fields does: repeated (also as name[]) or comma-separated.
+        """
+        values = request.query_params.getlist(name) or request.query_params.getlist(f"{name}[]")
+        if len(values) == 1:
+            values = values[0].split(",")
+
+        return [value for value in values if value]
+
+    def _collect_related_paths(
+        self, serializer_class, expansions, sparse, omit, prefix, joinable, select_paths, prefetch_paths
+    ):
         """
         Collect the paths to load for a serializer class, level by level.
         expansions holds the expand paths (as lists of names) that start at
-        this level. A relation can be joined only when every relation on its
-        path can be: a join cannot go through a many-valued relation.
+        this level, sparse and omit the ?fields= and ?omit= values (dotted
+        strings) that apply to it. A relation can be joined only when every
+        relation on its path can be: a join cannot go through a many-valued
+        relation.
         """
-        for name in self._get_to_many_names(serializer_class):
-            prefetch_paths.append(f"{prefix}{name}")
+        from rest_flex_fields.serializers import FlexFieldsSerializerMixin
+        from rest_flex_fields.utils import split_levels
+
+        # Only flex-fields serializers apply fields and omit
+        if not issubclass(serializer_class, FlexFieldsSerializerMixin):
+            sparse, omit = [], []
+
+        sparse_fields, next_sparse = split_levels(sparse)
+        omit_fields, next_omit = split_levels(omit)
+
+        def is_included(name):
+            return self._is_included(name, sparse_fields, omit_fields, next_omit)
+
+        for name, source in self._get_to_many_names(serializer_class):
+            if is_included(name):
+                prefetch_paths.append(f"{prefix}{source}")
 
         expandable_fields = getattr(serializer_class(), "_expandable_fields", None)
         if not expandable_fields:
@@ -128,7 +159,7 @@ class RelatedLoadingMixin:
             children.setdefault(names[0], []).append(names[1:])
 
         for name, rests in children.items():
-            if name not in expandable_fields:
+            if name not in expandable_fields or not is_included(name):
                 continue
 
             path = f"{prefix}{name}"
@@ -137,8 +168,31 @@ class RelatedLoadingMixin:
 
             nested = [rest for rest in rests if rest]
             self._collect_related_paths(
-                expandable_fields[name][0], nested, f"{path}__", can_join, select_paths, prefetch_paths
+                expandable_fields[name][0],
+                nested,
+                next_sparse.get(name, []),
+                next_omit.get(name, []),
+                f"{path}__",
+                can_join,
+                select_paths,
+                prefetch_paths,
             )
+
+    @staticmethod
+    def _is_included(name, sparse_fields, omit_fields, next_omit):
+        """
+        Check whether a field of a level is in the response, as
+        drf-flex-fields decides it: an omitted field is left out unless only
+        its nested fields are omitted (omit=a.b keeps a), and a sparse
+        fieldset without a wildcard keeps only the fields it names.
+        """
+        from rest_flex_fields import WILDCARD_VALUES
+
+        if name in omit_fields and name not in next_omit:
+            return False
+        if set(sparse_fields) & set(WILDCARD_VALUES or []):
+            return True
+        return not sparse_fields or name in sparse_fields
 
     @staticmethod
     def _is_joinable(serializer_class, name):
@@ -156,21 +210,22 @@ class RelatedLoadingMixin:
     @staticmethod
     def _get_to_many_names(serializer_class):
         """
-        Return the names of the many-valued relations (many-to-many fields
-        and reverse foreign keys) that a serializer class reads.
+        Return the many-valued relations (many-to-many fields and reverse
+        foreign keys) that a serializer class reads, as (field name, model
+        attribute) tuples.
         """
         model = getattr(getattr(serializer_class, "Meta", None), "model", None)
         if model is None:
             return []
 
         names = []
-        for field in serializer_class().fields.values():
+        for name, field in serializer_class().fields.items():
             if field.write_only or not isinstance(field, (ManyRelatedField, ListSerializer)):
                 continue
 
             source_attrs = field.source_attrs
             if len(source_attrs) == 1 and isinstance(getattr(model, source_attrs[0], None), ReverseManyToOneDescriptor):
-                names.append(source_attrs[0])
+                names.append((name, source_attrs[0]))
 
         return names
 

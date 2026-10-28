@@ -360,6 +360,33 @@ class RelatedLoadingMixinTests(SimpleTestCase):
     def test_many_to_many_prefetched_without_expansion(self):
         self.assertEqual(self.get_prefetch_lookups("", PrefetchCategorySerializer), ("tags",))
 
+    def test_sparse_fields_and_omit_skip_relations(self):
+        self.assertEqual(self.get_prefetch_lookups("fields=id,name", PrefetchCategorySerializer), ())
+        self.assertEqual(self.get_prefetch_lookups("fields=tags.name", PrefetchCategorySerializer), ("tags",))
+        self.assertEqual(self.get_prefetch_lookups("fields=*", PrefetchCategorySerializer), ("tags",))
+        self.assertEqual(self.get_prefetch_lookups("omit=tags", PrefetchCategorySerializer), ())
+        self.assertEqual(self.get_prefetch_lookups("omit=tags.name", PrefetchCategorySerializer), ("tags",))
+
+        self.assertEqual(self.get_select_related("expand=category&fields=title"), False)
+        self.assertEqual(self.get_select_related("expand=category&omit=category"), False)
+        self.assertEqual(self.get_select_related("expand=category&fields=category.title"), ["category"])
+        # Expanded objects only apply fields and omit with FlexibleSerializer as the default serializer
+        with override_settings(HEADLESS={"DEFAULT_SERIALIZER_CLASS": "headless.rest.serializers.FlexibleSerializer"}):
+            # The fields of the expanded category leave out its tags
+            self.assertEqual(self.get_prefetch_lookups("expand=category&fields=category.title"), ())
+            self.assertEqual(self.get_prefetch_lookups("expand=category&omit=category.tags"), ())
+            self.assertEqual(self.get_prefetch_lookups("expand=category&fields=category.tags"), ("category__tags",))
+
+        self.assertEqual(self.get_prefetch_lookups("expand=category&fields=category.title"), ("category__tags",))
+
+    def test_sparse_fields_ignored_without_flex_fields(self):
+        class PlainSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = PrefetchCategory
+                fields = "__all__"
+
+        self.assertEqual(self.get_prefetch_lookups("fields=name", PlainSerializer), ("tags",))
+
     def test_writes_are_left_alone(self):
         queryset = self.get_queryset("expand=category", method="patch")
         self.assertIs(queryset.query.select_related, False)

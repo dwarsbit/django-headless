@@ -78,6 +78,8 @@ An expanded object follows the `fields` and `exclude` options of its own model. 
 
 The number of queries of a route does not grow with the number of objects in a response. An expanded foreign key or one-to-one relation is loaded together with the object, and every other expanded relation takes one query. Many-to-many fields (and reverse relations that are serialized) take one query each as well, whether or not they are expanded, because every object in a list lists the primary keys of its related objects.
 
+Relations that `?fields=` or `?omit=` leave out of the response are not loaded, so `?fields=title,slug` takes no queries for relations at all.
+
 A model property that queries the database runs once per object. Keep such properties cheap, or leave them out of the API with `exclude`.
 
 ## Related pages
