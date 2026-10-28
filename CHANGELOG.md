@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 (unreleased)
+
+The stable release of v1.1.0-rc.1, with no changes since.
+
 ## v1.1.0-rc.1
 
 - 🎁 Add an OpenAPI schema of the generated routes. Enable it with `HEADLESS["SCHEMA"]` for a schema route at `<prefix>/schema` (JSON, or YAML with `?format=openapi`), or generate a file with `python manage.py generateschema --generator_class headless.rest.schema.SchemaGenerator`. It describes the models, pagination envelope, filters, `expand`, `fields` and `omit` parameters, lookup routes and authentication. Install its packages with `pip install "django-headless[schema]"`.
