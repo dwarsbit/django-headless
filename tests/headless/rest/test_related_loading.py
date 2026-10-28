@@ -206,6 +206,64 @@ class RelatedLoadingTests(TransactionTestCase):
         # Count, posts, the tags of the posts, and the comments
         self.assertEqual((few, many), (4, 4))
 
+    def test_sparse_fields_without_many_to_many_skip_the_prefetch(self):
+        self.create_posts(3)
+        queries, response = self.count_queries("/headless_rest.loadpost", fields="id,title")
+
+        self.assertEqual(set(response.data["data"][0]), {"id", "title"})
+        # Count and posts: the tags are not in the response, so not loaded
+        self.assertEqual(queries, 2)
+
+    def test_sparse_fields_also_as_list(self):
+        self.create_posts(3)
+        queries, _ = self.count_queries("/headless_rest.loadpost?fields[]=id&fields[]=title")
+        self.assertEqual(queries, 2)
+
+        queries, _ = self.count_queries("/headless_rest.loadpost?fields=id&fields=tags")
+        self.assertEqual(queries, 3)
+
+    def test_sparse_nested_fields_prefetch_the_relation(self):
+        self.create_posts(3)
+        queries, response = self.count_queries("/headless_rest.loadpost", fields="title,tags.name", expand="tags")
+
+        self.assertEqual(response.data["data"][0]["tags"], [{"name": tag.name} for tag in self.tags])
+        # Count, posts, and the tags
+        self.assertEqual(queries, 3)
+
+    def test_omitted_many_to_many_skips_the_prefetch(self):
+        self.create_posts(3)
+        queries, response = self.count_queries("/headless_rest.loadpost", omit="tags")
+
+        self.assertNotIn("tags", response.data["data"][0])
+        self.assertEqual(queries, 2)
+
+        # Omitting a nested field keeps the relation
+        queries, _ = self.count_queries("/headless_rest.loadpost", omit="tags.name", expand="tags")
+        self.assertEqual(queries, 3)
+
+    def test_sparse_fields_skip_expanded_relations(self):
+        self.create_posts(3)
+        queries, response = self.count_queries("/headless_rest.loadpost", fields="title", expand="author,tags")
+
+        self.assertEqual(set(response.data["data"][0]), {"title"})
+        # Neither the author (join) nor the tags of posts and authors
+        self.assertEqual(queries, 2)
+
+    def test_sparse_fields_of_an_expanded_relation(self):
+        self.create_posts(3)
+        queries, response = self.count_queries("/headless_rest.loadpost", fields="title,author.name", expand="author")
+
+        self.assertEqual(response.data["data"][0], {"title": "post 0", "author": {"name": "author 0"}})
+        # Count and posts joined with their authors; no tags of either
+        self.assertEqual(queries, 2)
+
+    def test_omitted_expanded_relation_skips_the_join(self):
+        self.create_posts(3)
+        queries, response = self.count_queries("/headless_rest.loadpost", omit="author,tags", expand="author")
+
+        self.assertNotIn("author", response.data["data"][0])
+        self.assertEqual(queries, 2)
+
     def test_detail_route(self):
         post = self.create_posts(1)[0]
         queries, response = self.count_queries(f"/headless_rest.loadpost/{post.pk}", expand="author")
