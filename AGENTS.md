@@ -64,7 +64,7 @@ STYLE.md                    # Writing style guide for README, docs website and C
 scripts/
   test_wrapper.py           # Dev commands: test, test-verbose, test-cov, build, publish
 .github/workflows/          # ci.yml (tests, black, docs build, client tests and e2e), docs-deploy.yml (Pages deploy on main),
-                            #   release.yml (PyPI and npm publish and GitHub release on v* tags)
+                            #   release.yml (manual: version bump, tag, PyPI and npm publish, GitHub release)
 ```
 
 ## How it works (architecture)
@@ -114,10 +114,10 @@ Run tests before considering any change done. New behavior needs tests in `tests
 
 ## Release flow
 
-1. Bump the version in `pyproject.toml`, `headless/__init__.py` (`__version__`) and `client/package.json` — they must stay in sync. `client/package.json` takes the version as written in the tag (`1.0.0-rc.2`); run `npm install` in `client/` to update its lockfile.
-2. Add an entry to `CHANGELOG.md` describing user-facing changes (rename an `Unreleased` heading to the version).
-3. Merge to `main`, then tag the release (e.g. `v1.0.0-rc.2`) and push the tag.
-4. The `Release` workflow (`.github/workflows/release.yml`) runs CI, checks that the tag matches the three versions and has a `## <tag>` section in `CHANGELOG.md`, builds, publishes to PyPI (trusted publishing, `pypi` environment) and npm (trusted publishing, `npm` environment; pre-releases get the `next` dist-tag) and creates a GitHub release with that section as notes. Pre-release tags (`rc`, `a`, `b`) become pre-releases.
+1. While developing, add the user-facing changes to `CHANGELOG.md` under a `## X.Y.Z (unreleased)` heading (e.g. `## 1.1.0-rc.2 (unreleased)`).
+2. Merge to `main` and wait for CI to pass.
+3. Run the `Release` workflow (`.github/workflows/release.yml`) from `main` (Actions → Release → Run workflow) with the version, without the `v`.
+4. The workflow checks that CI passed on the `main` commit, runs `scripts/bump_version.py` (sets the version in `pyproject.toml`, `headless/__init__.py`, `client/package.json` and `client/package-lock.json`, and dates the changelog heading), builds, commits to `main`, pushes the tag `vX.Y.Z`, publishes to PyPI (trusted publishing, `pypi` environment) and npm (trusted publishing, `npm` environment; pre-releases get the `next` dist-tag) and creates a GitHub release with the changelog section as notes. Versions with a suffix (`-alpha.N`, `-beta.N`, `-rc.N`) become pre-releases.
 
 `scripts/test_wrapper.py build` / `publish` remain available for a manual release.
 
