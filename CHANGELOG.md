@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 (unreleased)
+## 1.1.0 (2026-10-28)
 
 The stable release of v1.1.0-rc.1, with no changes since.
 
