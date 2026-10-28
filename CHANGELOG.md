@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.1 (unreleased)
+## 1.1.1 (2026-10-28)
 
 - 🐛 Fix the prefetch of many-to-many fields and reverse relations that `?fields=` or `?omit=` leave out of the response. Expanded relations left out of the response are no longer loaded either.
 
