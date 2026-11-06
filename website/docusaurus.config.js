@@ -17,6 +17,7 @@ const config = {
   trailingSlash: false,
   scripts: [],
   themes: [],
+  plugins: [require.resolve('./plugins/llms.js')],
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({

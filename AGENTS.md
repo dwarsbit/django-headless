@@ -60,6 +60,9 @@ client/                     # The @django-headless/client npm package: TypeScrip
   e2e/                      # run.mjs starts the Django project in e2e/django, generates types from its schema
                             #   route and runs e2e/*.e2e.test.ts; --next also builds e2e/next-app with the packed package
 website/                    # Docusaurus docs site (djangoheadless.org); pages in website/docs/
+  plugins/llms.js           # Build step: llms.txt, llms-full.txt and docs/<page>.md for AI agents
+skills/django-headless/     # SKILL.md: the agent skill for users of the package
+.claude-plugin/             # marketplace.json: installs the skill as a Claude Code plugin
 STYLE.md                    # Writing style guide for README, docs website and CHANGELOG
 scripts/
   test_wrapper.py           # Dev commands: test, test-verbose, test-cov, build, publish
@@ -75,7 +78,7 @@ scripts/
 4. Regular models are registered on `rest_router` at `<label_lower>` (e.g. `blog.article`). `read_only` models get a `ReadOnlyModelViewSet`. Singletons get explicit paths in `singleton_urls` mapping GET (and PUT/PATCH unless read-only) to retrieve/update/partial_update.
 5. `lookup_fields` (opt-in, unique non-pk fields only) adds GET-only `by_<field>/<value>` actions through `LookupFieldsMixin`. On those routes `view.action` is `"retrieve"` (so action-based permissions apply) and `view.lookup_by` holds the field.
 6. The serializer base is `HEADLESS.DEFAULT_SERIALIZER_CLASS`, a plain `ModelSerializer` by default. Setting it to `FlexibleSerializer` enables `?expand=` / `?fields=` / `?omit=` and model properties as read-only fields; relations to other registered models become expandable.
-7. All configuration lives under the `HEADLESS` dict in Django settings (see `DEFAULTS` in `headless/settings.py`). DRF-level settings (renderers, parsers, authentication, permissions, filter backends, pagination, `PAGE_SIZE`, search/ordering params) can be set there to override `REST_FRAMEWORK` for the generated routes only. Defaults are safe: `IsAuthenticated` permissions and the `LookupFilter` backend.
+7. All configuration lives under the `HEADLESS` dict in Django settings (see `DEFAULTS` in `headless/settings.py`). DRF-level settings (renderers, parsers, authentication, permissions, filter backends, pagination, `PAGE_SIZE`, search/ordering params) can be set there to override `REST_FRAMEWORK` for the generated routes only. Defaults are safe: `IsAdminUser` permissions and the `LookupFilter` backend.
 
 8. The OpenAPI schema (`headless/rest/schema.py`) carries `x-filter` and `x-expandable` extensions that the TypeScript client's generator reads. A schema change usually means regenerating the client fixtures (see Commands); the Python test `test_client_schema_fixture_is_up_to_date` fails until you do.
 
@@ -109,7 +112,7 @@ Run tests before considering any change done. New behavior needs tests in `tests
 - Public API is what `headless/__init__.py` and `headless/rest/filters/__init__.py` export, plus the DRF integration points (`LookupFilter`, `SecretKeyAuthentication`, pagination class, `FlexibleSerializer`, `HEADLESS` settings, the `@expose()` options). Keep these stable; treat them as the package's backward-compatibility surface.
 - `headless` manages the registry, settings and exposure-independent checks; it does not build routes or depend on how models are served. Each exposure app builds its own routes and owns its checks: `headless.rest` today, possibly `headless.graphql` later (add it to `EXPOSURE_APPS` in `headless/checks.py`). Both `headless` and `headless.rest` belong in `INSTALLED_APPS`.
 - Prefer secure, opt-in defaults: nothing should become public or exposed (routes, fields, lookups) without the user asking for it.
-- User-facing changes update the docs in `website/docs/`, the README feature list where relevant, and `CHANGELOG.md`.
+- User-facing changes update the docs in `website/docs/`, the README feature list where relevant, `skills/django-headless/SKILL.md` when the change affects setup, options, settings, query parameters or the client, and `CHANGELOG.md`.
 - User-facing text (README, docs website, CHANGELOG, console output) follows `STYLE.md`: voice, terminology, emoji use and code example conventions. Keep code and commit messages plain.
 
 ## Release flow

@@ -20,6 +20,7 @@ Read the documentation at [djangoheadless.org](https://djangoheadless.org).
 - **TypeScript client**: request the API from the frontend with types generated from the schema, with the `@django-headless/client` npm package.
 - **Predictable queries**: relations load with a fixed number of queries, however long the list.
 - **Protected by default**: generated routes only answer staff users until you open them up.
+- **Agent skill**: teach AI coding agents to use Django Headless, with a `SKILL.md` and an `llms.txt` of the documentation.
 
 ## Quick start
 
@@ -90,6 +91,7 @@ Generated routes answer `403 Forbidden` to everyone but staff users, so an expos
 - [TypeScript client](https://djangoheadless.org/docs/client): the `@django-headless/client` npm package
 - [Settings reference](https://djangoheadless.org/docs/settings): every `HEADLESS` setting
 - [System checks](https://djangoheadless.org/docs/checks): the checks for risky or broken settings
+- [AI agents](https://djangoheadless.org/docs/agents): the agent skill and the Markdown documentation
 
 ## Contributing
 
