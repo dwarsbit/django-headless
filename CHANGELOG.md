@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 (unreleased)
+## 1.2.0 (2026-11-06)
 
 - 🎁 Add an agent skill for AI coding agents, in `skills/django-headless/SKILL.md`. Install it in Claude Code with `/plugin install django-headless --marketplace dwarsbit/django-headless`, or for other agents with `npx skills add dwarsbit/django-headless`.
 - 🎁 Publish the documentation as Markdown for AI agents: `https://djangoheadless.org/llms.txt`, `https://djangoheadless.org/llms-full.txt` and `/docs/<page>.md` per page.
