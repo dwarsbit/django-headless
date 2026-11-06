@@ -1,0 +1,17 @@
+{
+  "name": "django-headless",
+  "owner": {
+    "name": "Dwarsbit"
+  },
+  "plugins": [
+    {
+      "name": "django-headless",
+      "source": "./",
+      "description": "A skill for setting up and using Django Headless and its TypeScript client.",
+      "homepage": "https://djangoheadless.org/docs/agents",
+      "repository": "https://github.com/dwarsbit/django-headless",
+      "license": "MIT",
+      "strict": false
+    }
+  ]
+}
