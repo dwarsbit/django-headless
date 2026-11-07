@@ -1,6 +1,7 @@
 name: Release
 
-# Releases a new version: sets the version everywhere, builds the
+# Releases the version of the "## X.Y.Z (unreleased)" heading in
+# CHANGELOG.md: sets the version everywhere, builds the
 # package, commits to main and pushes the tag vX.Y.Z, then publishes to
 # PyPI (trusted publishing, environment "pypi") and npm (trusted
 # publishing, environment "npm"), creates the GitHub Release and
@@ -10,11 +11,6 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to release (X.Y.Z or X.Y.Z-rc.N, without the v)"
-        required: true
-        type: string
 
 concurrency:
   group: release
@@ -29,8 +25,8 @@ jobs:
     permissions:
       contents: write
       actions: read
-    env:
-      VERSION: ${{ inputs.version }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Release from main only
         if: github.ref != 'refs/heads/main'
@@ -45,6 +41,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Read the version from the changelog
+        id: version
+        run: |
+          versions=$(sed -nE 's/^## (.+) \(unreleased\)$/\1/p' CHANGELOG.md)
+          if [ -z "$versions" ]; then
+            echo "::error::CHANGELOG.md has no '## X.Y.Z (unreleased)' heading."
+            exit 1
+          fi
+          if [ "$(echo "$versions" | wc -l)" -ne 1 ]; then
+            echo "::error::CHANGELOG.md has more than one unreleased version: $(echo $versions)"
+            exit 1
+          fi
+          echo "VERSION=$versions" >> "$GITHUB_ENV"
+          echo "version=$versions" >> "$GITHUB_OUTPUT"
+          echo "Releasing $versions"
 
       - name: Validate the version
         run: |
@@ -119,11 +131,11 @@ jobs:
     permissions:
       id-token: write
     env:
-      VERSION: ${{ inputs.version }}
+      VERSION: ${{ needs.build.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: v${{ inputs.version }}
+          ref: v${{ needs.build.outputs.version }}
 
       - uses: actions/setup-node@v4
         with:
@@ -147,16 +159,16 @@ jobs:
           npm publish --access public --provenance --tag "$dist_tag"
 
   github-release:
-    needs: [pypi, npm]
+    needs: [build, pypi, npm]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
-      VERSION: ${{ inputs.version }}
+      VERSION: ${{ needs.build.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: v${{ inputs.version }}
+          ref: v${{ needs.build.outputs.version }}
 
       - uses: actions/download-artifact@v4
         with:

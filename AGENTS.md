@@ -119,8 +119,8 @@ Run tests before considering any change done. New behavior needs tests in `tests
 
 1. While developing, add the user-facing changes to `CHANGELOG.md` under a `## X.Y.Z (unreleased)` heading (e.g. `## 1.1.0-rc.2 (unreleased)`).
 2. Merge to `main` and wait for CI to pass.
-3. Run the `Release` workflow (`.github/workflows/release.yml`) from `main` (Actions → Release → Run workflow) with the version, without the `v`.
-4. The workflow checks that CI passed on the `main` commit, runs `scripts/bump_version.py` (sets the version in `pyproject.toml`, `headless/__init__.py`, `client/package.json` and `client/package-lock.json`, and dates the changelog heading), builds, commits to `main`, pushes the tag `vX.Y.Z`, publishes to PyPI (trusted publishing, `pypi` environment) and npm (trusted publishing, `npm` environment; pre-releases get the `next` dist-tag) and creates a GitHub release with the changelog section as notes. Versions with a suffix (`-alpha.N`, `-beta.N`, `-rc.N`) become pre-releases.
+3. Run the `Release` workflow (`.github/workflows/release.yml`) from `main` (Actions → Release → Run workflow). It takes no input: it releases the version of the single `## X.Y.Z (unreleased)` heading in `CHANGELOG.md`.
+4. The workflow checks that the tag does not exist yet and that CI passed on the `main` commit, runs `scripts/bump_version.py` (sets the version in `pyproject.toml`, `headless/__init__.py`, `client/package.json` and `client/package-lock.json`, and dates the changelog heading), builds, commits to `main`, pushes the tag `vX.Y.Z`, publishes to PyPI (trusted publishing, `pypi` environment) and npm (trusted publishing, `npm` environment; pre-releases get the `next` dist-tag) and creates a GitHub release with the changelog section as notes, then redeploys the docs (they show the version). Versions with a suffix (`-alpha.N`, `-beta.N`, `-rc.N`) become pre-releases.
 
 `scripts/test_wrapper.py build` / `publish` remain available for a manual release.
 
