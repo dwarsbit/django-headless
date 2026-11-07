@@ -45,6 +45,53 @@ html {
   background: var(--dhh-paper);
 }
 
+/* The latest version: a badge in the navbar and a pill above the hero title */
+.dhh-version {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--ifm-color-primary) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ifm-color-primary) 12%, transparent);
+  color: var(--ifm-color-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.dhh-version:hover {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+  background: color-mix(in srgb, var(--ifm-color-primary) 20%, transparent);
+}
+
+.hero-release {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem 0.8rem 0.25rem 0.3rem;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: 999px;
+  background: rgba(52, 211, 153, 0.08);
+  color: #d1fae5;
+  font-size: 0.85rem;
+}
+
+.hero-release:hover {
+  color: #ffffff;
+  text-decoration: none;
+  border-color: rgba(52, 211, 153, 0.6);
+}
+
+.hero-release b {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--dhh-hero-accent);
+  color: #022c22;
+  font-size: 0.75rem;
+}
+
 /* Hero */
 .hero-dhh {
   background: var(--dhh-hero-bg);

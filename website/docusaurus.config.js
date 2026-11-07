@@ -1,4 +1,9 @@
 // @ts-check
+// The Python package and the client share one version (set by
+// scripts/bump_version.py). The Release workflow redeploys the docs after a release.
+const { version } = require('../client/package.json');
+const releaseUrl = `https://github.com/dwarsbit/django-headless/releases/tag/v${version}`;
+
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
 const config = {
   title: 'Django Headless',
@@ -15,6 +20,7 @@ const config = {
     },
   },
   trailingSlash: false,
+  customFields: { version, releaseUrl },
   scripts: [],
   themes: [],
   plugins: [require.resolve('./plugins/llms.js')],
@@ -32,6 +38,11 @@ const config = {
           src: 'img/logo.svg',
         },
         items: [
+          {
+            type: 'html',
+            position: 'left',
+            value: `<a class="dhh-version" href="${releaseUrl}" title="Release notes for v${version}">v${version}</a>`,
+          },
           {
             label: 'Docs',
             position: 'left',
