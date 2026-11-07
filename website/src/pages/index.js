@@ -53,12 +53,16 @@ const features = [
 
 export default function Home() {
   const { siteConfig } = useDocusaurusContext();
+  const { version, releaseUrl } = siteConfig.customFields;
 
   return (
     <Layout title="Home" description={siteConfig.tagline}>
       <header className="hero-dhh">
         <div className="container">
           <div>
+            <Link className="hero-release" href={releaseUrl}>
+              <b>v{version}</b> What’s new →
+            </Link>
             <h1>
               Your Django models.
               <br />
