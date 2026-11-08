@@ -54,6 +54,11 @@ const config = {
             position: 'right',
           },
           {
+            href: 'https://djangostack.org',
+            label: 'Django Stack',
+            position: 'right',
+          },
+          {
             href: 'https://github.com/dwarsbit/django-headless',
             label: 'GitHub',
             position: 'right',
@@ -84,6 +89,7 @@ const config = {
               { label: 'PyPI', href: 'https://pypi.org/project/django-headless/' },
               { label: 'Changelog', href: 'https://github.com/dwarsbit/django-headless/blob/main/CHANGELOG.md' },
               { label: 'Django Content Studio', href: 'https://dwarsbit.github.io/django-content-studio/' },
+              { label: 'Django Stack', href: 'https://djangostack.org' },
             ],
           },
         ],

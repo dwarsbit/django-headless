@@ -45,7 +45,7 @@ Use Django Headless when Django holds your content and the frontend lives elsewh
 - **Stable lists**: ordered by primary key, with a pagination envelope that includes ready-to-fetch links.
 - **Clear errors**: invalid filters and options answer with the reason.
 
-If your editors also need an admin to manage that content, see [Django Content Studio](https://dwarsbit.github.io/django-content-studio/).
+If your editors also need an admin to manage that content, see [Django Content Studio](https://dwarsbit.github.io/django-content-studio/). For a production-ready Django stack with batteries included, see [Django Stack](https://djangostack.org).
 
 ## Next steps
 
