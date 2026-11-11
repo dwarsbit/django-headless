@@ -4,6 +4,10 @@
 
 - 🐛 Fix the object permissions of singletons: `PUT` and `PATCH` on a singleton route now check `has_object_permission`, like `GET` does.
 - 🐛 Fix the API root view: it now uses the authentication and permission classes of the generated routes instead of the `REST_FRAMEWORK` defaults, so it no longer lists the exposed models to anonymous requests.
+- 🐛 Fix reverse relations of hidden fields: a relation left out with `fields` or `exclude` on the model that defines it can no longer be filtered on or expanded from the related model.
+- 🐛 Fix `exclude` for model properties: `@expose(exclude=["my_property"])` now leaves the property out of the API instead of raising `ImproperlyConfigured`.
+- 🐛 `@expose()` now raises `ImproperlyConfigured` when `search_fields` name a field left out with `fields` or `exclude`. Searching such a field revealed its value.
+- 🐛 Fix the error of a filter across a relation: a name the related model does not have now answers the same message as a hidden field.
 
 ## 1.2.0 (2026-11-06)
 

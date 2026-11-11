@@ -479,7 +479,7 @@ class RegistryTests(SimpleTestCase):
         cfg = self.registry.get_model("registry_tests.registrytestmodel")
         self.assertEqual(cfg["fields"], ("title",))
 
-    def test_property_names_allowed_in_fields(self):
+    def test_property_names_allowed_in_fields_and_exclude(self):
         class RegistryPropertyModel(models.Model):
             title = models.CharField(max_length=100)
 
@@ -494,9 +494,24 @@ class RegistryTests(SimpleTestCase):
         cfg = self.registry.get_model("registry_tests.registrypropertymodel")
         self.assertEqual(cfg["fields"], ["title", "slug"])
 
-        # Properties cannot be excluded: DRF only accepts model fields there
+        # Properties can be left out with exclude too
+        self.registry.register(RegistryPropertyModel, exclude=["slug"])
+        cfg = self.registry.get_model("registry_tests.registrypropertymodel")
+        self.assertEqual(cfg["exclude"], ["slug"])
+
         with self.assertRaises(ImproperlyConfigured):
-            self.registry.register(RegistryPropertyModel, exclude=["slug"])
+            self.registry.register(RegistryPropertyModel, exclude=["missing"])
+
+    def test_search_fields_cannot_name_hidden_fields(self):
+        """Test that fields left out with fields or exclude cannot be searched"""
+        with self.assertRaisesMessage(ImproperlyConfigured, "cannot be searched"):
+            self.registry.register(RegistryTestModel, exclude=["author"], search_fields=["title", "author"])
+
+        with self.assertRaisesMessage(ImproperlyConfigured, "cannot be searched"):
+            self.registry.register(RegistryTestModel, fields=["title"], search_fields=["^author"])
+
+        self.registry.register(RegistryTestModel, fields=["title"], search_fields=["title", "id"])
+        self.registry.register(RegistryTestModel, exclude=["author"], search_fields=["title"])
 
     def test_default_search_fields_honor_fields_and_exclude(self):
         self.registry.register(RegistryTestModel, exclude=["author"])

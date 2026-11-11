@@ -227,7 +227,11 @@ class LookupFilter(BaseFilterBackend):
             try:
                 next_field = related_model._meta.get_field(name)
             except FieldDoesNotExist:
-                # Not a field, so a lookup or transform on the relation (e.g. author__in)
+                # Not a field, so a lookup or transform on the relation (e.g. author__in).
+                # Anything else answers like a hidden field, so that the fields of
+                # a related model cannot be told apart from names it does not have.
+                if field.get_lookup(name) is None and field.get_transform(name) is None:
+                    raise ParseError(detail=f"Field '{'__'.join(parts[: index + 1])}' does not exist")
                 break
 
             # The primary key is always filterable: it is the value of the relation itself

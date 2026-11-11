@@ -61,9 +61,19 @@ def get_meta_attrs(
     # through to "__all__"
     if fields is not None:
         meta_attrs["fields"] = fields
-    elif exclude:
+        return meta_attrs
+
+    # DRF only accepts model fields in exclude. Excluded model properties are
+    # kept apart for FlexibleSerializer, which adds properties as fields.
+    excluded_properties = [name for name in exclude or [] if isinstance(getattr(model_class, name, None), property)]
+    excluded_fields = [name for name in exclude or [] if name not in excluded_properties]
+
+    if excluded_properties:
+        meta_attrs["exclude_properties"] = excluded_properties
+
+    if excluded_fields:
         # DRF does not allow setting both fields and exclude
-        meta_attrs["exclude"] = exclude
+        meta_attrs["exclude"] = excluded_fields
     else:
         meta_attrs["fields"] = "__all__"
 

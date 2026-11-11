@@ -61,6 +61,9 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
         if isinstance(meta_fields, (list, tuple)) and name not in meta_fields:
             return False
 
+        if name in (getattr(self.Meta, "exclude_properties", None) or ()):
+            return False
+
         return name not in (getattr(self.Meta, "exclude", None) or ())
 
     @property
@@ -120,6 +123,10 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
                     # or e.g. comment_set), not field.name, which is the query name.
                     is_reverse = field.auto_created and not field.concrete
                     name = field.get_accessor_name() if is_reverse else field.name
+
+                    # Do not expand a reverse relation hidden on the model that defines it
+                    if is_reverse and not headless_registry.is_reverse_relation_exposed(field):
+                        continue
 
                     # Do not expand relations hidden by the fields or exclude options
                     if not self._is_field_allowed(name):

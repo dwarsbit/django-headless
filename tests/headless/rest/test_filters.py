@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from django.db import models
 from django.test import TestCase, override_settings
@@ -427,6 +427,35 @@ class LookupFilterExposureTests(TestCase):
 
     def test_traversal_into_unexposed_model_rejected(self):
         self.assertRejected(ExposurePost, "hidden__secret=s", "hidden__secret")
+
+    def test_unknown_name_across_relation_answers_like_hidden_field(self):
+        """Test that the fields of a related model cannot be told apart from names it does not have"""
+        self.assertRejected(ExposurePost, "hidden__bogus=s", "hidden__bogus")
+        self.assertRejected(ExposurePost, "owner__bogus=s", "owner__bogus")
+
+    def test_reverse_relation_hidden_with_its_forward_field(self):
+        """Test that a relation hidden on the model that defines it is not filterable from the other side"""
+        # The test app is not installed, so Django does not collect the
+        # reverse relations itself: provide them explicitly.
+        reverse_relations = (
+            ExposurePost._meta.get_field("owner").remote_field,
+            ExposurePost._meta.get_field("editors").remote_field,
+        )
+        fields = (*ExposureOwner._meta.get_fields(), *reverse_relations)
+
+        with patch.object(ExposureOwner._meta, "get_fields", lambda: fields):
+            filterable_fields = self.filter_backend.get_filterable_fields(ExposureOwner)
+            self.assertLessEqual({"exposurepost", "edited_posts"}, filterable_fields)
+
+            headless_registry.register(ExposurePost, exclude=["owner"])
+            filterable_fields = self.filter_backend.get_filterable_fields(ExposureOwner)
+            self.assertNotIn("exposurepost", filterable_fields)
+            self.assertIn("edited_posts", filterable_fields)
+
+            headless_registry.register(ExposurePost, fields=["title", "owner"])
+            filterable_fields = self.filter_backend.get_filterable_fields(ExposureOwner)
+            self.assertIn("exposurepost", filterable_fields)
+            self.assertNotIn("edited_posts", filterable_fields)
 
     def test_relation_to_unexposed_model_filterable_by_pk(self):
         filter_kwargs, _ = self.get_filter_kwargs(ExposurePost, "hidden=1&hidden__in=1,2")

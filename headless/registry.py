@@ -77,7 +77,7 @@ class HeadlessRegistry:
         if not search_fields:
             search_fields = self._get_default_search_fields(model_class, fields, exclude)
 
-        self._validate_search_fields(model_class, search_fields)
+        self._validate_search_fields(model_class, search_fields, fields, exclude)
         self._validate_field_names(model_class, fields, "fields")
         self._validate_field_names(model_class, exclude, "exclude")
 
@@ -155,11 +155,34 @@ class HeadlessRegistry:
         names = set()
         for field in model._meta.get_fields():
             is_reverse = field.auto_created and not field.concrete
-            if is_reverse and not (field.related_model and field.related_model._meta.label_lower in self._models):
+            if is_reverse and not self.is_reverse_relation_exposed(field):
                 continue
             names.add(field.name)
 
         return (names - set(config["exclude"] or [])) | {model._meta.pk.name}
+
+    def is_reverse_relation_exposed(self, field) -> bool:
+        """
+        Check whether a reverse relation is exposed: the related model must be
+        registered, and the field that defines the relation must be exposed
+        on it. A relation hidden on the model that defines it stays hidden
+        from the other side.
+
+        Args:
+            field: A reverse relation, as returned by model._meta.get_fields()
+        """
+        related_model = field.related_model
+        config = self._models.get(related_model._meta.label_lower) if related_model else None
+
+        if config is None:
+            return False
+
+        forward_name = field.remote_field.name
+
+        if config["fields"] is not None:
+            return forward_name in config["fields"]
+
+        return forward_name not in (config["exclude"] or [])
 
     def _get_default_search_fields(
         self,
@@ -208,22 +231,33 @@ class HeadlessRegistry:
         # properties only enumerate forward fields and are safe at that point.
         return {field.name for field in (*model._meta.fields, *model._meta.many_to_many)}
 
-    def _validate_search_fields(self, model: Type[models.Model], search_fields: List[str]):
+    def _validate_search_fields(
+        self,
+        model: Type[models.Model],
+        search_fields: List[str],
+        fields: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+    ):
         """
-        Validate that the search fields exist on the model. Allows the lookup
-        prefixes supported by DRF's SearchFilter (e.g. "^title") and traversal
-        of related fields (e.g. "author__name").
+        Validate that the search fields exist on the model and are not left
+        out of the API. Allows the lookup prefixes supported by DRF's
+        SearchFilter (e.g. "^title") and traversal of related fields
+        (e.g. "author__name").
 
         Args:
             model: A Django model class
             search_fields: The search field names to validate
+            fields: The fields option of the model
+            exclude: The exclude option of the model
 
         Raises:
-            ImproperlyConfigured: If a search field does not exist on the model
+            ImproperlyConfigured: If a search field does not exist on the model,
+                or is hidden by the fields or exclude option
         """
         field_names = self._get_field_names(model)
 
         invalid = []
+        hidden = []
         for name in search_fields:
             if not isinstance(name, str):
                 invalid.append(name)
@@ -231,11 +265,22 @@ class HeadlessRegistry:
             base_name = name.lstrip(SEARCH_FIELD_PREFIXES).split("__")[0]
             if base_name not in field_names:
                 invalid.append(name)
+            elif (fields is not None and base_name not in fields and base_name != model._meta.pk.name) or (
+                exclude and base_name in exclude
+            ):
+                hidden.append(name)
 
         if invalid:
             raise ImproperlyConfigured(
                 f"Invalid search_fields for model {model._meta.label}: {invalid}. "
                 "Search fields must be names of fields on the model."
+            )
+
+        if hidden:
+            # Searching a hidden field would reveal its value piece by piece
+            raise ImproperlyConfigured(
+                f"Invalid search_fields for model {model._meta.label}: {hidden}. "
+                "Fields left out with the fields or exclude option cannot be searched."
             )
 
     def _validate_field_names(self, model: Type[models.Model], names: Optional[List[str]], option: str):
@@ -255,9 +300,9 @@ class HeadlessRegistry:
 
         field_names = self._get_field_names(model)
 
-        if option == "fields":
-            # Model properties can be listed in fields as read-only fields
-            field_names |= {name for name in dir(model) if isinstance(getattr(model, name, None), property)}
+        # Model properties are serialized as read-only fields by FlexibleSerializer,
+        # so they can be listed in fields and left out with exclude
+        field_names |= {name for name in dir(model) if isinstance(getattr(model, name, None), property)}
 
         invalid = [name for name in names if not isinstance(name, str) or name not in field_names]
 
