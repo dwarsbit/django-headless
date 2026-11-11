@@ -83,7 +83,7 @@ class HeadlessRegistry:
         if not search_fields:
             search_fields = self._get_default_search_fields(model_class, fields, exclude)
 
-        self._validate_search_fields(model_class, search_fields, fields, exclude)
+        self._validate_search_fields(model_class, search_fields)
         self._validate_field_names(model_class, fields, "fields")
         self._validate_field_names(model_class, exclude, "exclude")
 
@@ -237,33 +237,25 @@ class HeadlessRegistry:
         # properties only enumerate forward fields and are safe at that point.
         return {field.name for field in (*model._meta.fields, *model._meta.many_to_many)}
 
-    def _validate_search_fields(
-        self,
-        model: Type[models.Model],
-        search_fields: List[str],
-        fields: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
-    ):
+    def _validate_search_fields(self, model: Type[models.Model], search_fields: List[str]):
         """
-        Validate that the search fields exist on the model and are not left
-        out of the API. Allows the lookup prefixes supported by DRF's
-        SearchFilter (e.g. "^title") and traversal of related fields
-        (e.g. "author__name").
+        Validate that the search fields start at a field of the model. Allows
+        the lookup prefixes supported by DRF's SearchFilter (e.g. "^title")
+        and traversal of related fields (e.g. "author__name").
+
+        The rest of a path crosses relations to models that may not be loaded
+        yet, so it is left to the system checks (headless.E004, headless.W011).
 
         Args:
             model: A Django model class
             search_fields: The search field names to validate
-            fields: The fields option of the model
-            exclude: The exclude option of the model
 
         Raises:
-            ImproperlyConfigured: If a search field does not exist on the model,
-                or is hidden by the fields or exclude option
+            ImproperlyConfigured: If a search field does not exist on the model
         """
         field_names = self._get_field_names(model)
 
         invalid = []
-        hidden = []
         for name in search_fields:
             if not isinstance(name, str):
                 invalid.append(name)
@@ -271,22 +263,11 @@ class HeadlessRegistry:
             base_name = name.lstrip(SEARCH_FIELD_PREFIXES).split("__")[0]
             if base_name not in field_names:
                 invalid.append(name)
-            elif (fields is not None and base_name not in fields and base_name != model._meta.pk.name) or (
-                exclude and base_name in exclude
-            ):
-                hidden.append(name)
 
         if invalid:
             raise ImproperlyConfigured(
                 f"Invalid search_fields for model {model._meta.label}: {invalid}. "
                 "Search fields must be names of fields on the model."
-            )
-
-        if hidden:
-            # Searching a hidden field would reveal its value piece by piece
-            raise ImproperlyConfigured(
-                f"Invalid search_fields for model {model._meta.label}: {hidden}. "
-                "Fields left out with the fields or exclude option cannot be searched."
             )
 
     def _validate_field_names(self, model: Type[models.Model], names: Optional[List[str]], option: str):

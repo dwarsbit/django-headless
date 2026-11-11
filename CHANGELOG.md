@@ -6,7 +6,8 @@
 - 🐛 Fix the API root view: it now uses the authentication and permission classes of the generated routes instead of the `REST_FRAMEWORK` defaults, so it no longer lists the exposed models to anonymous requests.
 - 🐛 Fix reverse relations of hidden fields: a relation left out with `fields` or `exclude` on the model that defines it can no longer be filtered on or expanded from the related model.
 - 🐛 Fix `exclude` for model properties: `@expose(exclude=["my_property"])` now leaves the property out of the API instead of raising `ImproperlyConfigured`.
-- 🐛 `@expose()` now raises `ImproperlyConfigured` when `search_fields` name a field left out with `fields` or `exclude`. Searching such a field revealed its value.
+- 🎁 Add the system check `headless.W011`, for a search field that the API does not serialize: a field left out with `fields` or `exclude`, or a field of a model that is not exposed. The values of such a field can be found out through `?search=`.
+- 🎁 Add the system check `headless.E004`, for a search field that cannot be searched, such as `category` (a relation) or `category__nmae`. Such a field answered `500` on every `?search=`.
 - 🐛 Fix the error of a filter across a relation: a name the related model does not have now answers the same message as a hidden field.
 - 🐛 Fix several exclusions in one request: `?~title=A&~views=2` now excludes the objects that match either one, instead of only those that match both.
 - 🐛 Fix `LookupFilter` on your own views: it now filters generic views such as `ListAPIView`, and viewsets that define `get_queryset()` without a `queryset` attribute.

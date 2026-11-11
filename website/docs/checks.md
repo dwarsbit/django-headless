@@ -17,6 +17,7 @@ An error stops `runserver` and other management commands until you fix it. A war
 | `headless.E001` | Error   | Always                   | `SecretKeyAuthentication` is used without a secret key. |
 | `headless.E002` | Error   | Always                   | The full access key and the read-only key are the same. |
 | `headless.E003` | Error   | Always                   | The schema is enabled, but its packages are missing.    |
+| `headless.E004` | Error   | Always                   | A search field cannot be searched.                      |
 | `headless.W001` | Warning | With `--deploy`          | A secret key is weak.                                   |
 | `headless.W002` | Warning | Always                   | Anyone can change the content of exposed models.        |
 | `headless.W003` | Warning | With `--deploy`          | No authentication classes are configured.               |
@@ -27,6 +28,7 @@ An error stops `runserver` and other management commands until you fix it. A war
 | `headless.W008` | Warning | Always                   | A model is exposed more than once with other options.   |
 | `headless.W009` | Warning | Always                   | An exposed model has no routes.                         |
 | `headless.W010` | Warning | Always                   | Models are exposed, but `headless.rest` is not installed. |
+| `headless.W011` | Warning | Always                   | A search field searches a field that is not serialized. |
 
 ## `headless.E001`
 
@@ -42,6 +44,17 @@ An error stops `runserver` and other management commands until you fix it. A war
 
 ```bash
 pip install "django-headless[schema]"
+```
+
+## `headless.E004`
+
+A name in the `search_fields` option of a model cannot be searched, so every request with `?search=` would fail. Either a part of the name after the first is not a field of the related model, as in `category__nmae`, or the name ends on a relation, as in `category`. Name a text field of the related model instead:
+
+```python
+# blog/models.py
+@expose(search_fields=["title", "category__name"])
+class Article(models.Model):
+    ...
 ```
 
 ## `headless.W001`
@@ -133,6 +146,12 @@ INSTALLED_APPS = [
     "headless.rest",
 ]
 ```
+
+## `headless.W011`
+
+A name in the `search_fields` option of a model searches a field that the API does not serialize: a field left out with `fields` or `exclude`, on the model itself or on a related model, or a field of a model that is not exposed. The values of such a field never appear in a response, but anyone who may search can find them out one guess at a time: `?search=abc` answers the object when the hidden value contains `abc`.
+
+That is fine for a field that is only hidden to keep responses small, such as search keywords or a long body text. It is not for a field that is hidden because it is private. Remove the field from `search_fields`, or [silence the check](#silencing-a-check) when searching it is intended.
 
 ## Silencing a check
 
