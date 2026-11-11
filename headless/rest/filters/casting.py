@@ -1,5 +1,6 @@
 from decimal import Decimal, InvalidOperation
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from rest_framework.exceptions import ParseError
 
@@ -37,11 +38,11 @@ def cast_field_value(value: str, field):
         else:
             if getattr(field, "null", False):
                 raise ParseError(
-                    detail=f"Nullable boolean fields expect a boolean or none lookup value ({', '.join(headless_settings.FILTER_TRUE_VALUES + headless_settings.FILTER_FALSE_VALUES + headless_settings.FILTER_NULL_VALUES)})."
+                    detail=f"Nullable boolean fields expect a boolean or none lookup value ({', '.join([*headless_settings.FILTER_TRUE_VALUES, *headless_settings.FILTER_FALSE_VALUES, *headless_settings.FILTER_NULL_VALUES])})."
                 )
 
             raise ParseError(
-                detail=f"Boolean fields expect a boolean lookup value ({', '.join(headless_settings.FILTER_TRUE_VALUES + headless_settings.FILTER_FALSE_VALUES)})."
+                detail=f"Boolean fields expect a boolean lookup value ({', '.join([*headless_settings.FILTER_TRUE_VALUES, *headless_settings.FILTER_FALSE_VALUES])})."
             )
 
     if isinstance(field, models.IntegerField):
@@ -61,5 +62,15 @@ def cast_field_value(value: str, field):
             return float(value)
         except ValueError:
             raise ParseError(detail=f"Invalid float value: {value}")
+
+    if isinstance(field, models.DurationField):
+        # Django only parses a duration when the query runs, so parse it here
+        try:
+            return field.to_python(value)
+        except ValidationError:
+            raise ParseError(detail=f"Invalid duration value: {value}")
+
+    if isinstance(field, models.BinaryField):
+        raise ParseError(detail="Binary fields cannot be filtered on.")
 
     return value

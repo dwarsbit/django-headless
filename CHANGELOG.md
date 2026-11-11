@@ -8,6 +8,10 @@
 - 🐛 Fix `exclude` for model properties: `@expose(exclude=["my_property"])` now leaves the property out of the API instead of raising `ImproperlyConfigured`.
 - 🐛 `@expose()` now raises `ImproperlyConfigured` when `search_fields` name a field left out with `fields` or `exclude`. Searching such a field revealed its value.
 - 🐛 Fix the error of a filter across a relation: a name the related model does not have now answers the same message as a hidden field.
+- 🐛 Fix several exclusions in one request: `?~title=A&~views=2` now excludes the objects that match either one, instead of only those that match both.
+- 🐛 Fix `LookupFilter` on your own views: it now filters generic views such as `ListAPIView`, and viewsets that define `get_queryset()` without a `queryset` attribute.
+- 🐛 Fix a `500` for integers of more than 64 bits in the `in` and `range` lookups, and for filters on `DurationField` and `BinaryField`. Durations are now parsed; invalid values and binary fields answer `400 Bad Request`.
+- 🐛 Fix the error message of an invalid boolean filter when `FILTER_TRUE_VALUES`, `FILTER_FALSE_VALUES` or `FILTER_NULL_VALUES` is a tuple.
 
 ## 1.2.0 (2026-11-06)
 

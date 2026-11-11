@@ -77,18 +77,24 @@ class LookupFilter(BaseFilterBackend):
         Build the queryset based on the query params and the view's model.
         Only apply filters in list endpoints.
         """
-        if getattr(view, "action", None) != "list":
+        if not self.is_list_view(request, view):
             return queryset
 
         try:
-            model_class = view.queryset.model
+            # The model of the queryset at hand: a view may define
+            # get_queryset() instead of a queryset attribute
+            model_class = queryset.model
             filter_kwargs, exclude_kwargs = self.get_filter_kwargs(
                 model_class=model_class,
                 query_params=request.query_params,
                 filterable_fields=self.get_filterable_fields(model_class, view),
                 non_filter_fields=self.get_non_filter_fields(view),
             )
-            queryset = queryset.filter(**filter_kwargs).exclude(**exclude_kwargs)
+            queryset = queryset.filter(**filter_kwargs)
+            # Each exclusion applies on its own: a single exclude() call would
+            # only exclude the objects that match all of them
+            for path, value in exclude_kwargs.items():
+                queryset = queryset.exclude(**{path: value})
             # Filtering across a to-many relation can repeat rows; only then
             # is the (costly) distinct needed. Exclusions never repeat rows.
             if any(self.crosses_to_many(model_class, path) for path in filter_kwargs):
@@ -101,6 +107,17 @@ class LookupFilter(BaseFilterBackend):
             # Each filter is validated on its own beforehand, so this is
             # unexpected. Don't pass internal error messages to the client.
             raise ParseError(detail="Invalid filter parameters.")
+
+    def is_list_view(self, request, view) -> bool:
+        """
+        Check whether the view lists objects. Viewsets name their action;
+        other views (e.g. a ListAPIView) list on a GET without an object lookup.
+        """
+        if hasattr(view, "action"):
+            return view.action == "list"
+
+        lookup_kwarg = getattr(view, "lookup_url_kwarg", None) or getattr(view, "lookup_field", None)
+        return request.method == "GET" and lookup_kwarg not in (getattr(view, "kwargs", None) or {})
 
     def get_schema_operation_parameters(self, view):
         """
@@ -303,6 +320,10 @@ class LookupFilter(BaseFilterBackend):
             # its correct type (i.e. number, boolean, etc.).
             if is_multi:
                 casted_value = [cast_field_value(v, field) for v in value]
+                # Databases reject integers of more than 64 bits in a list of
+                # values, where a single value simply matches nothing
+                if any(type(v) is int and not -(2**63) <= v < 2**63 for v in casted_value):
+                    raise ParseError(detail=f"Invalid value for '{key}'.")
             elif lookup == "isnull":
                 fvalue = value[0].strip().lower()
                 if not fvalue or fvalue not in self.BOOLEANS:
