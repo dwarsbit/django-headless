@@ -103,6 +103,13 @@ class DenyRetrieve(BasePermission):
         return view.action != "retrieve"
 
 
+class DenyObject(BasePermission):
+    """Denies every object."""
+
+    def has_object_permission(self, request, view, obj):
+        return False
+
+
 E2E_REGISTRY_PREFIXES = (
     "e2e_blog.article",
     "e2e_blog.category",
@@ -391,10 +398,32 @@ class EndToEndApiTests(TransactionTestCase):
 
     def test_api_root_lists_generated_routes(self):
         """Test that the API root lists the generated routes"""
-        response = self.client.get("/")
+        with override_settings(HEADLESS={"DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"]}):
+            response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("e2e_blog.article", response.data)
         self.assertIn("e2e_blog.category", response.data)
+
+    def test_api_root_uses_route_permissions(self):
+        """Test that the API root uses the permission classes of the generated routes"""
+        with override_settings(HEADLESS={"DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAdminUser"]}):
+            self.assertEqual(self.client.get("/").status_code, 403)
+
+    def test_singleton_update_checks_object_permissions(self):
+        """Test that updating a singleton checks the object permissions, like retrieving it"""
+        SiteConfig.objects.create(site_name="Original")
+
+        with override_settings(HEADLESS={"DEFAULT_PERMISSION_CLASSES": [DenyObject]}):
+            viewset = get_view_set(headless_registry.get_model("e2e_config.siteconfig"), {}, {})
+        view = viewset.as_view({"get": "retrieve", "put": "update", "patch": "partial_update"})
+        factory = APIRequestFactory()
+
+        self.assertEqual(view(factory.get("/e2e_config.siteconfig")).status_code, 403)
+        response = view(factory.patch("/e2e_config.siteconfig", {"site_name": "Changed"}, format="json"))
+        self.assertEqual(response.status_code, 403)
+        response = view(factory.put("/e2e_config.siteconfig", {"site_name": "Changed"}, format="json"))
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(SiteConfig.objects.get().site_name, "Original")
 
     def test_lookup_field_routes(self):
         """Test retrieving an object by its opt-in unique lookup fields"""

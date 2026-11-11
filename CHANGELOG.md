@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 (unreleased)
+
+- 🐛 Fix the object permissions of singletons: `PUT` and `PATCH` on a singleton route now check `has_object_permission`, like `GET` does.
+- 🐛 Fix the API root view: it now uses the authentication and permission classes of the generated routes instead of the `REST_FRAMEWORK` defaults, so it no longer lists the exposed models to anonymous requests.
+
 ## 1.2.0 (2026-11-06)
 
 - 🎁 Add an agent skill for AI coding agents, in `skills/django-headless/SKILL.md`. Install it in Claude Code with `/plugin install django-headless --marketplace dwarsbit/django-headless`, or for other agents with `npx skills add dwarsbit/django-headless`.

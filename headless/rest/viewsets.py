@@ -326,6 +326,10 @@ class SingletonViewSet(
         return None
 
     def _perform_update(self, instance, request, partial):
+        # The locked instance does not come from get_object(), so the object
+        # permissions are checked here
+        self.check_object_permissions(request, instance)
+
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)

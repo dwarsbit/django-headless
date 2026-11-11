@@ -1,6 +1,21 @@
 import re
 
-from rest_framework.routers import DefaultRouter, SimpleRouter
+from rest_framework.routers import APIRootView, DefaultRouter, SimpleRouter
+
+from .utils import get_authentication_classes, get_permission_classes
+
+
+class HeadlessAPIRootView(APIRootView):
+    """
+    The API root view lists the generated routes, so it uses their
+    authentication and permission classes instead of DRF's global defaults.
+    """
+
+    def get_authenticators(self):
+        return [auth() for auth in get_authentication_classes()]
+
+    def get_permissions(self):
+        return [permission() for permission in get_permission_classes()]
 
 
 class EscapedPrefixMixin(SimpleRouter):
@@ -25,6 +40,8 @@ class HeadlessRouter(DefaultRouter, EscapedPrefixMixin):
     and SimpleRouter, so only the route patterns use the escaped prefixes;
     the API root view lists the prefixes as registered.
     """
+
+    APIRootView = HeadlessAPIRootView
 
 
 rest_router = HeadlessRouter(trailing_slash=False)
