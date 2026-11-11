@@ -9,6 +9,7 @@ from django.test import SimpleTestCase, override_settings
 
 from headless.checks import (
     check_registrations,
+    check_search_fields,
     check_sensitive_fields,
     check_settings,
     is_sensitive_field_name,
@@ -38,6 +39,33 @@ class ChecksModelIntegration(models.Model):
 
 class ChecksModelSettings(models.Model):
     site_name = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "checks_tests"
+
+
+class ChecksModelOwner(models.Model):
+    name = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "checks_tests"
+
+
+class ChecksModelCategory(models.Model):
+    name = models.CharField(max_length=100)
+    internal_code = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = "checks_tests"
+
+
+class ChecksModelPost(models.Model):
+    title = models.CharField(max_length=100)
+    keywords = models.CharField(max_length=100)
+    meta = models.JSONField(default=dict)
+    category = models.ForeignKey(ChecksModelCategory, null=True, on_delete=models.CASCADE)
+    owner = models.ForeignKey(ChecksModelOwner, null=True, on_delete=models.CASCADE)
 
     class Meta:
         app_label = "checks_tests"
@@ -202,8 +230,66 @@ class SensitiveFieldsCheckTests(RegistryIsolationMixin, SimpleTestCase):
         self.assertEqual(check_sensitive_fields(), [])
 
 
+class SearchFieldsCheckTests(RegistryIsolationMixin, SimpleTestCase):
+    def check(self, search_fields, **options):
+        headless_registry.register(ChecksModelCategory, exclude=["internal_code"])
+        headless_registry.register(ChecksModelPost, search_fields=search_fields, **options)
+        return check_search_fields()
+
+    def test_serialized_search_fields(self):
+        self.assertEqual(self.check(["title", "^keywords", "=category__name", "category__pk", "owner__id"]), [])
+
+    def test_default_search_fields(self):
+        headless_registry.register(ChecksModelPost, exclude=["keywords"])
+        headless_registry.register(ChecksModelIntegration, fields=["name"])
+        self.assertEqual(check_search_fields(), [])
+
+    def test_transform_of_a_field(self):
+        self.assertEqual(self.check(["meta__summary", "title__lower"]), [])
+
+    def test_search_field_ending_on_a_relation(self):
+        messages = self.check(["title", "category"])
+        self.assertEqual(ids(messages), ["headless.E004"])
+        self.assertIs(messages[0].obj, ChecksModelPost)
+        self.assertEqual(
+            messages[0].msg,
+            'The search field "category" cannot be searched: category is a relation: '
+            "name a field of the related model, such as category__name.",
+        )
+
+    def test_search_field_across_a_relation_that_does_not_exist(self):
+        messages = self.check(["^category__nope", "category__name__nope"])
+        self.assertEqual(ids(messages), ["headless.E004"])
+        self.assertEqual(
+            messages[0].msg,
+            'The search field "^category__nope" cannot be searched: checks_tests.ChecksModelCategory has no field nope.',
+        )
+
+    def test_hidden_search_field(self):
+        messages = self.check(["title", "keywords"], exclude=["keywords"])
+        self.assertEqual(ids(messages), ["headless.W011"])
+        self.assertIn('"keywords"', messages[0].msg)
+        self.assertIs(messages[0].obj, ChecksModelPost)
+
+        self.assertEqual(ids(self.check(["title", "@keywords"], fields=["title"])), ["headless.W011"])
+
+    def test_search_field_across_a_hidden_relation(self):
+        self.assertEqual(ids(self.check(["category__name"], exclude=["category"])), ["headless.W011"])
+
+    def test_search_field_on_a_hidden_field_of_a_related_model(self):
+        self.assertEqual(ids(self.check(["category__internal_code"])), ["headless.W011"])
+
+    def test_search_field_on_a_model_that_is_not_exposed(self):
+        messages = self.check(["owner__name", "owner__password"])
+        self.assertEqual(ids(messages), ["headless.W011", "headless.W011"])
+
+    def test_singletons_have_no_search_fields(self):
+        headless_registry.register(ChecksModelSettings, singleton=True, search_fields=["site_name"])
+        self.assertEqual(check_search_fields(), [])
+
+
 class CheckRegistrationTests(SimpleTestCase):
     def test_checks_are_registered(self):
         registered = checks.registry.registry.get_checks(include_deployment_checks=False)
-        for check in (check_settings, check_registrations, check_sensitive_fields):
+        for check in (check_settings, check_registrations, check_sensitive_fields, check_search_fields):
             self.assertIn(check, registered)

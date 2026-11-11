@@ -57,7 +57,7 @@ Decorator options (the same for `expose_model(Model, ...)`, used for models you 
 | --- | --- |
 | `singleton=True` | One route without a primary key: `GET`, plus `PUT`/`PATCH` that create the object on the first write. `GET` answers `404` until it exists. No list or delete. |
 | `read_only=True` | `GET` routes only; writes answer `405`. |
-| `fields=[...]` / `exclude=[...]` | Serialized fields (and model properties in `fields`). Not both. Left-out fields cannot be filtered, searched or expanded. |
+| `fields=[...]` / `exclude=[...]` | Serialized fields (and model properties in `fields`). Not both. Left-out fields cannot be filtered or expanded, and are only searched when named in `search_fields` (system check `headless.W011` warns). |
 | `lookup_fields=[...]` | Unique non-pk fields that get a `GET`-only `by_<field>/<value>` route. Not on singletons. |
 | `search_fields=[...]` | Fields for DRF's `SearchFilter` (`?search=`). Defaults to serialized non-choice `CharField`s. `SearchFilter` itself must be added to `HEADLESS["DEFAULT_FILTER_BACKENDS"]`. |
 

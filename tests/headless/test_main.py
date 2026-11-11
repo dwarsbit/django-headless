@@ -519,16 +519,11 @@ class RegistryTests(SimpleTestCase):
         with self.assertRaises(ImproperlyConfigured):
             self.registry.register(RegistryPropertyModel, exclude=["missing"])
 
-    def test_search_fields_cannot_name_hidden_fields(self):
-        """Test that fields left out with fields or exclude cannot be searched"""
-        with self.assertRaisesMessage(ImproperlyConfigured, "cannot be searched"):
-            self.registry.register(RegistryTestModel, exclude=["author"], search_fields=["title", "author"])
-
-        with self.assertRaisesMessage(ImproperlyConfigured, "cannot be searched"):
-            self.registry.register(RegistryTestModel, fields=["title"], search_fields=["^author"])
-
-        self.registry.register(RegistryTestModel, fields=["title"], search_fields=["title", "id"])
-        self.registry.register(RegistryTestModel, exclude=["author"], search_fields=["title"])
+    def test_search_fields_may_name_hidden_fields(self):
+        """Test that a field left out of the API can be searched; the system check headless.W011 warns about it"""
+        self.registry.register(RegistryTestModel, exclude=["author"], search_fields=["title", "author"])
+        cfg = self.registry.get_model("registry_tests.registrytestmodel")
+        self.assertEqual(cfg["search_fields"], ["title", "author"])
 
     def test_default_search_fields_honor_fields_and_exclude(self):
         self.registry.register(RegistryTestModel, exclude=["author"])

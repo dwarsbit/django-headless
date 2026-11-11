@@ -65,7 +65,7 @@ class Article(models.Model):
     internal_notes = models.TextField(blank=True)
 ```
 
-Excluded fields are never serialized and are ignored on create and update. They cannot be filtered, searched or expanded either.
+Excluded fields are never serialized and are ignored on create and update. They cannot be filtered or expanded either, and they are not searched unless you name them in `search_fields`.
 
 A [system check](./checks.md#headlessw006) warns when a field that looks like a credential, such as `password_hash` or `api_token`, is serialized without being named in `fields`. Exposing a user model requires a `fields` list to pass the checks ([`headless.W007`](./checks.md#headlessw007)).
 
@@ -159,7 +159,11 @@ class Article(models.Model):
     category = models.ForeignKey("blog.Category", on_delete=models.PROTECT, related_name="articles")
 ```
 
-Without `search_fields`, every serialized `CharField` without choices is searched. DRF's lookup prefixes (`^`, `=`, `@`, `$`) and relations (`category__name`) are supported. Search with the `search` query parameter:
+Without `search_fields`, every serialized `CharField` without choices is searched. DRF's lookup prefixes (`^`, `=`, `@`, `$`) and relations (`category__name`) are supported. The rest of a name such as `category__name` is checked when the project starts, by the system check [`headless.E004`](./checks.md#headlesse004).
+
+A field left out with `fields` or `exclude` can be searched by naming it in `search_fields`, for example keywords that should find an article without being served. Its values can be found out through the search, so the system check [`headless.W011`](./checks.md#headlessw011) warns about it.
+
+Search with the `search` query parameter:
 
 ```http
 GET /api/blog.article?search=django
@@ -184,7 +188,6 @@ The message does not name the constraint, so the database's details stay interna
 - it decorates something that is not a Django model, or an abstract model;
 - `search_fields`, `fields`, `exclude` or `lookup_fields` is not a list or tuple, such as `fields=("title")`, which is a string because the comma is missing;
 - `search_fields`, `fields` or `exclude` name a field the model does not have;
-- `search_fields` name a field left out with `fields` or `exclude`;
 - `fields` and `exclude` are combined;
 - `lookup_fields` is not a list of unique fields of the model, names the primary key or is set on a singleton.
 
