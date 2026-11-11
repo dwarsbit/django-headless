@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.1 (unreleased)
+## 1.2.1 (2026-11-11)
 
 - 🐛 Fix the object permissions of singletons: `PUT` and `PATCH` on a singleton route now check `has_object_permission`, like `GET` does.
 - 🐛 Fix the API root view: it now uses the authentication and permission classes of the generated routes instead of the `REST_FRAMEWORK` defaults, so it no longer lists the exposed models to anonymous requests.
