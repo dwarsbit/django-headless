@@ -413,6 +413,43 @@ class TestFlexibleSerializerExposure:
         data = PostSerializer(post, expand=["owner"]).data
         assert data["owner"] == {"id": 2, "name": "Leon"}
 
+    def test_excluded_property_is_not_serialized(self):
+        """Test that a model property left out with exclude is not serialized"""
+        from headless.rest.builder.serializer import get_serializer
+
+        class Account(models.Model):
+            name = models.CharField(max_length=100)
+            token = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = "test_exposure"
+
+            @property
+            def token_hint(self):
+                return self.token[:2]
+
+            @property
+            def label(self):
+                return self.name.upper()
+
+        account = Account(id=1, name="Leon", token="s3cr3t")
+
+        with override_settings(HEADLESS={"DEFAULT_SERIALIZER_CLASS": "headless.rest.serializers.FlexibleSerializer"}):
+            # Together with a model field, and on its own
+            headless_registry.register(Account, exclude=["token", "token_hint"])
+            config = headless_registry.get_model("test_exposure.account")
+            serializer_class = get_serializer(Account, {}, config["fields"], config["exclude"])
+            assert serializer_class(account).data == {"id": 1, "name": "Leon", "label": "LEON"}
+
+            headless_registry.register(Account, exclude=["token_hint"])
+            config = headless_registry.get_model("test_exposure.account")
+            serializer_class = get_serializer(Account, {}, config["fields"], config["exclude"])
+            assert serializer_class(account).data == {"id": 1, "name": "Leon", "token": "s3cr3t", "label": "LEON"}
+
+        # Without model properties as fields, the plain ModelSerializer accepts the option too
+        serializer_class = get_serializer(Account, {}, config["fields"], config["exclude"])
+        assert serializer_class(account).data == {"id": 1, "name": "Leon", "token": "s3cr3t"}
+
     def test_expanded_relation_honors_related_fields(self):
         class Writer(models.Model):
             name = models.CharField(max_length=100)
@@ -582,3 +619,22 @@ class TestReverseRelationNames:
         # A reverse one-to-one is named by related_name, not related_query_name
         assert expandable_fields["cover"][1] == {"many": False}
         assert set(expandable_fields) == {"reversecomment_set", "cover"}
+
+    def test_reverse_relation_hidden_with_its_forward_field(self, monkeypatch):
+        """Test that a relation hidden on the model that defines it cannot be expanded from the other side"""
+        headless_registry.register(ReverseComment, exclude=["post"])
+        headless_registry.register(ReverseCover, fields=["id"])
+
+        reverse_relations = (
+            ReverseComment._meta.get_field("post").remote_field,
+            ReverseCover._meta.get_field("post").remote_field,
+        )
+        fields = (*ReversePost._meta.get_fields(), *reverse_relations)
+        monkeypatch.setattr(ReversePost._meta, "get_fields", lambda: fields)
+
+        class PostSerializer(FlexibleSerializer):
+            class Meta:
+                model = ReversePost
+                fields = "__all__"
+
+        assert PostSerializer()._expandable_fields == {}
