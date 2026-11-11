@@ -8,6 +8,18 @@ name: Release
 # redeploys the docs, which show the version. Pushes
 # use GITHUB_TOKEN, so they do not trigger other workflows: anything a
 # release needs runs as a job here.
+#
+# A release spans git, PyPI, npm and GitHub, which cannot change together.
+# The workflow gets as close as it can:
+# - Everything that can fail is checked before anything is changed: the
+#   version, CI, the version bump (all files or none), both packages and
+#   the release notes.
+# - The release commit and its tag are pushed together, or not at all.
+# - Every step after that push skips what is already done. So when a job
+#   fails after the push, finish the release with "Re-run failed jobs", or
+#   run the workflow again: without an unreleased version in the changelog
+#   it finishes the release of the tag on the head of main, as long as that
+#   has no GitHub Release yet.
 
 on:
   workflow_dispatch:
@@ -42,21 +54,46 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Read the version from the changelog
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           versions=$(sed -nE 's/^## (.+) \(unreleased\)$/\1/p' CHANGELOG.md)
+          resume=false
           if [ -z "$versions" ]; then
-            echo "::error::CHANGELOG.md has no '## X.Y.Z (unreleased)' heading."
-            exit 1
+            # No version to release: finish the release of the tag on the
+            # head of main, if a run stopped after pushing it.
+            versions=$(git ls-remote --tags origin | awk -v sha="$(git rev-parse HEAD)" '
+              $1 == sha && $2 ~ /^refs\/tags\/v.*\^\{\}$/ {
+                sub(/^refs\/tags\/v/, "", $2); sub(/\^\{\}$/, "", $2); print $2
+              }')
+            if [ -z "$versions" ]; then
+              echo "::error::CHANGELOG.md has no '## X.Y.Z (unreleased)' heading, and the head of main is not a release to finish."
+              exit 1
+            fi
+            if [ "$(echo "$versions" | wc -l)" -eq 1 ] && gh release view "v$versions" >/dev/null 2>&1; then
+              echo "::error::v$versions is released already, and CHANGELOG.md has no '## X.Y.Z (unreleased)' heading."
+              exit 1
+            fi
+            resume=true
           fi
           if [ "$(echo "$versions" | wc -l)" -ne 1 ]; then
             echo "::error::CHANGELOG.md has more than one unreleased version: $(echo $versions)"
             exit 1
           fi
           echo "VERSION=$versions" >> "$GITHUB_ENV"
+          echo "RESUME=$resume" >> "$GITHUB_ENV"
           echo "version=$versions" >> "$GITHUB_OUTPUT"
-          echo "Releasing $versions"
+          if [ "$resume" = true ]; then
+            echo "Finishing the release of $versions"
+          else
+            echo "Releasing $versions"
+          fi
 
       - name: Validate the version
         run: |
@@ -64,12 +101,14 @@ jobs:
             echo "::error::Invalid version '$VERSION': expected X.Y.Z or X.Y.Z-rc.N"
             exit 1
           fi
-          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+          if [ "$RESUME" != true ] && git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
             echo "::error::Tag v$VERSION already exists."
             exit 1
           fi
 
+      # The release commit itself has no CI run: it is pushed by this workflow
       - name: Require green CI on main
+        if: env.RESUME != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -83,6 +122,7 @@ jobs:
           fi
 
       - name: Bump the version
+        if: env.RESUME != 'true'
         run: python scripts/bump_version.py "$VERSION"
 
       - name: Install Poetry
@@ -91,14 +131,45 @@ jobs:
       - name: Build the package
         run: poetry build
 
+      # Everything below, up to the push, only checks that the jobs after
+      # the push can do their work.
+      - name: Check the package
+        run: pipx run twine check --strict dist/*
+
+      - name: Check the npm package
+        working-directory: client
+        run: |
+          npm ci
+          npm pack --dry-run
+
+      - name: Write the release notes
+        run: |
+          # The release notes are the version's section of the changelog.
+          awk -v v="$VERSION" '
+            $1 == "##" && ($2 == v || $2 == "v" v) { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::CHANGELOG.md has no notes for $VERSION."
+            exit 1
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: notes.md
+
       # Pushed before publishing: a PyPI or npm version can never be
       # reused, so a failed push must not leave a published version behind.
+      # The commit and the tag are pushed together or not at all.
       - name: Commit, tag and push
+        if: env.RESUME != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -120,7 +191,10 @@ jobs:
           name: dist
           path: dist/
 
+      # Skips the files that are on PyPI already, so the job can run again
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
 
   npm:
     needs: build
@@ -154,6 +228,11 @@ jobs:
       - name: Publish the package
         working-directory: client
         run: |
+          # Published already by an earlier run
+          if npm view "@django-headless/client@$VERSION" version >/dev/null 2>&1; then
+            echo "@django-headless/client@$VERSION is on npm already."
+            exit 0
+          fi
           dist_tag=latest
           if [[ "$VERSION" == *-* ]]; then dist_tag=next; fi
           npm publish --access public --provenance --tag "$dist_tag"
@@ -166,25 +245,25 @@ jobs:
     env:
       VERSION: ${{ needs.build.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: v${{ needs.build.outputs.version }}
-
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+
       - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          # The release notes are the version's section of the changelog.
-          awk -v v="$VERSION" '
-            $0 ~ "^## v?" v "( |$)" { found = 1; next }
-            found && /^## / { exit }
-            found { print }
-          ' CHANGELOG.md > notes.md
+          # Created already by an earlier run
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "The GitHub Release v$VERSION exists already."
+            exit 0
+          fi
           flags=()
           if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
           gh release create "v$VERSION" dist/* \

@@ -26,7 +26,7 @@ headless/                    # The package itself
   registry.py               # HeadlessRegistry: model -> ModelConfig; validates all @expose() options
   settings.py               # HEADLESS-namespaced settings object (headless_settings), DRF-style
   apps.py                   # AppConfig.ready(): registers the registry/settings checks, boot log (version check, exposed models)
-  checks.py                 # System checks of the registry and settings (W005-W008, W010), documented in website/docs/checks.md
+  checks.py                 # System checks of the registry and settings (E004, W005-W008, W010, W011), documented in website/docs/checks.md
   utils.py                  # log(), is_runserver(), is_boot_log_enabled(), version check
   rest/
     apps.py                 # AppConfig.ready(): registers the REST checks, logs the REST part of the boot log
@@ -121,6 +121,7 @@ Run tests before considering any change done. New behavior needs tests in `tests
 2. Merge to `main` and wait for CI to pass.
 3. Run the `Release` workflow (`.github/workflows/release.yml`) from `main` (Actions → Release → Run workflow). It takes no input: it releases the version of the single `## X.Y.Z (unreleased)` heading in `CHANGELOG.md`.
 4. The workflow checks that the tag does not exist yet and that CI passed on the `main` commit, runs `scripts/bump_version.py` (sets the version in `pyproject.toml`, `headless/__init__.py`, `client/package.json` and `client/package-lock.json`, and dates the changelog heading), builds, commits to `main`, pushes the tag `vX.Y.Z`, publishes to PyPI (trusted publishing, `pypi` environment) and npm (trusted publishing, `npm` environment; pre-releases get the `next` dist-tag) and creates a GitHub release with the changelog section as notes, then redeploys the docs (they show the version). Versions with a suffix (`-alpha.N`, `-beta.N`, `-rc.N`) become pre-releases.
+5. A release spans git, PyPI, npm and GitHub, which cannot change together. The workflow checks everything it can before it changes anything (the version bump changes all files or none, both packages are built and checked, the release notes are written), pushes the release commit and tag together, and after that every step skips what is already done. When a job fails after the push, finish the release with "Re-run failed jobs", or run the workflow again: without an unreleased heading it finishes the release of the tag on the head of `main`, as long as that has no GitHub release yet.
 
 `scripts/test_wrapper.py build` / `publish` remain available for a manual release.
 
