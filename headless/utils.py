@@ -34,8 +34,10 @@ SERVER_PROGRAMS = {
     "hypercorn",
     "uwsgi",
     "waitress-serve",
+    "waitress",
     "granian",
     "mod_wsgi",
+    "mod_wsgi-express",
 }
 
 # Programs that run Django management commands: manage.py, django-admin
@@ -79,7 +81,10 @@ def is_runserver() -> bool:
     program = get_program_name(argv[0])
 
     if program in MANAGEMENT_PROGRAMS:
-        if len(argv) < 2 or argv[1] not in SERVER_COMMANDS:
+        # The command is the first argument that is not an option: options
+        # such as --settings may come before it
+        command = next((arg for arg in argv[1:] if not arg.startswith("-")), None)
+        if command not in SERVER_COMMANDS:
             return False
         return (
             "--noreload" in argv
