@@ -100,6 +100,43 @@ describe("generate", () => {
     expect(model(generate(legacy), "headless_rest.doctag")).toMatch(/filters: \{[^}]*name: string;/);
   });
 
+  it("types the primary key of a model whatever its name", () => {
+    const product = model(source, "headless_rest.docproduct");
+
+    expect(product).toContain("id: number;");
+    expect(product).toContain("readOnly: false;");
+  });
+
+  it("only takes a Date for filters on a date and time", () => {
+    expect(model(source, "headless_rest.docproduct")).toContain("released: string;");
+    expect(model(source, "headless_rest.docarticle")).toContain("created: string | Date;");
+  });
+
+  it("keeps the input of a model apart from a model named after it", () => {
+    const object = { type: "object", properties: { title: { type: "string" } } };
+    const response = (name: string) => ({
+      "200": { content: { "application/json": { schema: { $ref: `#/components/schemas/${name}` } } } },
+    });
+    const route = (label: string, name: string) => ({
+      get: { tags: [label], responses: response(name) },
+      post: { tags: [label], responses: response(name) },
+    });
+    const collision = generate({
+      paths: {
+        "/blog.article": route("blog.article", "BlogArticle"),
+        "/blog.article/{id}": route("blog.article", "BlogArticle"),
+        "/blog.articleinput": route("blog.articleinput", "BlogArticleInput"),
+        "/blog.articleinput/{id}": route("blog.articleinput", "BlogArticleInput"),
+      },
+      components: { schemas: { BlogArticle: object, BlogArticleInput: object } },
+    } as OpenAPIDocument);
+
+    expect(collision.match(/^export interface BlogArticleInput \{$/gm)).toHaveLength(1);
+    expect(collision).toContain("export interface BlogArticleInput_ {");
+    expect(model(collision, "blog.article")).toContain("input: BlogArticleInput_;");
+    expect(model(collision, "blog.articleinput")).toContain("item: BlogArticleInput;");
+  });
+
   it("rejects schemas without routes of exposed models", () => {
     expect(() => generate({} as OpenAPIDocument)).toThrow("no paths");
     expect(() => generate({ paths: {} })).toThrow("no routes");
@@ -117,6 +154,18 @@ describe("renderType", () => {
     [{ type: "object", additionalProperties: { type: "number" } }, "{ [key: string]: number }"],
     [{ type: "object", properties: { "a-b": { type: "boolean" } }, required: ["a-b"] }, '{ "a-b": boolean }'],
     [{ oneOf: [{ type: "string" }, { type: "integer" }] }, "string | number"],
+    [
+      {
+        type: "array",
+        items: {
+          oneOf: [
+            { type: "object", properties: { a: { type: "string" } } },
+            { type: "object", properties: { a: { type: "integer" } } },
+          ],
+        },
+      },
+      "({ a?: string } | { a?: number })[]",
+    ],
     [{}, "unknown"],
   ])("renders %j as %s", (schema, type) => {
     expect(renderType(schema)).toBe(type);

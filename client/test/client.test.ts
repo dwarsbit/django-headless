@@ -235,6 +235,38 @@ describe("ModelResource", () => {
     expect(request().headers.has("Content-Type")).toBe(false);
   });
 
+  it("drops a content type of the client for form data", async () => {
+    const { api, request } = setup({ headers: { "Content-Type": "application/json" } });
+    const form = new FormData();
+    form.append("title", "Getting started with Django");
+
+    await api.model(ARTICLE).create(form);
+
+    expect(request().init.body).toBe(form);
+    expect(request().headers.has("Content-Type")).toBe(false);
+  });
+
+  it("sends binary and URL-encoded bodies as they are", async () => {
+    const { api, request } = setup();
+    const params = new URLSearchParams({ title: "Hello" });
+    const blob = new Blob(["Hello"]);
+
+    await api.request("POST", "upload", { body: params });
+    await api.request("POST", "upload", { body: blob });
+
+    expect(request(0).init.body).toBe(params);
+    expect(request(0).headers.has("Content-Type")).toBe(false);
+    expect(request(1).init.body).toBe(blob);
+  });
+
+  it("leaves empty expand, fields and omit lists out of the query", async () => {
+    const { api, request } = setup();
+
+    await api.model(ARTICLE).list({ expand: [], fields: [], omit: [], limit: 1 });
+
+    expect(request().url).toBe(`https://example.org/api/${ARTICLE}?limit=1`);
+  });
+
   it("iterates over every page", async () => {
     const { api, request, fetch } = setup(
       {},

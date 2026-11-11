@@ -32,7 +32,7 @@ headless/                    # The package itself
     apps.py                 # AppConfig.ready(): registers the REST checks, logs the REST part of the boot log
                             #   (authentication and permission classes), runs RestBuilder (always; only its log is tied to the boot log)
     utils.py                # Effective authentication/permission classes of the generated routes, secret key helpers
-    checks.py               # System checks of the REST routes (E001, E002, W001-W004, W009)
+    checks.py               # System checks of the REST routes (E001-E003, W001-W004, W009)
     builder/                # Dynamic API construction
       base.py               # RestBuilder: iterates registry, registers routes
       serializer.py         # get_serializer(): DEFAULT_SERIALIZER_CLASS subclass per model (fields/exclude)

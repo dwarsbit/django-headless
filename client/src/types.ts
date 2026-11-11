@@ -142,7 +142,7 @@ type Tail<P extends string, H extends string> = P extends `${H}.${infer T}` ? T 
 type Depth = [never, 0, 1, 2];
 
 /** The paths that can be expanded, such as `category` or `category.parent`, up to three relations deep. */
-export type ExpandPath<Ms extends ModelMap, L extends keyof Ms, D extends number = 3> = string extends keyof Ms[L]["expandable"]
+export type ExpandPath<Ms extends ModelMap, L extends keyof Ms, D extends number = 2> = string extends keyof Ms[L]["expandable"]
   ? string
   : [D] extends [never]
   ? never

@@ -19,6 +19,15 @@
 - 🐛 Fix `CursorPagination` on the generated routes: without a `created` field on the model, the list is ordered by primary key instead of answering `500`.
 - 🐛 Fix a query per object for a wildcard below the first level, such as `?expand=author.*`.
 - 🐛 Fix the boot log for `python manage.py --settings=... runserver`, `python -m waitress` and `mod_wsgi-express`.
+- 🐛 Fix `?fields=` and `?omit=` for the model properties of an expanded object, such as `?expand=author&omit=author.full_name`. The property was serialized anyway.
+- 🐛 Fix lookup routes for a value with a `/`: `by_slug/docs%2Fintro` now retrieves the object.
+- 🐛 Fix the type of the primary key in the OpenAPI schema and the generated types when the primary key field is not named `id`.
+- 🐛 Client: fix the generated filter types of a `DateField`. They accepted a `Date`, which the API answers with `400 Bad Request`; they now take a string such as `"2026-01-15"`.
+- 🐛 Client: fix the generated types of two models named like `Article` and `ArticleInput` in one app, whose input and object types were merged.
+- 🐛 Client: leave an empty `expand`, `fields` or `omit` list out of the request. `fields: []` answered objects without fields.
+- 🐛 Client: fix `FormData` uploads when the client options set a `Content-Type` header, and send `Blob`, `ArrayBuffer` and `URLSearchParams` bodies of `request()` as they are.
+- 🐛 Client: limit the typed `expand` paths to three relations, as documented, instead of four.
+- 🐛 Client: `headless generate` now prints the reason of a failed request, such as `ECONNREFUSED`.
 
 ## 1.2.0 (2026-11-06)
 

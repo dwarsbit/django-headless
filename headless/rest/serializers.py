@@ -3,6 +3,7 @@ from typing import Optional
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from rest_flex_fields import FlexFieldsModelSerializer
+from rest_flex_fields.utils import split_levels
 from rest_framework import serializers
 
 from .builder.serializer import get_meta_attrs
@@ -50,6 +51,15 @@ class FlexibleSerializer(FlexFieldsModelSerializer):
                 and self._is_field_allowed(name)
             ):
                 fields[name] = serializers.ReadOnlyField()
+
+        # drf-flex-fields applies the fields and omit options of an expanded
+        # object in its own get_fields(), before the properties are added:
+        # apply them to the properties as well
+        sparse_fields, _ = split_levels(self._flex_options_base["fields"])
+        omit_fields, next_omit_fields = split_levels(self._flex_options_base["omit"])
+        for name in self._get_fields_names_to_remove(fields, omit_fields, sparse_fields, next_omit_fields):
+            fields.pop(name)
+
         return fields
 
     def _is_field_allowed(self, name: str) -> bool:

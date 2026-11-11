@@ -93,6 +93,11 @@ function countModels(source: string): number {
 }
 
 main(process.argv.slice(2)).catch((error: unknown) => {
-  process.stderr.write(`headless: ${error instanceof Error ? error.message : String(error)}\n`);
+  let message = error instanceof Error ? error.message : String(error);
+  // A failed fetch names its reason (such as ECONNREFUSED) in its cause
+  if (error instanceof Error && error.cause instanceof Error && error.cause.message) {
+    message += `: ${error.cause.message}`;
+  }
+  process.stderr.write(`headless: ${message}\n`);
   process.exitCode = 1;
 });

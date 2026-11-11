@@ -502,6 +502,48 @@ class TestFlexibleSerializerExposure:
         assert "editor" not in ExcludeSerializer()._expandable_fields
         assert "editor" not in FieldsSerializer()._expandable_fields
 
+    def test_properties_of_expanded_objects_honor_fields_and_omit(self):
+        """Test that ?fields= and ?omit= leave out the properties of an expanded object"""
+
+        class Shop(models.Model):
+            name = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = "test_exposure"
+
+            @property
+            def label(self):
+                return self.name.upper()
+
+        class Product(models.Model):
+            title = models.CharField(max_length=100)
+            shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+
+            class Meta:
+                app_label = "test_exposure"
+
+        headless_registry.register(Shop)
+
+        class ProductSerializer(FlexibleSerializer):
+            class Meta:
+                model = Product
+                fields = "__all__"
+
+        product = Product(id=1, title="Hello", shop=Shop(id=2, name="Leon"))
+
+        with override_settings(HEADLESS={"DEFAULT_SERIALIZER_CLASS": "headless.rest.serializers.FlexibleSerializer"}):
+            data = ProductSerializer(product, expand=["shop"]).data
+            assert data["shop"] == {"id": 2, "name": "Leon", "label": "LEON"}
+
+            data = ProductSerializer(product, expand=["shop"], fields=["shop.name"]).data
+            assert data == {"shop": {"name": "Leon"}}
+
+            data = ProductSerializer(product, expand=["shop"], omit=["shop.label"]).data
+            assert data["shop"] == {"id": 2, "name": "Leon"}
+
+            data = ProductSerializer(product, expand=["shop"], fields=["shop.label"]).data
+            assert data == {"shop": {"label": "LEON"}}
+
     def test_properties_honor_fields_option(self):
         class Page(models.Model):
             title = models.CharField(max_length=100)

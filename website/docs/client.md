@@ -143,7 +143,7 @@ await api.model("blog.article").list({
 GET /api/blog.article?title__icontains=django&created_at__gte=2026-01-01T00:00:00.000Z&category__in=2,3&~category=4&search=getting+started&ordering=-created_at&limit=20
 ```
 
-Lists are sent as comma-separated values, dates as ISO 8601 strings and `null` as `null`. With the generated types, the value of each field and lookup is type-checked. Other lookups, such as `created_at__year`, and lookups across relations, such as `category__name__icontains`, are accepted without type checks on their values.
+Lists are sent as comma-separated values, a `Date` as an ISO 8601 string and `null` as `null`. A `Date` filters a `DateTimeField`; filter a `DateField` with a string such as `"2026-01-15"`. Only nullable boolean fields read `null`; use `isnull` for other fields, as in `category__isnull: true`. With the generated types, the value of each field and lookup is type-checked. Other lookups, such as `created_at__year`, and lookups across relations, such as `category__name__icontains`, are accepted without type checks on their values.
 
 `search` and `ordering` need a search and an ordering filter backend; see [DRF overrides](./settings.md#drf-overrides).
 

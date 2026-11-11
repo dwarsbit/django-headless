@@ -108,7 +108,7 @@ export function generate(document: OpenAPIDocument, options: GenerateOptions = {
     lines.push(...renderInterface(typeName(name), schema, "item"), "");
 
     if (inputComponents.has(name)) {
-      lines.push(...renderInterface(`${typeName(name)}Input`, schema, "input"), "");
+      lines.push(...renderInterface(inputTypeName(name, components), schema, "input"), "");
     }
   }
 
@@ -119,6 +119,21 @@ export function generate(document: OpenAPIDocument, options: GenerateOptions = {
   lines.push("};", "");
 
   return lines.join("\n");
+}
+
+/**
+ * The name of the input type of a component: its type name followed by
+ * Input, and by underscores while another component has that name (the
+ * models Article and ArticleInput of one app).
+ */
+function inputTypeName(name: string, components: { [name: string]: SchemaObject }): string {
+  const taken = new Set(Object.keys(components).map(typeName));
+  let input = `${typeName(name)}Input`;
+  while (taken.has(input)) {
+    input += "_";
+  }
+
+  return input;
 }
 
 function collectModels(document: OpenAPIDocument): ModelInfo[] {
@@ -143,7 +158,8 @@ function collectModels(document: OpenAPIDocument): ModelInfo[] {
 
       if (rest === "") {
         route.base[method] = operation;
-      } else if (rest === "/{id}") {
+      } else if (/^\/\{\w+\}$/.test(rest)) {
+        // The parameter is named after the primary key field, such as {id} or {code}
         route.detail[method] = operation;
       } else if (lookup && method === "get") {
         route.lookups[lookup[1] as string] = operation;
@@ -182,7 +198,7 @@ function describeModel(label: string, route: Route): ModelInfo {
 
   const idParameter = Object.values(route.detail)
     .flatMap((operation) => operation.parameters ?? [])
-    .find((parameter) => parameter.in === "path" && parameter.name === "id");
+    .find((parameter) => parameter.in === "path");
 
   const filters: ModelInfo["filters"] = {};
   for (const parameter of route.base.get?.parameters ?? []) {
@@ -214,12 +230,14 @@ function describeModel(label: string, route: Route): ModelInfo {
   };
 }
 
-/** The type of a filter value: a date can be passed as a Date. */
+/**
+ * The type of a filter value: a date and time can be passed as a Date. A
+ * date without a time cannot: the API does not read the ISO string of a Date
+ * as a date.
+ */
 function renderFilterType(schema: SchemaObject): string {
   const type = renderType(schema);
-  return schema.type === "string" && (schema.format === "date" || schema.format === "date-time")
-    ? `${type} | Date`
-    : type;
+  return schema.type === "string" && schema.format === "date-time" ? `${type} | Date` : type;
 }
 
 function isFilter(parameter: Parameter): boolean {
@@ -247,7 +265,7 @@ function renderModel(
 ): string[] {
   const schema = model.component ? components[model.component] : undefined;
   const item = model.component && schema ? typeName(model.component) : "{ [key: string]: unknown }";
-  const input = model.readOnly ? "never" : model.component && schema ? `${typeName(model.component)}Input` : item;
+  const input = model.readOnly ? "never" : model.component && schema ? inputTypeName(model.component, components) : item;
 
   const expandable: string[] = [];
   for (const [name, relation] of Object.entries(model.expandable)) {
@@ -398,7 +416,19 @@ function renderObjectType(schema: SchemaObject): string {
 }
 
 function wrap(type: string): string {
-  return /[|&]/.test(type) && !/^\{.*\}$/.test(type) ? `(${type})` : type;
+  // Only a union or intersection outside of braces and brackets needs parentheses
+  let depth = 0;
+  for (const character of type) {
+    if ("{[(<".includes(character)) {
+      depth++;
+    } else if ("}])>".includes(character)) {
+      depth--;
+    } else if (depth === 0 && (character === "|" || character === "&")) {
+      return `(${type})`;
+    }
+  }
+
+  return type;
 }
 
 function propertyKey(name: string): string {

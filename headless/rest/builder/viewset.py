@@ -106,8 +106,9 @@ def _make_lookup_action(field_name: str):
     return action(
         detail=False,
         methods=["get"],
-        # Unlike DRF's default lookup pattern, dots are allowed in values
-        url_path=rf"by_{field_name}/(?P<value>[^/]+)",
+        # Unlike DRF's default lookup pattern, dots are allowed in values, and
+        # slashes too: Django matches the decoded path, where %2F is a slash
+        url_path=rf"by_{field_name}/(?P<value>.+)",
         url_name=f"by-{field_name}",
     )(retrieve_by)
 

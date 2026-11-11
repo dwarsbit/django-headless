@@ -106,7 +106,16 @@ class DocNote(models.Model):
         app_label = "headless_rest"
 
 
-MODELS = (DocTag, DocArticle, DocPage, DocSettings, DocNote, DocCategory)
+@expose()
+class DocProduct(models.Model):
+    number = models.AutoField(primary_key=True)
+    released = models.DateField(null=True)
+
+    class Meta:
+        app_label = "headless_rest"
+
+
+MODELS = (DocTag, DocArticle, DocPage, DocSettings, DocNote, DocCategory, DocProduct)
 LABELS = tuple(model._meta.label_lower for model in MODELS)
 
 
@@ -183,6 +192,8 @@ class SchemaTests(SimpleTestCase):
                 "/headless_rest.docpage/by_slug/{value}",
                 "/headless_rest.docpage/by_uid/{value}",
                 "/headless_rest.docpage/{id}",
+                "/headless_rest.docproduct",
+                "/headless_rest.docproduct/{number}",
                 "/headless_rest.docsettings",
                 "/headless_rest.doctag",
                 "/headless_rest.doctag/{id}",
@@ -219,6 +230,7 @@ class SchemaTests(SimpleTestCase):
                 "HeadlessRestDocCategory",
                 "HeadlessRestDocNote",
                 "HeadlessRestDocPage",
+                "HeadlessRestDocProduct",
                 "HeadlessRestDocSettings",
                 "HeadlessRestDocTag",
             ],
@@ -352,6 +364,11 @@ class SchemaTests(SimpleTestCase):
 
     def test_primary_key_parameter_has_the_type_of_the_primary_key(self):
         parameter = self.parameters("/headless_rest.docarticle/{id}")["id"]
+        self.assertEqual(parameter["in"], "path")
+        self.assertEqual(parameter["schema"], {"type": "integer"})
+
+    def test_primary_key_parameter_is_typed_whatever_its_name(self):
+        parameter = self.parameters("/headless_rest.docproduct/{number}")["number"]
         self.assertEqual(parameter["in"], "path")
         self.assertEqual(parameter["schema"], {"type": "integer"})
 

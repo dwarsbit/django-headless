@@ -50,6 +50,11 @@ describe("types", () => {
 
       // @ts-expect-error title is not a relation
       articles.retrieve(1, { expand: ["title"] });
+
+      // Paths of up to three relations
+      articles.retrieve(1, { expand: ["tags.docarticle_set.tags"] });
+      // @ts-expect-error four relations
+      articles.retrieve(1, { expand: ["tags.docarticle_set.tags.docarticle_set"] });
     });
   });
 
@@ -66,6 +71,9 @@ describe("types", () => {
   it("types filters and lookups", () => {
     types(async () => {
       articles.list({ filters: { status: "live", views__gte: 10, id__in: [1, 2], created__lt: new Date(), category__isnull: true } });
+      // @ts-expect-error a date without a time is filtered with a string
+      api.model("headless_rest.docproduct").list({ filters: { released__gte: new Date() } });
+      api.model("headless_rest.docproduct").list({ filters: { released__gte: "2026-01-15" } });
       // Other lookups and paths across relations are accepted
       articles.list({ filters: { created__year: 2026, category__name__icontains: "tutorials" } });
 

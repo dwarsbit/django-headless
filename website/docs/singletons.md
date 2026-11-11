@@ -30,6 +30,8 @@ The singleton gets one route with three methods:
 | `PUT`   | `/api/blog.sitesettings`  | Update, creating it if it is missing |
 | `PATCH` | `/api/blog.sitesettings`  | Partial update, creating it if it is missing |
 
+The first `PUT` or `PATCH` creates the singleton, so it takes every required field. After that, `PATCH` takes any subset of the fields.
+
 A singleton has no list or delete route. Create and edit it through the API, the Django admin or your own code.
 
 ## Creating on first write
