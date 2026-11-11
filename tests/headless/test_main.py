@@ -53,6 +53,14 @@ class UtilsTests(SimpleTestCase):
         # The parent process of the autoreloader only watches files
         self.assertServer(["/path/manage.py", "runserver"], False)
 
+    def test_is_runserver_with_options_before_the_command(self):
+        self.assertServer(["/path/manage.py", "--settings=mysite.settings.dev", "runserver", "--noreload"], True)
+        self.assertServer(["/path/manage.py", "--settings=mysite.settings.dev", "migrate"], False)
+
+    def test_is_runserver_with_waitress_and_mod_wsgi_express(self):
+        self.assertServer(["/venv/lib/python3.12/site-packages/waitress/__main__.py", "mysite.wsgi:application"], True)
+        self.assertServer(["/venv/bin/mod_wsgi-express", "start-server", "mysite/wsgi.py"], True)
+
     def test_is_runserver_with_runserver_plus(self):
         self.assertServer(["/path/manage.py", "runserver_plus"], True, {"WERKZEUG_RUN_MAIN": "true"})
 
@@ -367,6 +375,15 @@ class RegistryTests(SimpleTestCase):
         self.registry.register(RegistryRelatedModel, exclude=["name"])
         cfg = self.registry.get_model("registry_tests.registryrelatedmodel")
         self.assertEqual(cfg["exclude"], ["name"])
+
+    def test_abstract_model_rejected(self):
+        class RegistryAbstractModel(models.Model):
+            class Meta:
+                app_label = "registry_tests"
+                abstract = True
+
+        with self.assertRaisesMessage(ImproperlyConfigured, "abstract model"):
+            self.registry.register(RegistryAbstractModel)
 
     def test_non_model_rejected(self):
         with self.assertRaises(ImproperlyConfigured):

@@ -12,6 +12,13 @@
 - 🐛 Fix `LookupFilter` on your own views: it now filters generic views such as `ListAPIView`, and viewsets that define `get_queryset()` without a `queryset` attribute.
 - 🐛 Fix a `500` for integers of more than 64 bits in the `in` and `range` lookups, and for filters on `DurationField` and `BinaryField`. Durations are now parsed; invalid values and binary fields answer `400 Bad Request`.
 - 🐛 Fix the error message of an invalid boolean filter when `FILTER_TRUE_VALUES`, `FILTER_FALSE_VALUES` or `FILTER_NULL_VALUES` is a tuple.
+- 🐛 Fix the routes of two exposed models with the same name in different apps, such as `blog.Article` and `news.Article`. They raised `ImproperlyConfigured` when the project started.
+- 🐛 Fix the routes of a model without an `objects` manager: the generated routes now use the default manager of the model.
+- 🐛 `@expose()` now raises `ImproperlyConfigured` on an abstract model, instead of failing when the routes are built.
+- 🐛 Fix `HEADLESS["PAGE_SIZE"]` with `LimitOffsetPagination`: it now sets the default limit, where the list was not paginated without `?limit=`.
+- 🐛 Fix `CursorPagination` on the generated routes: without a `created` field on the model, the list is ordered by primary key instead of answering `500`.
+- 🐛 Fix a query per object for a wildcard below the first level, such as `?expand=author.*`.
+- 🐛 Fix the boot log for `python manage.py --settings=... runserver`, `python -m waitress` and `mod_wsgi-express`.
 
 ## 1.2.0 (2026-11-06)
 

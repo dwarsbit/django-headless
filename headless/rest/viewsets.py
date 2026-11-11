@@ -92,15 +92,10 @@ class RelatedLoadingMixin:
         anything else is left to the serializer to ignore. Relations that
         ?fields= or ?omit= leave out of the response are skipped.
         """
-        from rest_flex_fields import EXPAND_PARAM, FIELDS_PARAM, OMIT_PARAM, WILDCARD_VALUES
+        from rest_flex_fields import EXPAND_PARAM, FIELDS_PARAM, OMIT_PARAM
 
         serializer_class = self.get_serializer_class()
         expansions = [value.split(".") for value in self._get_list_param(request, EXPAND_PARAM)]
-
-        # A wildcard expands every expandable relation of the first level
-        if any(names[0] in (WILDCARD_VALUES or []) for names in expansions):
-            expandable_fields = getattr(serializer_class(), "_expandable_fields", None) or {}
-            expansions = [[name] for name in expandable_fields]
 
         sparse = self._get_list_param(request, FIELDS_PARAM)
         omit = self._get_list_param(request, OMIT_PARAM)
@@ -133,6 +128,7 @@ class RelatedLoadingMixin:
         relation on its path can be: a join cannot go through a many-valued
         relation.
         """
+        from rest_flex_fields import WILDCARD_VALUES
         from rest_flex_fields.serializers import FlexFieldsSerializerMixin
         from rest_flex_fields.utils import split_levels
 
@@ -157,6 +153,11 @@ class RelatedLoadingMixin:
         children = {}
         for names in expansions:
             children.setdefault(names[0], []).append(names[1:])
+
+        # A wildcard expands every expandable relation of its level
+        if set(children) & set(WILDCARD_VALUES or []):
+            for name in expandable_fields:
+                children.setdefault(name, [])
 
         for name, rests in children.items():
             if name not in expandable_fields or not is_included(name):

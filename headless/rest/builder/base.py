@@ -78,7 +78,12 @@ class RestBuilder:
                 )
                 singleton_routes += 1
             else:
-                rest_router.register(base_path, view_set)
+                # DRF names the routes of a model after its class name. A model
+                # that shares its name with a model of another app takes its label.
+                basename = rest_router.get_default_basename(view_set)
+                if any(basename == registered[2] for registered in rest_router.registry):
+                    basename = base_path
+                rest_router.register(base_path, view_set, basename=basename)
 
             routes += 1
 

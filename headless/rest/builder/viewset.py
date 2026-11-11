@@ -1,7 +1,9 @@
 from typing import Type, Dict, Any
 
+from django.core.exceptions import FieldDoesNotExist
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.pagination import CursorPagination
 from rest_framework.settings import api_settings
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
@@ -48,14 +50,14 @@ def get_view_set(
     if singleton:
 
         class ViewSet(SingletonViewSet):
-            queryset = model_class.objects.all()
+            queryset = model_class._default_manager.all()
             serializer_class = serializer
 
     elif read_only:
 
         class ViewSet(RelatedLoadingMixin, ReadOnlyModelViewSet):
             # Deterministic ordering, so paginated lists are stable
-            queryset = model_class.objects.all().order_by("pk")
+            queryset = model_class._default_manager.all().order_by("pk")
             serializer_class = serializer
             search_fields = model_config["search_fields"]
             ordering = ["pk"]
@@ -64,7 +66,7 @@ def get_view_set(
 
         class ViewSet(ConstraintErrorMixin, RelatedLoadingMixin, ModelViewSet):
             # Deterministic ordering, so paginated lists are stable
-            queryset = model_class.objects.all().order_by("pk")
+            queryset = model_class._default_manager.all().order_by("pk")
             serializer_class = serializer
             search_fields = model_config["search_fields"]
             ordering = ["pk"]
@@ -139,7 +141,17 @@ def apply_drf_overrides(viewset: Type[Any]) -> None:
         # viewset, so they require a subclass of the effective pagination class.
         attrs = {}
         if headless_settings.PAGE_SIZE is not None:
+            # page_size sets the size of page number and cursor pagination,
+            # default_limit that of limit/offset pagination
             attrs["page_size"] = headless_settings.PAGE_SIZE
+            attrs["default_limit"] = headless_settings.PAGE_SIZE
+        if issubclass(base_class, CursorPagination) and base_class.ordering == CursorPagination.ordering:
+            # DRF orders cursor pagination by a "created" field. Without that
+            # field, order by primary key, like the list routes themselves.
+            try:
+                viewset.queryset.model._meta.get_field(CursorPagination.ordering.lstrip("-"))
+            except FieldDoesNotExist:
+                attrs["ordering"] = "pk"
         # max_page_size caps page number and cursor pagination, max_limit
         # caps limit/offset pagination. None removes the cap.
         attrs["max_page_size"] = headless_settings.MAX_PAGE_SIZE

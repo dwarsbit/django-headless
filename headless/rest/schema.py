@@ -244,7 +244,7 @@ class HeadlessAutoSchema(AutoSchema):
 
         for parameter in parameters:
             # The primary key in a detail route has the type of the primary key field
-            if lookup_field is None and parameter["name"] == "id":
+            if lookup_field is None and parameter["name"] in ("id", "pk", model._meta.pk.name):
                 parameter["schema"] = get_field_schema(model._meta.pk)
 
         if lookup_field is not None:

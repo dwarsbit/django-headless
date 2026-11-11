@@ -13,6 +13,7 @@ from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.test import APIRequestFactory, force_authenticate
 from rest_framework.renderers import JSONRenderer
+from rest_framework.pagination import CursorPagination
 from rest_framework.request import Request
 from rest_framework.settings import api_settings
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -591,6 +592,70 @@ class BuilderDrfOverrideTests(IsolatedBuildMixin, SimpleTestCase):
             viewset = self.get_view_set()
         request = Request(APIRequestFactory().get("/", {"limit": 1000}))
         self.assertEqual(viewset.pagination_class().get_page_size(request), 1000)
+
+    def test_page_size_sets_limit_offset_default_limit(self):
+        with override_settings(
+            HEADLESS={
+                "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+                "PAGE_SIZE": 5,
+            }
+        ):
+            viewset = self.get_view_set()
+        request = Request(APIRequestFactory().get("/"))
+        self.assertEqual(viewset.pagination_class().get_limit(request), 5)
+
+    def test_cursor_pagination_orders_by_pk_without_created_field(self):
+        with override_settings(
+            HEADLESS={"DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.CursorPagination", "PAGE_SIZE": 5}
+        ):
+            viewset = self.get_view_set()
+        self.assertEqual(viewset.pagination_class.ordering, "pk")
+
+    def test_cursor_pagination_keeps_its_own_ordering(self):
+        class TitleCursorPagination(CursorPagination):
+            ordering = "title"
+
+        with override_settings(HEADLESS={"DEFAULT_PAGINATION_CLASS": TitleCursorPagination}):
+            viewset = self.get_view_set()
+        self.assertEqual(viewset.pagination_class.ordering, "title")
+
+    def test_model_without_objects_manager(self):
+        class BuilderCustomManagerModel(models.Model):
+            title = models.CharField(max_length=100)
+            things = models.Manager()
+
+            class Meta:
+                app_label = "test"
+
+        viewset = RestBuilder().get_view_set(
+            {"model": BuilderCustomManagerModel, "singleton": False, "search_fields": ["title"]}
+        )
+        self.assertIs(viewset.queryset.model, BuilderCustomManagerModel)
+
+    def test_models_with_the_same_name_in_different_apps(self):
+        class BuilderSameName(models.Model):
+            class Meta:
+                app_label = "test"
+
+        first = BuilderSameName
+
+        class BuilderSameName(models.Model):
+            class Meta:
+                app_label = "test_other"
+
+        headless_registry.register(first)
+        headless_registry.register(BuilderSameName)
+        RestBuilder(silent=True).build()
+
+        self.assertEqual(
+            [(prefix, basename) for prefix, _, basename in rest_router.registry],
+            [("test.buildersamename", "buildersamename"), ("test_other.buildersamename", "test_other.buildersamename")],
+        )
+        if hasattr(rest_router, "_urls"):
+            del rest_router._urls
+        names = {pattern.name for pattern in rest_router.urls}
+        self.assertLessEqual({"buildersamename-list", "test_other.buildersamename-detail"}, names)
+        del rest_router._urls
 
     def test_page_size_without_pagination_class_is_ignored(self):
         # The test settings define no REST_FRAMEWORK pagination class

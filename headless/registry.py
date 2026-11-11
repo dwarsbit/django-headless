@@ -57,6 +57,12 @@ class HeadlessRegistry:
                 "Make sure the decorator is placed below models.Model."
             )
 
+        if model_class._meta.abstract:
+            raise ImproperlyConfigured(
+                f"@expose cannot be used on the abstract model {model_class._meta.label}: it has no objects to serve. "
+                "Expose the models that inherit from it instead."
+            )
+
         for option, value in (
             ("search_fields", search_fields),
             ("fields", fields),

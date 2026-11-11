@@ -180,6 +180,17 @@ class RelatedLoadingTests(TransactionTestCase):
         # and of the authors
         self.assertEqual((few, many), (4, 4))
 
+    def test_nested_wildcard_expansion_loads_in_constant_queries(self):
+        self.create_posts(2)
+        few, response = self.count_queries("/headless_rest.loadpost", expand="author.*")
+        author = response.data["data"][0]["author"]
+        self.assertEqual([tag["name"] for tag in author["favorite_tags"]], ["tag 0", "tag 1"])
+
+        self.create_posts(4)
+        many, _ = self.count_queries("/headless_rest.loadpost", expand="author.*")
+
+        self.assertEqual(few, many)
+
     def test_expanded_many_to_many_loads_in_constant_queries(self):
         self.create_posts(2)
         few, response = self.count_queries("/headless_rest.loadpost", expand="tags")
