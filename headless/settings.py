@@ -128,7 +128,7 @@ class HeadlessSettings:
     properties. For example:
 
         from headless.settings import headless_settings
-        print(headless_settings.SINGLETON_ATTR)
+        print(headless_settings.MAX_PAGE_SIZE)
 
     Any setting with string import paths will be automatically resolved
     and return the class, rather than the string literal.

@@ -104,8 +104,13 @@ export class DjangoRestClient<Ms extends ModelMap = AnyModels> {
 
     let body: BodyInit | undefined;
     if (options.body instanceof FormData) {
-      // fetch sets the multipart content type with its boundary
+      // fetch sets the multipart content type with its boundary, which a
+      // content type from the client options would replace
+      headers.delete("Content-Type");
       body = options.body;
+    } else if (isRawBody(options.body)) {
+      // fetch sends these as they are, with their own content type
+      body = options.body as BodyInit;
     } else if (options.body !== undefined) {
       body = JSON.stringify(options.body);
       headers.set("Content-Type", "application/json");
@@ -131,6 +136,16 @@ export class DjangoRestClient<Ms extends ModelMap = AnyModels> {
 
     return data as T;
   }
+}
+
+function isRawBody(body: unknown): boolean {
+  return (
+    body instanceof Blob ||
+    body instanceof ArrayBuffer ||
+    ArrayBuffer.isView(body) ||
+    body instanceof URLSearchParams ||
+    (typeof ReadableStream !== "undefined" && body instanceof ReadableStream)
+  );
 }
 
 function mergeHeaders(headers: Headers, init: HeadersInit | undefined): void {
@@ -334,7 +349,12 @@ function readQuery(params: ReadParams<any, any, any, any, any>): URLSearchParams
 }
 
 function appendReadParams(query: URLSearchParams, params: ReadParams<any, any, any, any, any>): void {
-  appendParams(query, { expand: params.expand, fields: params.fields, omit: params.omit });
+  // An empty list selects nothing: `fields=` would answer objects without fields
+  const selection = { expand: params.expand, fields: params.fields, omit: params.omit };
+  appendParams(
+    query,
+    Object.fromEntries(Object.entries(selection).filter(([, value]) => !Array.isArray(value) || value.length > 0)),
+  );
   appendParams(query, params.params ?? {});
 }
 

@@ -60,6 +60,17 @@ export interface HeadlessRestDocPageInput {
   uid?: string;
 }
 
+export interface HeadlessRestDocProduct {
+  number: number;
+  /** Format: date. */
+  released: string | null;
+}
+
+export interface HeadlessRestDocProductInput {
+  /** Format: date. */
+  released?: string | null;
+}
+
 export interface HeadlessRestDocSettings {
   id: number;
   site_name: string;
@@ -91,7 +102,7 @@ export type Models = {
       rating: number;
       published: boolean;
       created: string | Date;
-      day: string | Date;
+      day: string;
       category: number;
       tags: number;
     };
@@ -148,6 +159,20 @@ export type Models = {
       slug: string;
       uid: string;
     };
+    expandable: {};
+    readOnly: false;
+    singleton: false;
+    paginated: true;
+  };
+  "headless_rest.docproduct": {
+    item: HeadlessRestDocProduct;
+    input: HeadlessRestDocProductInput;
+    id: number;
+    filters: {
+      number: number;
+      released: string;
+    };
+    lookups: {};
     expandable: {};
     readOnly: false;
     singleton: false;

@@ -505,6 +505,12 @@ class EndToEndApiTests(TransactionTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["id"], page.id)
 
+        # Values with a slash, URL-encoded
+        nested = Page.objects.create(slug="docs/intro", title="Intro")
+        response = self.client.get("/e2e_blog.page/by_slug/docs%2Fintro")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], nested.id)
+
         # Unknown values
         response = self.client.get("/e2e_blog.page/by_slug/missing")
         self.assertEqual(response.status_code, 404)
