@@ -321,6 +321,29 @@ class LookupFilterTests(TestCase):
         self.assertEqual(self.filter_backend.cast_field_value("  John  ", name_field), "John")
         self.assertEqual(self.filter_backend.cast_field_value(" 25 ", int_field), 25)
 
+    def test_cast_field_value_duration(self):
+        """Test that durations are parsed, and invalid ones rejected"""
+        from datetime import timedelta
+
+        field = models.DurationField()
+        self.assertEqual(self.filter_backend.cast_field_value("1 02:00:00", field), timedelta(days=1, hours=2))
+        self.assertEqual(self.filter_backend.cast_field_value("90", field), timedelta(seconds=90))
+        with self.assertRaises(ParseError):
+            self.filter_backend.cast_field_value("abc", field)
+
+    def test_cast_field_value_binary_rejected(self):
+        """Test that binary fields cannot be filtered on"""
+        with self.assertRaises(ParseError):
+            self.filter_backend.cast_field_value("abc", models.BinaryField())
+
+    def test_cast_field_value_boolean_message_with_tuple_settings(self):
+        """Test that the boolean values can be set as tuples as well as lists"""
+        field = FilterTestModel._meta.get_field("is_active")
+        with override_settings(HEADLESS={"FILTER_TRUE_VALUES": ("yes",)}):
+            with self.assertRaises(ParseError) as context:
+                self.filter_backend.cast_field_value("maybe", field)
+        self.assertIn("yes, false", str(context.exception.detail))
+
     def test_cast_field_value_boolean_is_case_insensitive(self):
         """Test that boolean values match case-insensitively"""
         field = FilterTestModel._meta.get_field("is_active")

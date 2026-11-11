@@ -404,6 +404,73 @@ class EndToEndApiTests(TransactionTestCase):
         self.assertIn("e2e_blog.article", response.data)
         self.assertIn("e2e_blog.category", response.data)
 
+    def test_exclusions_apply_separately(self):
+        """Test that several exclusions each exclude their own objects"""
+        for index in range(5):
+            Article.objects.create(title=f"Article {index}", views=index)
+
+        response = self.client.get("/e2e_blog.article", {"~title": "Article 1", "~views": 2, "limit": 10})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([article["views"] for article in response.data["data"]], [0, 3, 4])
+
+    def test_oversized_integers_in_value_lists_answer_400(self):
+        """Test that an integer the database cannot hold answers 400 in the in and range lookups"""
+        Article.objects.create(title="Hello", views=1)
+        huge = "99999999999999999999999"
+
+        for query in ({"views__in": f"1,{huge}"}, {"views__range": f"0,{huge}"}, {"pk__in": huge}, {"~id__in": huge}):
+            with self.subTest(query=query):
+                response = self.client.get("/e2e_blog.article", query)
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("Invalid value for", response.data["detail"])
+
+        # A single value matches nothing
+        response = self.client.get("/e2e_blog.article", {"views": huge})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["data"], [])
+
+    def test_lookup_filter_on_custom_views(self):
+        """Test that LookupFilter filters the list of a generic view and of a viewset without a queryset attribute"""
+        from rest_framework import generics, serializers, viewsets
+
+        from headless.rest.filters import LookupFilter
+
+        class ArticleSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = Article
+                fields = ["id", "title"]
+
+        class ArticleList(generics.ListAPIView):
+            queryset = Article.objects.all()
+            serializer_class = ArticleSerializer
+            filter_backends = [LookupFilter]
+
+        class ArticleDetail(generics.RetrieveAPIView):
+            queryset = Article.objects.all()
+            serializer_class = ArticleSerializer
+            filter_backends = [LookupFilter]
+
+        class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
+            serializer_class = ArticleSerializer
+            filter_backends = [LookupFilter]
+
+            def get_queryset(self):
+                return Article.objects.all()
+
+        first = Article.objects.create(title="First")
+        Article.objects.create(title="Second")
+        factory = APIRequestFactory()
+
+        for view in (ArticleList.as_view(), ArticleViewSet.as_view({"get": "list"})):
+            response = view(factory.get("/articles", {"title": "First"}))
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual([article["title"] for article in response.data], ["First"])
+            self.assertEqual(view(factory.get("/articles", {"missing": "x"})).status_code, 400)
+
+        # Filters do not apply to the object of a detail view
+        response = ArticleDetail.as_view()(factory.get("/articles/1", {"title": "Second"}), pk=first.pk)
+        self.assertEqual(response.status_code, 200)
+
     def test_api_root_uses_route_permissions(self):
         """Test that the API root uses the permission classes of the generated routes"""
         with override_settings(HEADLESS={"DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAdminUser"]}):
